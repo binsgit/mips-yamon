@@ -1,0 +1,266 @@
+
+YAMON(TM); SOFTWARE LICENSE AGREEMENT ("Agreement")
+IMPORTANT- This Agreement legally binds you (either an individual or an
+entity), the end user ("Licensee"), and MIPS Technologies, Inc. ("MIPS")
+whose street address and fax information is 1225 Charleston Road,
+Mountain View, California 94043, Fax Number (650) 567-5154. 1.
+DEFINITIONS-The following definitions apply to this Agreement:
+"Authorized Product" shall mean a product developed by MIPS or under a
+license that was granted by MIPS. "Documentation" shall mean documents
+(including any updates provided or made available by MIPS solely at its
+discretion), and any information, whether in written, magnetic media,
+electronic or other format, provided to Licensee describing the Software,
+its operation and matters relating to its use. "GPL Materials" shall mean
+any source or object code provided by MIPS to Licensee under the terms
+of the GNU General Public License, Version 2, June 1991 or later ("GNU
+GPL"). "IP Rights" shall mean intellectual property rights including, but not
+limited to, patent, copyright, trade secret and mask work rights. "Licensee
+Code Modifications" shall mean any modifications to YAMON Code and/or
+other code provided to Licensee by MIPS, made by or on behalf of
+Licensee. "MIPS Code Modifications" shall mean modifications to YAMON
+Code and/or other code provided to Licensee by MIPS or any third party
+licensed by MIPS, wherein such third party grants back to MIPS a license
+under such code modifications with the rights to sublicense and grant
+further sublicenses. "MIPS Deliverables" shall mean the Software,
+Documentation and any other information or materials provided by MIPS to
+Licensee pursuant to this Agreement except for GPL Materials. "Software"
+shall mean software containing YAMON Code, any other source and/or
+object code provided by MIPS at its sole discretion, and any
+Documentation contained in such software at MIPS' sole discretion.
+YAMON Code" shall mean source and/or object code for the YAMON
+monitor software, Ver. 1.01, or later (including any updates provided or
+made available by MIPS solely at its discretion). 2. MIPS LICENSE
+GRANTS (a) Subject to Licensee's compliance with the terms and
+conditions of this Agreement and payment of any fees owed to MIPS, MIPS
+grants to Licensee a non-exclusive, worldwide, non-transferable,
+royalty-free, fully-paid limited right and license to: (i) use the MIPS
+Deliverables at Licensee's facilities solely for Licensee's internal
+evaluation and development purposes (and to use, copy and reproduce
+and have reproduced Documentation solely to facilitate those uses of
+MIPS Deliverables that are allowed hereunder), and to sublicense
+Licensee's rights granted in this Subsection 2(a)(i) to Licensee's
+consultants for their use of the MIPS Deliverables at their facilities for their
+internal evaluation and development purposes; (ii) make, use, import, copy,
+reproduce, have reproduced, modify, create derivative works from YAMON
+Code only in conjunction with making, using, importing, offering for sale
+and selling or otherwise distributing Authorized Product and only for use
+exclusively with such Authorized Product, and to sublicense its rights
+granted in this Subsection 2(a)(ii), including the right to grant further
+sublicenses, provided that with respect to any sublicensee, (A) any IP
+Rights arising in any modification or derivative work created by such
+sublicensee shall be licensed back to MIPS together with the right by
+MIPS to sublicense such rights and grant further sublicenses, and (B) the
+obligations of Subsection 2(c) below shall apply equally to any YAMON
+Code modified and/or sublicensed by such sublicensee. These obligations
+shall be deemed to have been satisfied by Licensee's delivery of a copy of
+this Agreement to its sublicensee(s). (b) MIPS further grants to Licensee a
+non-exclusive, worldwide, non-transferable, royalty-free, fully-paid
+limited right and license under MIPS' IP Rights in any MIPS Code
+Modifications in existence now or at any time during the term of this
+Agreement (including those IP Rights assigned to MIPS or licensed to
+MIPS with sufficient sublicensing rights to satisfy the license grant in this
+Subsection 2(b)) to the limited extent that Licensee may make, use and
+import such MIPS Code Modifications only in conjunction with making,
+using, importing, offering for sale and selling or otherwise distributing
+Authorized Product and only for use exclusively with such Authorized
+Product, and sublicense its rights granted in this Subsection 2(b),
+including the right to grant further sublicenses under the preconditions set
+forth in Subsection 2(a)(ii) above. Licensee acknowledges and agrees that
+MIPS (or any third party) is under no obligation to deliver MIPS Code
+Modifications; rather, this license right is intended solely to provide a
+freedom to use such modifications when created independently by
+Licensee or any sublicensee thereof. (c) Any YAMON Code modified
+and/or sublicensed pursuant to this Agreement must (i) contain all
+copyright and other notices contained in the original YAMON Code
+provided by MIPS to Licensee, (ii) cause modified files to carry prominent
+notices stating that Licensee (or any sublicensee) changed the files and
+the date of any change, and (iii) be sublicensed under terms that disclaim
+all warranties from MIPS and limit all liability of MIPS pursuant to Sections
+8, 9, 11 and 12 herein. (d) All other rights to the MIPS Deliverables not
+stated in this Section 2 are reserved to MIPS. Except as set out in this
+Section 2, Licensee shall not rent, lease, sell, sublicense, assign, loan, or
+otherwise transfer or convey the MIPS Deliverables to any third party.
+These license grants are effective as of the Effective Date. No license is
+granted for any other purpose. (e) To the extent MIPS provides any GPL
+Materials to Licensee, use of such materials shall, notwithstanding any
+provision of this Agreement to the contrary, be governed by the GNU GPL.
+3. LICENSEE CODE MODIFICATIONS In partial consideration for the rights
+and licenses granted under Section 2 herein, Licensee agrees to grant and
+does hereby grant to MIPS a perpetual, irrevocable, non-exclusive
+worldwide, royalty-free, fully-paid limited right and license under
+Licensee's IP Rights in any Licensee Code Modifications (including those
+IP Rights assigned to Licensee or licensed to Licensee with sufficient
+sublicensing right to satisfy the license grant in this Section 3) to the
+extent that MIPS may make, use and import such Licensee Code
+Modifications only in conjunction with making, using, importing, offering for
+sale and selling or otherwise distributing Authorized Product and only for
+use exclusively with such Authorized Product, and sublicense its rights
+granted in this Section 3, including the right to grant further sublicenses.
+MIPS acknowledges and agrees that Licensee (or any third party) is under
+no obligation to deliver Licensee Code Modifications; rather, this license
+right is intended solely to provide a freedom to use such modifications
+when created independently by MIPS or any sublicensee thereof. 4.
+OWNERSHIP AND PREVENTION OF MISUSE OF MIPS DELIVERABLES
+a) This Agreement does not confer any rights of ownership in or to the
+MIPS Deliverables to Licensee; Licensee does not acquire any rights,
+express or implied, in the MIPS Deliverables other than those specified in
+Section 2 above. Licensee agrees that all title and IP Rights in the MIPS
+Deliverables remain in MIPS (subject only, if and to the extent applicable,
+to the rights of a MIPS supplier with respect to a particular MIPS
+Deliverable(s)). Licensee agrees that it shall take all reasonable steps to
+prevent unauthorized copying of the MIPS Deliverables. (b) MIPS owns all
+right, title and interest in the YAMON Code and other MIPS Deliverables
+subject only, if and to the extent applicable, to the rights of a MIPS
+supplier with respect to a particular MIPS Deliverable(s)). Licensee shall
+own all right, title and interest in the modifications and derivative works of
+the YAMON Code created by Licensee, subject to MIPS' rights in the
+underlying original YAMON Code as provided under this Agreement. (c)
+Licensee agrees to provide reasonable feedback to MIPS including, but
+not limited to, usability of the MIPS Deliverables. All feedback made by
+Licensee shall be the property of MIPS and may be used by MIPS for any
+purpose. (d) Licensee shall make all reasonable efforts to discontinue
+distribution, copying and use of any MIPS Deliverables that are replaced
+by a new, upgraded or updated version of any such MIPS Deliverables,
+including distribution to any sublicensee of such new, upgraded or
+updated versions. (e) Licensee shall not make any statement of any kind or
+in any format, that any MIPS Deliverable is certified, or that its
+performance in connection with any product is warranted, indemnified or
+guaranteed in any way by MIPS or any party on MIPS' behalf. (f) Neither
+YAMON, MIPS nor any other trademark owned or licensed in by MIPS may
+be used by Licensee, any sublicensee thereof or any party on their behalf
+without prior written consent by MIPS, including at MIPS' sole discretion a
+trademark license agreement preapproved by MIPS. 5. ASSIGNMENT
+Licensee may not assign or otherwise transfer any of its rights or
+obligations under this Agreement to any third party without MIPS' prior
+written consent, and any attempt to do so will be null and void. This
+prohibition against Licensee's assignment shall apply even in the event of
+merger, re-organization, or when a third party purchases all or
+substantially all of Licensee's assets. Subject to the foregoing, this
+Agreement will be binding upon and will inure to the benefit of the parties
+and their respective permitted successors and assigns. 6. LIMITATIONS
+OF MIPS' SUPPORT-RELATED OBLIGATIONS This Agreement does not
+entitle Licensee to hard-copy documentation or to support, training or
+maintenance of any kind from MIPS, including documentary, technical, or
+telephone assistance. 7. TERM AND TERMINATION (a) This Agreement
+shall commence on the Effective Date. If Licensee fails to perform or
+violates any obligation under this Agreement, then upon thirty (30) days
+written notice to Licensee specifying such default (the "Default Notice"),
+MIPS may terminate this Agreement without liability, unless the breach
+specified in the Default Notice has been cured within the thirty (30) day
+period. This 30-day period may be extended upon mutual, written consent
+between the parties. (b) Upon the termination of this Agreement due to
+Licensee's material breach hereof, Licensee shall (1) immediately
+discontinue use of the MIPS Deliverables, (2) promptly return all MIPS
+Deliverables to MIPS, (3) destroy all copies of MIPS Deliverables made by
+Licensee, and (4) destroy all copies of derivative works of MIPS
+Deliverables made by Licensee while in breach of this Agreement. All
+licenses granted hereunder shall terminate as of the effective date of
+termination. (c) The rights and obligations under this Agreement which by
+their nature should survive termination, including but not limited to
+Sections 3 - 16, will remain in effect after expiration or termination hereof.
+Subject to Licensee's compliance with the surviving sections of this
+Agreement identified herein, any sublicenses rightfully granted and
+derivative works rightfully developed pursuant to Section 2 shall survive
+the termination of this Agreement. 8. DISCLAIMER OF WARRANTIES THE
+MIPS DELIVERABLES ARE PROVIDED "AS IS". MIPS MAKES NO
+WARRANTIES WITH REGARD TO ANY OF THE MIPS DELIVERABLES,
+AND EXPRESSLY DISCLAIMS ALL WARRANTIES, WHETHER EXPRESS,
+IMPLIED, STATUTORY OR OTHERWISE, INCLUDING, BUT NOT LIMITED
+TO, THE IMPLIED WARRANTIES OF TITLE, MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NON-INFRINGEMENT OF
+THIRD PARTY RIGHTS. 9. LIMITATION OF LIABILITY AND REMEDY (a)
+Licensee acknowledges the MIPS Deliverables are provided to Licensee
+only for the purpose set forth in Section 2. Licensee shall hold harmless
+and indemnify MIPS from any and all actual or threatened liabilities, claims
+or defenses based on the sublicensing, use, copying, installation,
+demonstration and/or modification of any of the MIPS Deliverables by
+Licensee, any sublicensee of Licensee or any party on their behalf.
+Licensee shall have sole responsibility for adequate protection and backup
+of any data and/or equipment used with the MIPS Deliverables, and
+Licensee shall hold harmless and indemnify MIPS from any and all actual
+or threatened liabilities, claims and defenses for lost data, re-run time,
+inaccurate output, work delays or lost profits resulting from use and/or
+modification of the MIPS Deliverables, or any portion thereof, under this
+Agreement. Licensee expressly acknowledges and agrees that any
+research or development performed with respect to the MIPS Deliverables
+is done entirely at Licensee's own risk. (b) NEITHER PARTY SHALL BE
+LIABLE TO THE OTHER PARTY OR TO ANY THIRD PARTY FOR ANY
+DAMAGES INCLUDING, BUT NOT LIMITED TO, SPECIAL,
+CONSEQUENTIAL, PUNITIVE, INDIRECT, EXEMPLARY OR INCIDENTAL
+DAMAGES, WHETHER SUCH DAMAGES ARISE UNDER A TORT,
+CONTRACT OR OTHER CLAIM, OR DAMAGES TO SYSTEMS, DATA OR
+SOFTWARE, EVEN IF SUCH PARTY HAS BEEN INFORMED OF THE
+POSSIBILITY OF SUCH DAMAGES. THIS LIMITATION ON LIABILITY
+SHALL SURVIVE EVEN IF THE LIMITED REMEDY PROVIDED HEREIN
+FAILS OF ITS ESSENTIAL PURPOSE. IN NO CASE WILL MIPS' LIABILITY
+FOR DAMAGES UNDER THIS AGREEMENT EXCEED THE AMOUNTS
+RECEIVED BY MIPS AS FEES UNDER THIS AGREEMENT. 10. WAIVER;
+MODIFICATION Any waiver of any right or default hereunder will be
+effective only in the instance given and will not operate as or imply a
+waiver of any other or similar right or default on any subsequent occasion.
+No waiver or modification of this Agreement or of any provision hereof will
+be effective unless in writing and signed by the party against whom such
+waiver or modification is sought to be enforced. 11. HAZARDOUS
+APPLICATIONS The MIPS Deliverables are not intended for use in any
+nuclear, aviation, mass transit, medical, or other inherently dangerous
+application. MIPS EXPRESSLY DISCLAIMS ANY EXPRESS OR IMPLIED
+WARRANTY OF FITNESS FOR SUCH USE. LICENSEE REPRESENTS AND
+WARRANTS THAT IT WILL NOT USE THE MIPS DELIVERABLES FOR
+SUCH PURPOSES. 12. SEVERABILITY In the event any provision of this
+Agreement (or portion thereof) is determined to be invalid, illegal or
+otherwise unenforceable, then such provision will, to the extent permitted,
+not be voided but will instead be construed to give effect to its intent to
+the maximum extent permissible under applicable law and the remainder of
+this Agreement will remain in full force and effect according to its terms. IN
+THE EVENT THAT ANY REMEDY HEREUNDER IS DETERMINED TO
+HAVE FAILED OF ITS ESSENTIAL PURPOSE, ALL LIMITATIONS OF
+LIABILITY AND EXCLUSIONS OF DAMAGES SHALL REMAIN IN
+EFFECT. 13. RIGHTS IN DATA Licensee acknowledges that all software
+and software related items licensed by MIPS to Licensee pursuant to this
+Agreement are "Commercial Computer Software" or "Commercial Computer
+Software Documentation" as defined in FAR 12.212 for civilian agencies
+and DFARS 227.7202 for military agencies, and that in the event that
+Licensee is permitted under this Agreement to provide such items to the
+U.S. government, such items shall be provided under terms at least as
+restrictive as the terms of this Agreement. 14. MISCELLANEOUS (a) The
+MIPS Deliverables and GPL Materials may be subject to U.S. export or
+import control laws and export or import regulations of other countries.
+Licensee agrees to comply strictly with all such laws and regulations and
+acknowledges that it has the responsibility to obtain such licenses to
+export, re-export, or import as may be required after delivery to Licensee.
+Licensee shall indemnify, defend and hold MIPS harmless from any
+damages, fees, costs, fines, expenses, charges and any actual or
+threatened civil and/or criminal claims or defenses arising from any failure
+of Licensee and/or its customers to comply with any obligations arising
+under this Section 14(a). (b) Any notice required or permitted by this
+Agreement must be in writing and must be sent by email, by facsimile, by
+recognized commercial overnight courier, or mailed by United States
+registered mail, effective only upon receipt, to the legal departments of
+MIPS or Licensee (if Licensee has no legal department, then to an officer
+of Licensee, a contact person specified by Licensee or Licensee's place of
+business). (c) The headings contained herein are for the convenience of
+reference only and are not intended to define, limit, expand or describe the
+scope or intent of any clause or provision of this Agreement. (d) The
+parties hereto are independent contractors, and nothing herein shall be
+construed to create an agency, joint venture, partnership or other form of
+business association between the parties hereto. (e) Licensee
+acknowledges that, in providing Licensee with the MIPS Deliverables,
+MIPS has relied upon Licensee's agreement to be bound by the terms of
+this Agreement. Licensee further acknowledges that it has read,
+understood, and agreed to be bound by the terms of this Agreement, and
+hereby reaffirms its acceptance of those terms. 15. GOVERNING LAW AND
+JURISDICTION This Agreement shall be governed by the laws of the State
+of California, excluding California's choice of law rules. With the exception
+of MIPS' rights to enforce its intellectual property rights in the MIPS
+Deliverables, all disputes arising out of this Agreement shall be subject to
+the exclusive jurisdiction and venue of the state and federal courts located
+in Santa Clara County, California, and the parties consent to the personal
+and exclusive jurisdiction and venue of these courts. The parties expressly
+disclaim the application of the United Nations Convention on the
+International Sale of Goods to this Agreement. 16. ENTIRE AGREEMENT
+This Agreement and the GNU GPL constitute the entire agreement
+between MIPS and Licensee regarding the MIPS Deliverables and GPL
+Materials provided to Licensee hereunder, and shall supersede and control
+over any other prior or contemporaneous shrinkwrap and/or clickwrap
+agreements regarding the same. Any additions or modifications must be
+made in a subsequent, written agreement signed by both parties.

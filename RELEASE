@@ -1,0 +1,53 @@
+MIPS YAMON(tm) Release Notes
+============================
+
+Revision:     02.06
+Release Date: 20040323
+
+
+Reason for release:
+-------------------
+Minor bugfixes
+
+
+Principal modifications since last release:
+-------------------------------------------
+Corrected L2 cache management
+
+
+Known issues/bugs:
+------------------
+None.
+Refer to latest Errata for updates to these Notes.
+
+
+Boards supported :
+------------------
+Atlas with following Core boards : 
+    CoreLV
+    CoreBonito64
+    "QED RM5261 Board"
+
+Malta with following Core boards :
+    CoreFPGA
+    CoreFPGA-2
+    CoreLV
+    CoreBonito64
+    Core20K
+    "QED RM5261 Board" 
+
+SEAD
+SEAD-2
+    Basic RTL
+    MIPS SOC-it 101 System Controller
+
+
+CPUs supported :
+----------------
+MIPS 4Kc, 4Km, 4Kp, 4KEc, 4KEm, 4KEp
+MIPS 4KSc, 4KSd
+MIPS M4K
+MIPS 5Kc, 5Kf, 5KE, 5KEf
+MIPS 20Kc, 25Kf
+MIPS 24Kc, 24Kf
+QED  RM5261, RM7061A
