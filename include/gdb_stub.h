@@ -10,7 +10,7 @@
  *
  * mips_start_of_legal_notice
  * 
- * Copyright (c) 2004 MIPS Technologies, Inc. All rights reserved.
+ * Copyright (c) 2006 MIPS Technologies, Inc. All rights reserved.
  *
  *
  * Unpublished rights (if any) reserved under the copyright laws of the
@@ -300,13 +300,23 @@ typedef struct
 	UINT64  cp0_watchhi;
 	UINT64  cp0_debug;
 	UINT64  cp0_depc;
-	/* MIPS32/64 Relase 2 CP0 registers not used by GDB */
+
+	/* MIPS32/64 Release 2 CP0 registers not used by GDB */
 	UINT64  cp0_hwrena;
 	UINT64	cp0_ebase;
 	UINT64  cp0_intctl;
 	UINT64  cp0_srsctl;
 	UINT64  cp0_srsmap;
 	UINT64  cp0_pagegrain;
+
+	/* DSP ASE CP0 not used by GDB */
+	UINT64  dspctrl;
+	UINT64  cp0_hi1;
+	UINT64	cp0_lo1;
+	UINT64  cp0_hi2;
+	UINT64  cp0_lo2;
+	UINT64  cp0_hi3;
+	UINT64  cp0_lo3;
 }
 t_gdb_regs;
 

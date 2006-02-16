@@ -14,7 +14,7 @@
  *
  * mips_start_of_legal_notice
  * 
- * Copyright (c) 2004 MIPS Technologies, Inc. All rights reserved.
+ * Copyright (c) 2006 MIPS Technologies, Inc. All rights reserved.
  *
  *
  * Unpublished rights (if any) reserved under the copyright laws of the
@@ -183,6 +183,14 @@ typedef struct
 }
 t_syscon_eeprom_def;
 
+/* Register information */
+typedef struct
+{
+    UINT32 id;
+    UINT32 reg;
+    UINT32 sel;
+}
+t_syscon_reginfo_def;
 
 /************************************************************************
  *  SYSCON enumeration definitions
@@ -533,18 +541,55 @@ typedef enum syscon_ids
     SYSCON_CPU_CP0_DWATCHLO0_ID = 248,               /* UINT32/UINT64 */
     SYSCON_CPU_CP0_DWATCHHI0_ID = 249,               /* UINT32/UINT64 */
     SYSCON_CPU_CP0_DWATCHLO1_ID = 250,               /* UINT32/UINT64 */
-    SYSCON_CPU_CP0_DWATCHHI1_ID = 251                /* UINT32/UINT64 */
+    SYSCON_CPU_CP0_DWATCHHI1_ID = 251,               /* UINT32/UINT64 */
 
-    /* More CP0 registers */
+    /**********************************************************************
+     * Below IDs are available in YAMON revision 02.07 and later revisions
+     **********************************************************************/
 
+    SYSCON_CPU_EICMODE_ID = 252,	             /* bool          */
+
+    /**********************************************************************
+     * Below IDs are available in YAMON revision 02.08 and later revisions
+     **********************************************************************/
+
+    SYSCON_CPU_CP0_MVPCONTROL_ID = 253,		     /* UINT32	      */
+    SYSCON_CPU_CP0_MVPCONF0_ID = 254,		     /* UINT32	      */
+    SYSCON_CPU_CP0_MVPCONF1_ID = 255,		     /* UINT32	      */
+    SYSCON_CPU_CP0_VPECONTROL_ID = 256,		     /* UINT32	      */
+    SYSCON_CPU_CP0_VPECONF0_ID = 257,		     /* UINT32	      */
+    SYSCON_CPU_CP0_VPECONF1_ID = 258,		     /* UINT32	      */
+    SYSCON_CPU_CP0_YQMASK_ID = 259,		     /* UINT32	      */
+    SYSCON_CPU_CP0_VPESCHEDULE_ID = 260,	     /* UINT32	      */
+    SYSCON_CPU_CP0_VPESCHEFBACK_ID = 261,	     /* UINT32	      */
+    SYSCON_CPU_CP0_TCSTATUS_ID = 262,		     /* UINT32	      */
+    SYSCON_CPU_CP0_TCBIND_ID = 263,		     /* UINT32	      */
+    SYSCON_CPU_CP0_TCRESTART_ID = 264,		     /* UINT32/UINT64 */
+    SYSCON_CPU_CP0_TCHALT_ID = 265,		     /* UINT32	      */
+    SYSCON_CPU_CP0_TCCONTEXT_ID = 266,		     /* UINT32/UINT64 */
+    SYSCON_CPU_CP0_TCSCHEDULE_ID = 267,		     /* UINT32	      */
+    SYSCON_CPU_CP0_TCSCHEFBACK_ID = 268,	     /* UINT32	      */
+    SYSCON_CPU_CP0_SRSCONF0_ID = 269,		     /* UINT32	      */
+    SYSCON_CPU_CP0_SRSCONF1_ID = 270,		     /* UINT32	      */
+    SYSCON_CPU_CP0_SRSCONF2_ID = 271,		     /* UINT32	      */
+    SYSCON_CPU_CP0_SRSCONF3_ID = 272,		     /* UINT32	      */
+    SYSCON_CPU_CP0_SRSCONF4_ID = 273,		     /* UINT32	      */
+
+    /**********************************************************************
+     * Below IDs are available in YAMON revision 02.09 and later revisions
+     **********************************************************************/
+
+    SYSCON_CPU_REGISTER_SETS_ID = 274,		     /* UINT8	      */
+    SYSCON_CPU_REGINFO_ID = 275,		     /* t_syscon_reginfo */
 
     /**********************************************************************
      * Insert new IDs below. Remember to update SYSCON_OBJ_COUNT !!!
      **********************************************************************/
+
+    SYSCON_OBJ_COUNT = 276
 }
 t_syscon_ids;
 
-#define SYSCON_OBJ_COUNT   (SYSCON_CPU_CP0_DWATCHHI1_ID + 1)
 
 /************************************************************************
  *    Public variables

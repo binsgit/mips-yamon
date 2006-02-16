@@ -10,7 +10,7 @@
  *
  * mips_start_of_legal_notice
  * 
- * Copyright (c) 2004 MIPS Technologies, Inc. All rights reserved.
+ * Copyright (c) 2006 MIPS Technologies, Inc. All rights reserved.
  *
  *
  * Unpublished rights (if any) reserved under the copyright laws of the
@@ -487,12 +487,23 @@ extern UINT32      malta_pci_io_base;
 #define MALTA_INTLINE_PIIX4_USB   MALTA_INTLINE_PCID
 #define MALTA_INTLINE_PIIX4_SMB   9
 
-/**** CPU interrupt lines used by devices ****/
+/**** CPU interrupt lines  ****/
 #define MALTA_CPUINT_PIIX4	  (S_StatusIM2 - S_StatusIM)
 #define MALTA_CPUINT_COREHI	  (S_StatusIM5 - S_StatusIM)
-
-/**** CPU interrupt line used for SMI ****/
 #define MALTA_CPUINT_SMI	  (S_StatusIM3 - S_StatusIM)
+
+/**** CPU EIC interrupt levels  ****/
+#define MALTA_EICINT_SW0	  1
+#define MALTA_EICINT_SW1	  2
+#define MALTA_EICINT_PIIX4	  3
+#define MALTA_EICINT_SMI	  4
+#define MALTA_EICINT_MB2	  5 /* Not used */
+#define MALTA_EICINT_MB3	  6 /* Not used */
+#define MALTA_EICINT_COREHI	  7
+#define MALTA_EICINT_MSC01TMR	  8
+#define MALTA_EICINT_MSC01PCI	  9
+#define MALTA_EICINT_PERFCTR	  10
+#define MALTA_EICINT_CPUCTR	  11
 
 
 /************************************************************************

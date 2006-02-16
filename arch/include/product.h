@@ -9,7 +9,7 @@
  *
  * mips_start_of_legal_notice
  * 
- * Copyright (c) 2004 MIPS Technologies, Inc. All rights reserved.
+ * Copyright (c) 2006 MIPS Technologies, Inc. All rights reserved.
  *
  *
  * Unpublished rights (if any) reserved under the copyright laws of the
@@ -126,6 +126,7 @@
 #define MIPS_REVISION_CORID_CORE_EMUL      6
 #define MIPS_REVISION_CORID_CORE_FPGA2     7
 #define MIPS_REVISION_CORID_CORE_FPGAr2    8
+#define MIPS_REVISION_CORID_CORE_FPGA3     9
 
 /**** Artificial corid defines ****/
 /*

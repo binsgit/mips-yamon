@@ -35,7 +35,7 @@
  *
  * mips_start_of_legal_notice
  * 
- * Copyright (c) 2004 MIPS Technologies, Inc. All rights reserved.
+ * Copyright (c) 2006 MIPS Technologies, Inc. All rights reserved.
  *
  *
  * Unpublished rights (if any) reserved under the copyright laws of the
@@ -477,7 +477,7 @@ EXCEP_set_handlers(
  *
  ************************************************************************/
 void
-EXCEP_install_exc_in_ram( void );
+EXCEP_install_exc_in_ram(UINT32 EICMODE );
 
 
 /************************************************************************

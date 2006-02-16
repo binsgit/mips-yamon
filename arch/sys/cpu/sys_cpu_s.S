@@ -9,7 +9,7 @@
  *
  * mips_start_of_legal_notice
  * 
- * Copyright (c) 2004 MIPS Technologies, Inc. All rights reserved.
+ * Copyright (c) 2006 MIPS Technologies, Inc. All rights reserved.
  *
  *
  * Unpublished rights (if any) reserved under the copyright laws of the
@@ -132,7 +132,7 @@ LEAF( sys_cpu_icache_config )
 	move	s3, a3
 	MFC0(   s4, C0_Status )
 	MFC0(   s5, C0_Config )
-	MFC0_SEL_OPCODE( 22, R_C0_Config1, R_C0_SelConfig1 )     /* s6 = $22 */
+	MFC0_SEL_OPCODE( R_s6, R_C0_Config1, R_C0_SelConfig1 )
 
 	/* Disable interrupts */
 	li	t0, ~M_StatusIE
@@ -160,7 +160,7 @@ sys_cpu_icache_config_uncached :
 	or	t1, t0
 
 	/* Write CONFIG1 register */
-	MTC0_SEL_OPCODE( 9, R_C0_Config1, R_C0_SelConfig1 )   /* t1 = $9 */
+	MTC0_SEL_OPCODE( R_t1, R_C0_Config1, R_C0_SelConfig1 )
 
 	/* Empty pipeline */
 	nop; nop; nop; nop; nop; nop
@@ -200,7 +200,7 @@ sys_cpu_icache_config_uncached :
 	or	t0, t1
 
 	/* Write CONFIG1 register */
-	MTC0_SEL_OPCODE( 8, R_C0_Config1, R_C0_SelConfig1 )    /* t0 = $8 */
+	MTC0_SEL_OPCODE( R_t0, R_C0_Config1, R_C0_SelConfig1 )
 
 	/* Disable write access to config1 */
 	MTC0(	s5, C0_Config )
@@ -268,7 +268,7 @@ LEAF( sys_cpu_dcache_config )
 	move	s3, a3
 	MFC0(   s4, C0_Status )
 	MFC0(   s5, C0_Config )
-	MFC0_SEL_OPCODE( 22, R_C0_Config1, R_C0_SelConfig1 )     /* s6 = $22 */
+	MFC0_SEL_OPCODE( R_s6, R_C0_Config1, R_C0_SelConfig1 )
 	
 	/* Disable interrupts */
 	li	t0, ~M_StatusIE
@@ -303,7 +303,7 @@ sys_cpu_dcache_config_uncached :
 	or	t2, t1
 
 	/* Write CONFIG1 register */
-	MTC0_SEL_OPCODE( 10, R_C0_Config1, R_C0_SelConfig1 )  /* t2 = $10 */
+	MTC0_SEL_OPCODE( R_t2, R_C0_Config1, R_C0_SelConfig1 )
 
 	/* Empty pipeline */
 	nop; nop; nop; nop; nop; nop
@@ -347,7 +347,7 @@ sys_cpu_dcache_config_uncached :
 	or	t0, t1
 
 	/* Write CONFIG1 register */
-	MTC0_SEL_OPCODE( 8, R_C0_Config1, R_C0_SelConfig1 )   /* t0 = $8 */
+	MTC0_SEL_OPCODE( R_t0, R_C0_Config1, R_C0_SelConfig1 )
 
 	/* Disable write access to config1 */
 	MTC0(	s5, C0_Config )
@@ -516,9 +516,8 @@ sys_cpu_configurability_uncached:
 	/* Determine cache configurability
 	 *
 	 * Read CONFIG1 register, which holds implementation data
-	 * t9 = $25
 	 */
-	MFC0_SEL_OPCODE( 25, R_C0_Config1, R_C0_SelConfig1 )     
+	MFC0_SEL_OPCODE( R_t9, R_C0_Config1, R_C0_SelConfig1 )     
 #define config1	t9
 
 	/*  Check IL (I-cache line size) field.
@@ -532,8 +531,8 @@ sys_cpu_configurability_uncached:
 	/* Try to clear IL and read it back */
 	li      t2, ~M_Config1IL
 	and	t3, t9, t2
-	MTC0_SEL_OPCODE( 11, R_C0_Config1, R_C0_SelConfig1 )  /* t3 = $11 */
-	MFC0_SEL_OPCODE( 11, R_C0_Config1, R_C0_SelConfig1 )     
+	MTC0_SEL_OPCODE( R_t3, R_C0_Config1, R_C0_SelConfig1 )
+	MFC0_SEL_OPCODE( R_t3, R_C0_Config1, R_C0_SelConfig1 )     
 	li	t2, M_Config1IL
 	and	t3, t2
 	bne	t3, zero, done
@@ -541,7 +540,7 @@ sys_cpu_configurability_uncached:
 	/*  IL was cleared, so CACHE may be configured.
 	 *  Restore setting and set mask.
 	 */
-	MTC0_SEL_OPCODE( 25, R_C0_Config1, R_C0_SelConfig1 )
+	MTC0_SEL_OPCODE( R_t9, R_C0_Config1, R_C0_SelConfig1 )
 	ori     v0, 2
 
 done:
@@ -612,6 +611,8 @@ END( sys_cpu_configurability )
  *  sys_arch_rev
  *  sys_fpu
  *  sys_cpu_cache_coherency
+ *  sys_eicmode
+ *  sys_mt
  *
  ************************************************************************/
 LEAF(sys_cpu_type)
@@ -651,6 +652,10 @@ LEAF(sys_cpu_type)
 	la	t1, sys_arch_rev
 	sb	zero, 0(t1)
 	la	t1, sys_smallpage_support
+	sb	zero, 0(t1)
+	la	t1, sys_mt
+	sb	zero, 0(t1)
+	la	t1, sys_dsp
 	sb	zero, 0(t1)
 	
 	li	t1, QED_RM52XX
@@ -694,12 +699,10 @@ mips32_64:
 	la	t1, sys_64bit
 	sb	t0, 0(t1)
 
-	/* Read CONFIG1 register, which holds implementation data
-	 * t0 = $8
-	 */
-	MFC0_SEL_OPCODE( 8, R_C0_Config1, R_C0_SelConfig1 )     
+	/* Read CONFIG1 register, which holds implementation data */
+	MFC0_SEL_OPCODE( R_t0, R_C0_Config1, R_C0_SelConfig1 )     
 
-	/* Determine mips16e, ejtag, fpu support based on CONFIG1 */
+	/* Determine mips16e, ejtag, fpusupport based on CONFIG1 */
 	srl     t1, t0, S_Config1CA
 	and	t1, 1
 	la	t2, sys_mips16e
@@ -710,21 +713,40 @@ mips32_64:
 	la	t2, sys_ejtag
 	sb	t1, 0(t2)
 
-	/* Determine small page support (requires CONFIG3 to be there) */
+	/* Determine small page, EIC & MT support (requires CONFIG3 to be there) */
+	move	t4, zero
+	move	t5, zero
 	sll	t1, t0, 31 - S_Config1M
+	move	t3, zero
 	bgez	t1, 1f
-	move	t1, zero
-	MFC0_SEL_OPCODE( 10 /* t2 */, R_C0_Config2, R_C0_SelConfig2 )     
+	 move	t1, zero
+	MFC0_SEL_OPCODE( R_t2, R_C0_Config2, R_C0_SelConfig2 )     
 	sll	t1, t2, 31 - S_Config2M
 	bgez	t1, 1f
-	move	t1, zero
-	MFC0_SEL_OPCODE( 10 /* t2 */, R_C0_Config3, R_C0_SelConfig3 )     
+	 move	t1, zero
+	MFC0_SEL_OPCODE( R_t2, R_C0_Config3, R_C0_SelConfig3 )     
 	srl	t1, t2, S_Config3SP
 	and	t1, 1
+	srl	t3, t2, S_Config3VEIC
+	and	t3, 1
+	srl	t4, t2, S_Config3MT
+	and	t4, 1
+	srl	t5, t2, S_Config3DSPP
+	and	t5, 1
+		
 1:
 	la	t2, sys_smallpage_support
 	sb	t1, 0(t2)
 
+	la	t2, sys_eicmode
+	sb	t3, 0(t2)
+
+	la	t2, sys_mt
+	sb	t4, 0(t2)
+
+	la	t2, sys_dsp
+	sb	t5, 0(t2)
+		
 	/* FPU */
 	srl     t1, t0, S_Config1FP
 	and	t1, 1

@@ -10,7 +10,7 @@
  *
  * mips_start_of_legal_notice
  * 
- * Copyright (c) 2004 MIPS Technologies, Inc. All rights reserved.
+ * Copyright (c) 2006 MIPS Technologies, Inc. All rights reserved.
  *
  *
  * Unpublished rights (if any) reserved under the copyright laws of the
@@ -97,7 +97,7 @@
  ************************************************************************/
 
 /* Command description */
-static char cmd_descr[200];
+static char cmd_descr[300];
 
 /* OPTIONS */
 static t_cmd_option options[] =

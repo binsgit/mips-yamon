@@ -13,7 +13,7 @@
  *
  * mips_start_of_legal_notice
  * 
- * Copyright (c) 2004 MIPS Technologies, Inc. All rights reserved.
+ * Copyright (c) 2006 MIPS Technologies, Inc. All rights reserved.
  *
  *
  * Unpublished rights (if any) reserved under the copyright laws of the
@@ -273,7 +273,7 @@ arch_excep_init_intctrl(
 	/**** Fill out parameters ****/
 		
 	*ic_count = PIIX4_IRQ_COUNT;
-	*ic_int   = MALTA_CPUINT_PIIX4;
+	*ic_int   = sys_eicmode ? MALTA_EICINT_PIIX4 : MALTA_CPUINT_PIIX4;
 
 	break;
 
@@ -531,5 +531,133 @@ arch_excep_eoi(
         /* No EOI needed */
 	break;
     }
+}
+
+/************************************************************************
+ *
+ *                          arch_eic_init
+ *  Description :
+ *  -------------
+ *
+ *  Initialise EIC (Extended Interrupt Controller)
+ *
+ *  Parameters :
+ *  ------------
+ *
+ *  Return values :
+ *  ---------------
+ *
+ *  None
+ *
+ ************************************************************************/
+void
+arch_eic_init(void)
+{
+    volatile UINT32 *ic_reg;
+    UINT32 i;
+
+    ic_reg = (volatile UINT32 *)MSC01_IC_REG_BASE;
+
+    /* Reset controller */
+    ic_reg[MSC01_IC_RST_OFS/4] = MSC01_IC_RST_RST_BIT;
+    for (i = 0; i < 64; i++) {
+	/* Program RAM to use default register set */
+	ic_reg[MSC01_IC_RAMW_OFS/4] = (i << MSC01_IC_RAMW_ADDR_SHF)
+	    | (0 << MSC01_IC_RAMW_DATA_SHF);
+	/* Set level mode */
+	ic_reg[MSC01_IC_SUP_OFS/4 + i*2] = 0;
+    }
+    ic_reg[MSC01_IC_GENA_OFS/4] = MSC01_IC_GENA_GENA_BIT;
+}
+
+/************************************************************************
+ *
+ *                          arch_eic_enable_int
+ *  Description :
+ *  -------------
+ *
+ *  Enable EIC interrupt
+ *
+ *  Parameters :
+ *  ------------
+ *
+ *  cpu_int: EIC interrupt to enable
+ *
+ *  Return values :
+ *  ---------------
+ *
+ *  None
+ *
+ *  The only EIC currently supported is in SOCit
+ *
+ ************************************************************************/
+void
+arch_eic_enable_int(
+    UINT32 cpu_int
+    )
+{
+    volatile UINT32 *ic_reg;
+    ic_reg = (volatile UINT32 *)MSC01_IC_REG_BASE;
+
+    if (cpu_int < 32)
+	ic_reg[MSC01_IC_ENAL_OFS/4] = 1 << cpu_int;
+    else
+	ic_reg[MSC01_IC_ENAH_OFS/4] = 1 << (cpu_int - 32);
+}
+
+
+/************************************************************************
+ *
+ *                          arch_eic_disable_int
+ *  Description :
+ *  -------------
+ *
+ *  Disable EIC interrupt
+ *
+ *  Parameters :
+ *  ------------
+ *
+ *  cpu_int: EIC interrupt to disable
+ *
+ *  Return values :
+ *  ---------------
+ *
+ *  None
+ *
+ *  The only EIC currently supported is in SOCit
+ *
+ ************************************************************************/
+void
+arch_eic_disable_int(
+    UINT32 cpu_int
+    )
+{
+    volatile UINT32 *ic_reg;
+    ic_reg = (volatile UINT32 *)MSC01_IC_REG_BASE;
+    if (cpu_int < 32)
+	ic_reg[MSC01_IC_DISL_OFS/4] = 1 << cpu_int;
+    else
+	ic_reg[MSC01_IC_DISH_OFS/4] = 1 << (cpu_int - 32);
+}
+
+/************************************************************************
+ *
+ *                          arch_eic_eoi
+ *  Description :
+ *  -------------
+ *
+ *  Perform EOI cycle for indicated interrupt on EIC
+ *
+ *  Return values :
+ *  ---------------
+ *
+ *  None
+ *
+ ************************************************************************/
+void
+arch_eic_eoi(
+    UINT32 index )
+{
+    /* Level triggered interrupts ? */
 }
 

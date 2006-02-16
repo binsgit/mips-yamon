@@ -11,7 +11,7 @@
  *
  * mips_start_of_legal_notice
  * 
- * Copyright (c) 2004 MIPS Technologies, Inc. All rights reserved.
+ * Copyright (c) 2006 MIPS Technologies, Inc. All rights reserved.
  *
  *
  * Unpublished rights (if any) reserved under the copyright laws of the
@@ -124,7 +124,7 @@ Front panel switch S1 functions as per Harp SDB spec."
     "YAMON ROM Monitor, Revision "			\
     YAMON_REV_STRING					\
     ".\n"						\
-    "Copyright (c) 1999-2004 "				\
+    "Copyright (c) 1999-2006 "				\
     MIPS_NAME						\
     " - All Rights Reserved.\n\n"			\
     "For a list of available commands, type 'help'.\n"
@@ -995,6 +995,19 @@ info_cpu( void )
         if(SHELL_PUTS_INDENT( msg, INDENT )) return FALSE;
     }
  
+    /* Register sets */
+    if(sys_arch_rev >= K_ConfigAR_Rel2 &&
+       (SYSCON_read( SYSCON_CPU_REGISTER_SETS_ID,
+		     (void *)&bdata,
+		     sizeof(UINT8) ) == OK ))
+    {
+        if(SHELL_PUTS( "Register Sets =" )) return FALSE;
+
+	sprintf( msg, "%d\n", bdata );
+
+        if(SHELL_PUTS_INDENT( msg, INDENT )) return FALSE;
+    }
+ 
     if(SHELL_PUTS( "CPU type =")) return FALSE;   
     if(sys_mips32_64)
     {
@@ -1024,6 +1037,37 @@ info_cpu( void )
 
     if(SHELL_PUTS( "FPU implemented =")) return FALSE;
     if(SHELL_PUTS_INDENT( sys_fpu    ? "Yes\n" : "No\n", INDENT )) 
+        return FALSE;
+
+    if (sys_mips32_64 && (sys_arch_rev > 0)) {
+	if(SHELL_PUTS( "EIC mode =")) return FALSE;
+	if(SHELL_PUTS_INDENT( sys_eicmode    ? "Yes\n" : "No\n", INDENT )) 
+	    return FALSE;
+    }
+
+    if(SHELL_PUTS( "MT implemented =")) return FALSE;
+    if(SHELL_PUTS_INDENT( sys_mt    ? "Yes\n" : "No\n", INDENT )) 
+        return FALSE;
+#if 0
+    /* FIXME */
+    if (sys_mt) {
+	if ((SYSCON_read( SYSCON_CPU_MT_PVPE_ID, &bdata)) == OK) {
+	    if(SHELL_PUTS( "VPE contexts =" )) return FALSE;
+	    if( bdata != 0 )
+	        sprintf( msg, "%d\n", bdata );
+	    else
+	        strcpy( msg, "None\n" );
+	    if(SHELL_PUTS_INDENT( msg, INDENT )) return FALSE;
+	}
+	if ((SYSCON_read( SYSCON_CPU_MT_PTC_ID, &bdata)) == OK) {
+	    if(SHELL_PUTS( "Thread contexts =" )) return FALSE;
+	    sprintf( msg, "%d\n", bdata + 1);
+	    if(SHELL_PUTS_INDENT( msg, INDENT )) return FALSE;
+	}
+    }
+#endif
+    if(SHELL_PUTS( "DSP implemented =")) return FALSE;
+    if(SHELL_PUTS_INDENT( sys_dsp    ? "Yes\n" : "No\n", INDENT )) 
         return FALSE;
 
     return TRUE;

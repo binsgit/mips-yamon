@@ -59,6 +59,9 @@
 #define PRID_IMP_20KC		0x8200
 #define PRID_IMP_4KEC		0x8400
 #define PRID_IMP_4KSC		0x8600
+#define PRID_IMP_24K		0x9300
+#define PRID_IMP_34K		0x9500
+#define PRID_IMP_24KE		0x9300
 
 
 #define PRID_IMP_UNKNOWN	0xff00

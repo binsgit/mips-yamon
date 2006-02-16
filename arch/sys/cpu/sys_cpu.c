@@ -9,7 +9,7 @@
  *
  * mips_start_of_legal_notice
  * 
- * Copyright (c) 2004 MIPS Technologies, Inc. All rights reserved.
+ * Copyright (c) 2006 MIPS Technologies, Inc. All rights reserved.
  *
  *
  * Unpublished rights (if any) reserved under the copyright laws of the
@@ -103,6 +103,10 @@ static char *name_20Kc      = "MIPS 20Kc";
 static char *name_25Kf      = "MIPS 25Kf";
 static char *name_24Kc      = "MIPS 24Kc";
 static char *name_24Kf      = "MIPS 24Kf";
+static char *name_24KEc     = "MIPS 24KEc";
+static char *name_24KEf     = "MIPS 24KEf";
+static char *name_34Kc      = "MIPS 34Kc";
+static char *name_34Kf      = "MIPS 34Kf";
 static char *name_m4k	    = "MIPS M4K";
 static char *name_qed52xx   = "QED RM5261";  /* Assume 5261  */
 static char *name_qed70xx   = "QED RM7061A"; /* Assume 7061A */
@@ -191,6 +195,10 @@ sys_decode_procid( void )
         return name_25Kf;
       case MIPS_24K :
         return sys_fpu ? name_24Kf : name_24Kc;
+      case MIPS_24KE :
+        return sys_fpu ? name_24KEf : name_24KEc;
+      case MIPS_34K :
+        return sys_fpu ? name_34Kf : name_34Kc;
       case MIPS_M4K :
         return name_m4k;
       case QED_RM52XX :
@@ -336,6 +344,8 @@ sys_cpu_cache_bpw(
       case MIPS_5K       :
       case MIPS_5KE      :
       case MIPS_24K      :
+      case MIPS_24KE     :
+      case MIPS_34K      :
          spw_min = 128;
 	 /* Fall through !! */
       case MIPS_4Kc      :
@@ -413,6 +423,9 @@ sys_cpu_cache_assoc(
       case MIPS_5KE      :
       case MIPS_20Kc     :
       case MIPS_25Kf     :
+      case MIPS_24K      :
+      case MIPS_24KE     :
+      case MIPS_34K      :
 	/*  Valid way counts are 1..max. 
 	 *  The MIN macro is not really necessary.
 	 */

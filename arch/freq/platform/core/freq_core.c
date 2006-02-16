@@ -9,7 +9,7 @@
  *
  * mips_start_of_legal_notice
  * 
- * Copyright (c) 2004 MIPS Technologies, Inc. All rights reserved.
+ * Copyright (c) 2006 MIPS Technologies, Inc. All rights reserved.
  *
  *
  * Unpublished rights (if any) reserved under the copyright laws of the
@@ -131,6 +131,7 @@ arch_core_estimate_busfreq( void )
       case MIPS_REVISION_CORID_CORE_SYS :
       case MIPS_REVISION_CORID_CORE_FPGA2 :
       case MIPS_REVISION_CORID_CORE_EMUL_SYS :
+      case MIPS_REVISION_CORID_CORE_FPGA3 :
 	#define STARTVALUE 0xfffff
 
         /*  Use timer in System Controller in conjunction with cp0

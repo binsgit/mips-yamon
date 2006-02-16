@@ -9,7 +9,7 @@
  *
  * mips_start_of_legal_notice
  * 
- * Copyright (c) 2004 MIPS Technologies, Inc. All rights reserved.
+ * Copyright (c) 2006 MIPS Technologies, Inc. All rights reserved.
  *
  *
  * Unpublished rights (if any) reserved under the copyright laws of the
@@ -889,24 +889,44 @@ END(sys_determine_dcache_assoc_flash)
  ************************************************************************/
 LEAF( sys_init_l2cache_flash )
 
-	li	t0, MIPS_25Kf
-	beq	t0, a2, 1f
-	nop
+	beq   a0, zero, 9f		 /* just in case cache size = 0 */
+	 nop
 
+	li	a3, MIPS_20Kc
+	beq	a3, a2, 1f
+	 nop
+	li	 a3, MIPS_25Kf
+	beq	a3, a2, 1f
+	 nop
+	li	 a3, MIPS_24K
+	beq	a3, a2, 2f
+	 nop
+	li	 a3, MIPS_24KE
+	beq	a3, a2, 2f
+	 nop
+	li	 a3, MIPS_34K
+	beq	a3, a2, 2f
+	 nop
+
+	
+	/* default: Clear TagLo/TagHi */
 	MTC0(   zero, C0_TagLo )
 	MTC0(   zero, C0_TagHi )
+	b	0f
+	 nop
 
-	b	2f
-	nop
-	
 1:
-	/* 25Kf */
+	/* 20Kc/25Kf : Clear L23TagLo/L23TagHi */
 	MTC0_SEL_OPCODE( R_zero, R_C0_L23TagLo, R_C0_SelL23TagLo )
 	MTC0_SEL_OPCODE( R_zero, R_C0_L23TagHi, R_C0_SelL23TagHi )
+	b	0f
+	 nop
+	
+2:
+	/* 24K/24KE/34K : Clear L23TagLo */
+	MTC0_SEL_OPCODE( R_zero, R_C0_L23TagLo, R_C0_SelL23TagLo )
 
-2:		
-	beq     a0, zero, 2f		 /* just in case cache size = 0 */
-
+0:
 	/* Calc an address that will correspond to the first cache line */
 	li	t0, KSEG0BASE
 	addu	t1, t0, a0
@@ -918,11 +938,12 @@ SET_MIPS3()
 	cache	SCACHE_INDEX_STORE_TAG, 0(t0)	/* clear tag */
 SET_MIPS0()
 	bne	t0, t1, 1b
-	addu	t0, a1
-2:	
+	 addu	t0, a1
+	
+9:		
 	jr	ra
-	nop
-
+	 nop
+	
 END( sys_init_l2cache_flash )
 
 	
@@ -955,16 +976,40 @@ LEAF( sys_init_icache )
 
 #else
 		
-        /* Clear TagLo and  TagHi.
-	 * Note : For 20Kc and 25Kf, we actually need to clear
-	 *        ITagLo and ITagHi, but they have the same 
-	 *        register numbers (and select fields) as TagLo, TagHi.
-	 */
-	MTC0(   zero, C0_TagLo )
-	MTC0(   zero, C0_TagHi )
-	
-	beq   a0, zero, 2f		 /* just in case cache size = 0 */
+	beq   a0, zero, 9f		 /* just in case cache size = 0 */
+	 nop
 
+	li	a3, MIPS_20Kc
+	beq	a3, a2, 1f
+	 nop
+	li	 a3, MIPS_25Kf
+	beq	a3, a2, 1f
+	 nop
+	li	 a3, MIPS_24K
+	beq	a3, a2, 2f
+	 nop
+	li	 a3, MIPS_24KE
+	beq	a3, a2, 2f
+	 nop
+	li	 a3, MIPS_34K
+	beq	a3, a2, 2f
+	 nop
+	
+1:
+	/* 20Kc/25Kf : Clear ITagLo/ITagHi */
+	/* Note: Use the default case because ITagLo==TagLo and ITagHI=TagHi */
+	
+	/* default: Clear TagLo/TagHi */
+	MTC0( zero, C0_TagLo )
+	MTC0( zero, C0_TagHi )
+	b	0f
+	 nop
+
+2:
+	/* 24K/24KE/34K : Clear ITagLo */
+	MTC0_SEL_OPCODE( R_zero, R_C0_ITagLo, R_C0_SelITagLo )
+
+0:
 	/* Calc an address that will correspond to the first cache line */
 	li	a2, KSEG0BASE
 
@@ -978,8 +1023,9 @@ SET_MIPS3()
 	cache	ICACHE_INDEX_STORE_TAG, 0(a2)	/* clear tag */
 SET_MIPS0()
 	bne	a2, a3, 1b
-	addu	a2, a1
-2:
+	 addu	a2, a1
+
+9:
 	jr	ra
 	nop
 
@@ -998,7 +1044,7 @@ END( sys_init_icache )
  *
  *  Description :
  *  -------------
- *  Invalidate entire ICACHE
+ *  Invalidate entire DCACHE
  *
  *  Inputs : a0 = cache size (bytes)
  *           a1 = line size  (bytes)
@@ -1014,28 +1060,46 @@ LEAF( sys_init_dcache )
 #ifdef NO_CACHE
 
 	jr	ra
-	nop
+	 nop
 
 #else
 		
-	li    a3, MIPS_20Kc
-	beq   a3, a2, 1f
-	nop
-	li    a3, MIPS_25Kf
-	beq   a3, a2, 1f
-	nop
-
+	beq   a0, zero, 9f		 /* just in case cache size = 0 */
+	 nop
+	
+	li	a3, MIPS_20Kc
+	beq	a3, a2, 1f
+  	 nop
+	li	 a3, MIPS_25Kf
+	beq	a3, a2, 1f
+	 nop
+	li	 a3, MIPS_24K
+	beq	a3, a2, 2f
+	 nop
+	li	 a3, MIPS_24KE
+	beq	a3, a2, 2f
+	 nop
+	li	 a3, MIPS_34K
+	beq	a3, a2, 2f
+	 nop
+	
+	/* default: Clear TagLo/TagHi */
 	MTC0( zero, C0_TagLo )
 	MTC0( zero, C0_TagHi )
-	b     2f
-	nop
+	b	0f
+	 nop
+	
 1:	
-	/* 20Kc/25Kf : Use DTagLo and DTagHi for data cache */
+	/* 20Kc/25Kf : Clear DTagLo and DTagHi */
 	MTC0_SEL_OPCODE( R_zero, R_C0_DTagLo, R_C0_SelDTagLo )
 	MTC0_SEL_OPCODE( R_zero, R_C0_DTagHi, R_C0_SelDTagHi )
+	b	0f
+	 nop	
 2:	
-	beq   a0, zero, 2f		 /* just in case cache size = 0 */
+	/* 24K/24KE/34K : Clear DTagLo */
+	MTC0_SEL_OPCODE( R_zero, R_C0_DTagLo, R_C0_SelDTagLo )
 
+0:	
 	/* Calc an address that will correspond to the first cache line */
 	li	a2, KSEG0BASE
 
@@ -1049,10 +1113,11 @@ SET_MIPS3()
 	cache	DCACHE_INDEX_STORE_TAG, 0(a2)	/* clear tag */
 SET_MIPS0()
 	bne	a2, a3, 1b
-	addu	a2, a1
-2:
+	 addu	a2, a1
+
+9:
 	jr	ra
-	nop
+	 nop
 
 #endif
 		

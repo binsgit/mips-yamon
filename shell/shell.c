@@ -10,7 +10,7 @@
  *
  * mips_start_of_legal_notice
  * 
- * Copyright (c) 2004 MIPS Technologies, Inc. All rights reserved.
+ * Copyright (c) 2006 MIPS Technologies, Inc. All rights reserved.
  *
  *
  * Unpublished rights (if any) reserved under the copyright laws of the
@@ -569,7 +569,7 @@ shell_restore( void )
     EXCEP_set_handlers( EXCEP_HANDLERS_SHELL );
 
     /* clean up ram vectors modified by application */
-    EXCEP_install_exc_in_ram();
+    EXCEP_install_exc_in_ram(sys_eicmode);
 
     /* Restart DMA */
     sys_dma_enable( TRUE );
@@ -910,23 +910,36 @@ shell_puts(
     bool   nl;
     char   ch;
     bool   rc;
-    
     UINT32 linemax, linewidth;
+    char *s;
 
-#if 0
-    linemax   = getenv( "linemax" );
-    linewidth = getenv( "linewidth" );
-#else
-    linemax   = MON_DEF_LINEMAX - 1; /* Space for 'Press Ctrl-c ... message */
-    linewidth = MON_DEF_LINEWIDTH;
-#endif
+    /* Check for "linewidth" environment variable" */
+    if (env_get ("linewidth", &s, NULL, 0) && (*s != '\0'))
+    {
+	linewidth = (UINT32)strtoul (s, &s, 10);
+	if (*s != '\0')
+	    linewidth = MON_DEF_LINEWIDTH;
+    }
+    else 
+	linewidth = MON_DEF_LINEWIDTH;
+    /* Check for "linemax" environment variable" */
+    if (env_get ("linemax", &s, NULL, 0) && (*s != '\0'))
+    {
+	linemax = (UINT32)strtoul (s, &s, 10);
+	if (*s != '\0')
+	    linemax = MON_DEF_LINEMAX;
+    }
+    else 
+	linemax = MON_DEF_LINEMAX;
+    if (linemax)
+	linemax -= 1;
 
     if( linewidth <= indent )		/* This is an error		*/
         return TRUE;
 
     while( *string != '\0' )
     {
-        if( linenum == linemax )
+        if( linemax && (linenum == linemax) )
 	{
 	   /* Print 'press any key...' message */
 	   PUTS( DEFAULT_PORT, continue_msg );
@@ -1962,7 +1975,6 @@ expand_line(
 	        expanded[len++] = *ch;
 	        state = STATE_EXP_QUOTE_DOUBLE;
 		break;
-	      case ' '  :
 	      default   :
 	        expanded[len++] = *ch;
 		state = STATE_EXP_NORMAL;
@@ -1976,6 +1988,13 @@ expand_line(
 		rc = add_env( env_name, env_len, expanded, &len );
 		expanded[len++] = *ch;
 		state = STATE_EXP_DONE;
+		break;
+	      case '{' :
+		state = STATE_EXP_ENV;
+		break;
+	      case '}' :
+		rc = add_env( env_name, env_len, expanded, &len );
+		state = STATE_EXP_NORMAL;
 		break;
 	      case '$'  :
 		rc = add_env( env_name, env_len, expanded, &len );
@@ -1997,14 +2016,16 @@ expand_line(
 		expanded[len++] = *ch;		
 		state = STATE_EXP_QUOTE_DOUBLE;
 		break;
-	      case ' ' :
-		rc = add_env( env_name, env_len, expanded, &len );
-		expanded[len++] = *ch;		
-		state = STATE_EXP_NORMAL;
-		break;
 	      default   :
-	        env_name[env_len++] = *ch;
-		state = STATE_EXP_ENV;
+		if (isalnum(*ch) || *ch == '_') {
+		    env_name[env_len++] = *ch;
+		    state = STATE_EXP_ENV;
+		}
+		else {
+		    rc = add_env( env_name, env_len, expanded, &len );
+		    expanded[len++] = *ch;		
+		    state = STATE_EXP_NORMAL;
+		}
 		break;
 	    }
 	    break;
@@ -2115,6 +2136,13 @@ expand_line(
 	      case '\0' :
 		rc = SHELL_ERROR_PARSE_MISSING_QUOTE;
 		break;
+	      case '{' :
+		state = STATE_EXP_QUOTE_DOUBLE_ENV;
+		break;
+	      case '}' :
+		rc = add_env( env_name, env_len, expanded, &len );
+		state = STATE_EXP_QUOTE_DOUBLE;
+		break;
 	      case '$'  :
 		rc = add_env( env_name, env_len, expanded, &len );
 		env_len = 0;
@@ -2130,16 +2158,16 @@ expand_line(
 		expanded[len++] = *ch;		
 		state = STATE_EXP_NORMAL;
 		break;
-	      case '\'' :
-	      case ' '  :
-	      case ';'  :
-		rc = add_env( env_name, env_len, expanded, &len );
-		expanded[len++] = *ch;		
-		state = STATE_EXP_QUOTE_DOUBLE;
-		break;
 	      default   :
-	        env_name[env_len++] = *ch;
-		state = STATE_EXP_QUOTE_DOUBLE_ENV;
+		if (isalnum(*ch) || *ch == '_') {
+		    env_name[env_len++] = *ch;
+		    state = STATE_EXP_QUOTE_DOUBLE_ENV;
+		}
+		else {
+		    rc = add_env( env_name, env_len, expanded, &len );
+		    expanded[len++] = *ch;		
+		    state = STATE_EXP_QUOTE_DOUBLE;
+		}
 		break;
 	    }
 	    break;

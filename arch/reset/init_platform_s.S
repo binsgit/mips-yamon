@@ -9,7 +9,7 @@
  *
  * mips_start_of_legal_notice
  * 
- * Copyright (c) 2004 MIPS Technologies, Inc. All rights reserved.
+ * Copyright (c) 2006 MIPS Technologies, Inc. All rights reserved.
  *
  *
  * Unpublished rights (if any) reserved under the copyright laws of the
@@ -185,13 +185,17 @@ early_atlas_malta:
 	and	k1, MIPS_REVISION_CORID_MSK >> MIPS_REVISION_CORID_SHF
 	xor	k1, MIPS_REVISION_CORID_CORE_SYS
 	beq	k1,zero, 33f
-	xor	k1, MIPS_REVISION_CORID_CORE_SYS
+	 xor	k1, MIPS_REVISION_CORID_CORE_SYS
 	xor	k1, MIPS_REVISION_CORID_CORE_FPGA2
 	beq	k1,zero, 33f
-	xor	k1, MIPS_REVISION_CORID_CORE_FPGA2
+	 xor	k1, MIPS_REVISION_CORID_CORE_FPGA2
 	xor	k1, MIPS_REVISION_CORID_CORE_EMUL
+	beq	k1,zero, 33f
+	 xor	k1, MIPS_REVISION_CORID_CORE_EMUL
+	xor	k1, MIPS_REVISION_CORID_CORE_FPGA3
 	bne	k1, zero, 1f
-	nop
+	 xor	k1, MIPS_REVISION_CORID_CORE_FPGA3
+	
 33:
 	/* SOC-it 101 System controller: check register block position */
 	/*                     (at reset, NMISTATUS is not accessible) */
@@ -207,9 +211,8 @@ early_atlas_malta:
 1:
 	/* Detect NMI (MIPS32/64) */
 	MFC0(   k1, C0_Status )
-	srl	k1, S_StatusNMI
-	and	k1, M_StatusNMI >> S_StatusNMI
-	bne	k1, zero, nmi
+	sll	k1, (31-S_StatusNMI)
+	bltz	k1, nmi
 	li      k1, LO_OFFS(ATLAS_ASCIIPOS0)
 
 	/* Detect NMI (older cpus) */

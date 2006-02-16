@@ -9,7 +9,7 @@
  *
  * mips_start_of_legal_notice
  * 
- * Copyright (c) 2004 MIPS Technologies, Inc. All rights reserved.
+ * Copyright (c) 2006 MIPS Technologies, Inc. All rights reserved.
  *
  *
  * Unpublished rights (if any) reserved under the copyright laws of the
@@ -1522,3 +1522,234 @@ dmtc0_location :
 SET_MIPS0()
 		
 END( sys_cp0_write64 )
+
+
+/************************************************************************
+ *
+ *                          sys_cp0_mtread32
+ *  Description :
+ *  -------------
+ *
+ *  Read 32 bit CP0 register
+ *
+ *  a0 holds register number
+ *  a1 holds sel field
+ *  a2 holds tc
+ *
+ *  Return values :
+ *  ---------------
+ *
+ *  v0 = Value read
+ *
+ ************************************************************************/
+LEAF( sys_cp0_mtread32 )
+	
+	/* Look if a0,a1,a2 happen to be C0_Status, sel0, TC0 */
+	li	t0, R_C0_Status
+	bne	a0, t0, 1f
+	 nop
+	bne	a1, zero, 1f
+	 nop
+	bne	a2, zero, 1f
+	 nop
+	MFC0(   v0, C0_Status)
+	jr	ra
+	nop
+	
+1:
+#define MTREAD32SIZE	4
+	/* Reserve space on stack and store ra, C0_Status, MVPCtl, VPECtl */
+	addiu	sp, -MTREAD32SIZE*4
+	sw	ra, 0(sp)
+
+	/* Disable interrupts */
+	MFC0(   t2, C0_Status)
+	sw	t2, 4(sp)
+	or	t2, M_StatusIE
+	xor	t2, M_StatusIE
+	MTC0(   t2, C0_Status)
+
+	DVPE(R_t3)
+	sw	t3, 8(sp)
+		
+	/* Select target thread */
+	MFC0_SEL_OPCODE(R_t4, R_C0_VPECtl, R_C0_SelVPECtl)
+	sw	t4, 12(sp)
+	and	t4, ~M_VPECtlTargTC
+	or	t4, a2
+	MTC0_SEL_OPCODE(R_t4, R_C0_VPECtl, R_C0_SelVPECtl)
+
+        /*  Calc specific MFTR opcode :
+	 *
+	 *  MFTR rd, rt, u, sel, h
+	 *
+	 *  010000 01000 rt rd 00000uh0 sel
+	 *
+	 *  rd[4:0]  = v0 ($2) 
+	 *  rt[4:0]  = Value of a0
+	 *  sel[2:0] = Value of a1
+	 *  u = 0
+	 *  h = 0
+         */
+	
+	li      t0, 0x41000000 | (0x2 << 11)
+	or  	t0, a1   /* sel */
+	sll 	a0, 16
+	or  	t0, a0
+
+	/* Store instruction */
+	la  	a0, mftr_location
+	sw 	t0, 0(a0)
+
+	/* Whenever an instruction has been stored to KSEG0, we must
+	 * make sure the instruction has been flushed to physical memory
+	 * and invalidate the corresponding I-Cache line.
+	 */
+	jal     sys_dcache_flush_addr
+	 nop
+	jal	sys_icache_invalidate_addr
+	 li	a1, 1				/* Flush pipeline */
+
+	# align to cacheline boundary		
+	.align	3		
+mftr_location :
+	nop	/* Placeholder for MFTR operation */
+
+	/* restore VPECtl */
+	lw	t4, 12(sp)
+	MTC0_SEL_OPCODE(R_t4, R_C0_VPECtl, R_C0_SelVPECtl)
+	
+	/* reenable VPE's if needed */
+	lw	t3, 8(sp)
+	and	t3, M_MVPCtlEVP
+	beqz	t3, 1f
+	 nop
+	EVPE(R_zero)
+1:		
+	/* MFTR has now been performed, so restore cp0_status and return */
+	lw	t2, 4(sp)
+	MTC0(   t2, C0_Status)
+
+	lw      ra, 0(sp)
+	jr	ra
+	 addiu	sp, MTREAD32SIZE*4
+
+END( sys_cp0_mtread32 )	
+
+
+/************************************************************************
+ *
+ *                          sys_cp0_mtwrite32
+ *  Description :
+ *  -------------
+ *
+ *  Write 32 bit CP0 register
+ *
+ *  a0 holds register number
+ *  a1 holds sel field
+ *  a2 holds value to be written
+ *  a3 holds tc
+ *
+ *  Return values :
+ *  ---------------
+ *
+ *  None
+ *
+ ************************************************************************/
+LEAF( sys_cp0_mtwrite32 )
+
+	/* Look if a0,a1,a3 happen to be C0_Status, sel0, TC0 */
+	li	t0, R_C0_Status
+	bne	a0, t0, 1f
+	 nop
+	bne	a1, zero, 1f
+	 nop
+	bne	a3, zero, 1f
+	 nop
+	MTC0(   a2, C0_Status)
+	jr	ra
+	 nop
+	
+1:
+#define MTWRITE32SIZE	5
+	/* Reserve space on stack and store ra, a2, C0_Status, MVPCtl, VPECtl */
+	addiu	sp, -MTWRITE32SIZE*4
+	sw	ra, 0(sp)
+	sw	a2, 4(sp)	
+
+	/* Disable interrupts */
+	MFC0(   t2, C0_Status)
+	sw	t2, 8(sp)
+	or	t2, M_StatusIE
+	xor	t2, M_StatusIE
+	MTC0(   t2, C0_Status)
+
+	DVPE(R_t3)
+	sw	t3, 12(sp)
+	
+	/* Select target thread */
+	MFC0_SEL_OPCODE(R_t4, R_C0_VPECtl, R_C0_SelVPECtl)
+	sw	t4, 16(sp)
+	and	t4, ~M_VPECtlTargTC
+	or	t4, a3
+	MTC0_SEL_OPCODE(R_t4, R_C0_VPECtl, R_C0_SelVPECtl)
+	
+        /*  Calc specific MTTR opcode :
+	 *
+	 *  MTTR rt, rd, u, sel, h
+	 *
+	 *  010000 01100 rt rd 00000uh0 sel
+	 *
+	 *  rt[4:0]  = a2 ($6)
+	 *  rd[4:0]  = Value of a0
+	 *  sel[2:0] = Value of a1
+         */
+	
+	li      t0, 0x41800000 | (0x6 << 16)
+	or  	t0, a1   /* sel */
+	sll 	a0, 11
+	or  	t0, a0
+
+	/* Store instruction */
+	la  	a0, mttr_location
+	sw 	t0, 0(a0)
+
+	/* Whenever an instruction has been stored to KSEG0, we must
+	 * make sure the instruction has been flushed to physical memory
+	 * and invalidate the corresponding I-Cache line.
+	 */
+	jal     sys_dcache_flush_addr
+	 nop
+	jal	sys_icache_invalidate_addr
+	 li	a1, 1				/* Flush pipeline */
+
+	/* Restore a2 (value to be written) */
+	lw	a2, 4(sp)		
+
+	# align to cacheline boundary		
+	.align 3
+mttr_location :
+	nop	/* Placeholder for MTTR operation */
+
+	ehb
+	
+	/* restore VPECtl */
+	lw	t4, 16(sp)
+	MTC0_SEL_OPCODE(R_t4, R_C0_VPECtl, R_C0_SelVPECtl)
+	
+	/* reenable VPE's if needed */		
+	lw	t3, 12(sp)
+	and	t3, M_MVPCtlEVP
+	beqz	t3, 1f
+	 nop
+	EVPE(R_zero)
+1:		
+	/* MTTR has now been performed, so restore cp0_status and return */
+	lw	t2, 8(sp)
+	MTC0(   t2, C0_Status)
+
+	lw      ra, 0(sp)
+	jr	ra
+	 addiu	sp, MTWRITE32SIZE*4
+
+END( sys_cp0_mtwrite32 )	

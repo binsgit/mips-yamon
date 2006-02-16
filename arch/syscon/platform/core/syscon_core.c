@@ -8,7 +8,7 @@
  *
  * mips_start_of_legal_notice
  * 
- * Copyright (c) 2004 MIPS Technologies, Inc. All rights reserved.
+ * Copyright (c) 2006 MIPS Technologies, Inc. All rights reserved.
  *
  *
  * Unpublished rights (if any) reserved under the copyright laws of the
@@ -107,6 +107,7 @@ static char   *name_core_fpga	      = "CoreFPGA";
 static char   *name_core_sys	      = "CoreSYS";
 static char   *name_core_emul	      = "CoreEMUL";
 static char   *name_core_fpga2        = "CoreFPGA-2";
+static char   *name_core_fpga3        = "CoreFPGA-3";
 static char   *name_galileo           = "Galileo";
        char   *name_msc01             = "MIPS SOC-it 101\0       ";
 static char   version_syscntrl[32]    = "unknown version";
@@ -951,6 +952,7 @@ syscon_arch_core_init(
     /* Special handling of System Controller */
     else if( sys_corecard == MIPS_REVISION_CORID_CORE_SYS ||
              sys_corecard == MIPS_REVISION_CORID_CORE_FPGA2 ||
+             sys_corecard == MIPS_REVISION_CORID_CORE_FPGA3 ||
              sys_corecard == MIPS_REVISION_CORID_CORE_EMUL_SYS )
     {
 	int ix;
@@ -1040,7 +1042,9 @@ sead_msc01:
 	         (sys_corecard == MIPS_REVISION_CORID_CORE_SYS) ?
 		     name_core_sys :
 	         (sys_corecard == MIPS_REVISION_CORID_CORE_FPGA2) ?
-		     name_core_fpga2 : name_core_emul,
+		     name_core_fpga2 :
+		 (sys_corecard == MIPS_REVISION_CORID_CORE_FPGA3) ?
+		     name_core_fpga3 : name_core_emul,
 	     NULL,		 NULL,
 	     /* Bonito64 based */
 	     syscon_string_read, 
@@ -1397,6 +1401,7 @@ syscon_register_id_core(
 
       case MIPS_REVISION_CORID_CORE_SYS :
       case MIPS_REVISION_CORID_CORE_FPGA2 :
+      case MIPS_REVISION_CORID_CORE_FPGA3 :
       case MIPS_REVISION_CORID_CORE_EMUL_SYS :
       case MIPS_REVISION_CORID_SEAD_MSC01 :
         obj->read       = read_sysctl;

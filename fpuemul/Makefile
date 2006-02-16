@@ -9,7 +9,7 @@
 #
 # mips_start_of_legal_notice
 # 
-# Copyright (c) 2004 MIPS Technologies, Inc. All rights reserved.
+# Copyright (c) 2006 MIPS Technologies, Inc. All rights reserved.
 #
 #
 # Unpublished rights (if any) reserved under the copyright laws of the
@@ -70,25 +70,6 @@
 # things, you have to adapt to your specific environment.
 # ********************************************************************
 
-# Tool-chain used for compilation of target code (cygnus or sde).
-ifndef TOOLCHAIN
-TOOLCHAIN = sde
-endif
-
-ifeq ($(TOOLCHAIN),cygnus)
-CC        = mipsisa32-elf-gcc
-LD        = mipsisa32-elf-ld
-OBJCOPY   = mipsisa32-elf-objcopy
-OBJDUMP   = mipsisa32-elf-objdump
-endif
-
-ifeq ($(TOOLCHAIN),sde)
-CC        = sde-gcc
-LD        = sde-ld
-OBJCOPY   = sde-objcopy
-OBJDUMP   = sde-objdump
-endif
-
 # Shell commands
 RM        = rm
 CD	  = cd
@@ -101,7 +82,9 @@ CAT       = cat
 # ********************************************************************
 
 ifeq ($(TOOLCHAIN),sde)
-AS_OPTS   = -no-traditional-cpp
+ ifneq (,$(strip $(filter 2,$(GCC_VERSION))))
+  AS_OPTS   = -no-traditional-cpp
+ endif
 endif
 
 # ********************************************************************
@@ -193,7 +176,11 @@ INCLUDE   = -I$(ROOT)/include
 W_OPTS    = -Wimplicit -Wformat
 
 DEFINES   = -D_32_ -D__KERNEL__ -DSTANDALONE_EMULATOR
-CC_OPTS   = -mips2 -g -mcpu=r4000 $(DEFINES) -O2 -G0 $(W_OPTS) $(INCLUDE)
+CC_OPTS   = -mips2 -g $(CPUTUNE) $(DEFINES) -O2 -G0 $(W_OPTS) $(INCLUDE)
+
+ifeq ($(TOOLCHAIN),linux)
+CC_OPTS   += -mno-abicalls -fno-pic
+endif
 
 ifeq ($(BSS_OLD),0)
 CC_OPTS_A = $(CC_OPTS) $(AS_OPTS) -D_ASSEMBLER_
@@ -209,9 +196,9 @@ LD_OPTS   =
 
 # Linker output format.
 ifeq ($(ENDIAN),EB)
-OFORMAT   = elf32-bigmips
+  OFORMAT   = $(BFDPREF)bigmips
 else
-OFORMAT   = elf32-littlemips
+  OFORMAT   = $(BFDPREF)littlemips
 endif
 
 # Search path for source files.
@@ -244,7 +231,7 @@ release :
 	$(MAKE) all
 
 $(IMAGE_ELF) : $(OBJ)
-	$(LD) $(LD_OPTS) -r -o $(IMAGE_ELF) -oformat $(OFORMAT) $(OBJ)
+	$(LD) $(LD_OPTS) -r -o $(IMAGE_ELF) --oformat $(OFORMAT) $(OBJ)
 
 $(OBJ_C) : %.o : %.c 
 	$(CC) -c $(CC_OPTS) -$(ENDIAN) -D$(ENDIAN) -o $@ $<

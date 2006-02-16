@@ -7,13 +7,13 @@
  *
  *  cp0					|
  *  cp0 <name> [<value>]		|
- *  cp0 [-<0..7>] [-32|-64] <regnum> [<value>]
+ *  cp0 [-t n] [-<0..7>] [-32|-64] <regnum> [<value>]
  *
  * ######################################################################
  *
  * mips_start_of_legal_notice
  * 
- * Copyright (c) 2004 MIPS Technologies, Inc. All rights reserved.
+ * Copyright (c) 2006 MIPS Technologies, Inc. All rights reserved.
  *
  *
  * Unpublished rights (if any) reserved under the copyright laws of the
@@ -111,9 +111,11 @@ static t_cmd_option options[] =
   { "6",  "Select = 6"				       },
 #define OPTION_SEL7	7
   { "7",  "Select = 7"				       },
-#define OPTION_W32	8
+#define OPTION_TC       8
+  { "t", "Select TC"				       },
+#define OPTION_W32	9
   { "32", "Access 32 bit of register (default option)" },
-#define OPTION_W64	9
+#define OPTION_W64	10
   { "64", "Access 64 bit of register"		       }
 };
 #define OPTION_COUNT64	(sizeof(options)/sizeof(t_cmd_option))
@@ -130,6 +132,7 @@ get_options(
     UINT32 argc,
     char   **argv, 
     char   **reg_name,
+    UINT32 *tc_number,
     UINT32 *reg_number,
     UINT32 *sel_number,
     UINT32 *width,
@@ -146,7 +149,7 @@ get_options(
 static MON_FUNC(cp0)
 {
     char   *reg_name;
-    UINT32 reg_number, sel_number, width;
+    UINT32 tc_number, reg_number, sel_number, width;
     UINT64 value;
     bool   read;
     char   msg[80];
@@ -154,7 +157,7 @@ static MON_FUNC(cp0)
 
     /* Options */
     rc = get_options( argc, argv, 
-		      &reg_name, &reg_number, &sel_number, &width,
+		      &reg_name, &tc_number, &reg_number, &sel_number, &width,
 		      &value, &read );
 
     if( rc != OK )
@@ -165,7 +168,7 @@ static MON_FUNC(cp0)
     {
 	SHELL_PUTC( '\n' );
 
-	rc = sys_cp0_printreg_all( NULL );
+	rc = sys_cp0_printreg_all(tc_number, NULL );
 
         if( rc != OK )
             return rc;
@@ -179,9 +182,9 @@ static MON_FUNC(cp0)
 	if( reg_name )
 	{
 	    if( read )
-	        return sys_cp0_printreg( reg_name );
+	        return sys_cp0_printreg( tc_number, reg_name );
 	    else
-	        return sys_cp0_writereg( reg_name, value );
+	        return sys_cp0_writereg( tc_number, reg_name, value );
         }
 	else
 	{
@@ -194,7 +197,10 @@ static MON_FUNC(cp0)
 	    {
 	        if( width == 32 )
 		{
-	            value = (UINT64)sys_cp0_read32(reg_number, sel_number );
+		    if (sys_mt) 
+			value = (UINT64)sys_cp0_mtread32(reg_number, sel_number, tc_number );
+		    else
+			value = (UINT64)sys_cp0_read32(reg_number, sel_number );
 
 		    sprintf( msg, "CP0(%d,%d) = 0x%08x\n", 
 			     reg_number,
@@ -203,7 +209,7 @@ static MON_FUNC(cp0)
 		}
 		else
 		{
-	            value = sys_cp0_read64(reg_number, sel_number );
+		    value = sys_cp0_read64(reg_number, sel_number );
 
 		    sprintf( msg, "CP0(%d,%d) = 0x%08x%08x\n",
 			     reg_number,
@@ -215,10 +221,15 @@ static MON_FUNC(cp0)
 	    }
 	    else
 	    {
-	        if( width == 32 )
-	            sys_cp0_write32(reg_number, sel_number, (UINT32)value );
-		else
-	            sys_cp0_write64(reg_number, sel_number, value );
+	        if( width == 32 ) {
+		    if (sys_mt)
+			sys_cp0_mtwrite32(reg_number, sel_number, (UINT32)value , tc_number);
+		    else
+			sys_cp0_write32(reg_number, sel_number, (UINT32)value );
+		}
+		else {
+		    sys_cp0_write64(reg_number, sel_number, value );
+		}
 	    }
 	}
     }
@@ -235,6 +246,7 @@ get_options(
     UINT32 argc,
     char   **argv, 
     char   **reg_name,
+    UINT32 *tc_number,
     UINT32 *reg_number,
     UINT32 *sel_number,
     UINT32 *width,
@@ -250,8 +262,10 @@ get_options(
     UINT64	   number[2];
     UINT32	   number_count = 0;
     UINT32	   option_arg   = 0xff;
+    char	   *endp;
 
     /* Defaults */
+    *tc_number  = 0;
     *reg_name   = NULL;
     *reg_number = 0xffffffff;
     *sel_number = 0;
@@ -289,6 +303,17 @@ get_options(
 	      case OPTION_SEL7 : *sel_number = 7;  break;
 	      case OPTION_W32  : *width	     = 32; break;
 	      case OPTION_W64  : *width	     = 64; break;
+	      case OPTION_TC   :
+		  if (arg+1 < argc) {
+		      *tc_number = strtoul( argv[arg+1], &endp, 0);
+		      if (*endp == '\0') {
+			  option_arg = 0xff; /* Botch */
+			  arg++;
+			  break;
+		      }
+		  }
+		  /* fall through */
+
 	      default :
 		error	         = SHELL_ERROR_OPTION;
 		shell_error_data = argv[arg];
@@ -375,6 +400,8 @@ get_options(
 
 static char *syntax_32 = "cp0 [ (<name> | ([-<0..7>] <regnum>)) [<value>] ]";
 static char *syntax_64 = "cp0 [ (<name> | ([-<0..7>] [-32|-64] <regnum>)) [<value>] ]";
+static char *syntax_mt32 = "cp0 [ [-t <tc>] (<name> | ([-<0..7>] <regnum>)) [<value>] ]";
+static char *syntax_mt64 = "cp0 [ [-t <tc>] (<name> | ([-<0..7>] [-32|-64] <regnum>)) [<value>] ]";
 
 /* Command definition for help */
 static t_cmd cmd_def =
@@ -429,10 +456,28 @@ static t_cmd cmd_def =
 t_cmd *
 shell_cp0_init( void )
 {
-    option_count         = sys_64bit ? OPTION_COUNT64 : OPTION_COUNT32;
+    if (sys_mt) {
+	if (sys_64bit) {
+	    option_count         = OPTION_COUNT64;
+	    cmd_def.syntax       = syntax_mt64;
+	}
+	else {
+	    option_count         = OPTION_COUNT32;
+	    cmd_def.syntax       = syntax_mt32;
+	}
+    }
+    else {
+	if (sys_64bit) {
+	    option_count         = OPTION_COUNT64-1;
+	    cmd_def.syntax       = syntax_64;
+	}
+	else {
+	    option_count         = OPTION_COUNT32-1;
+	    cmd_def.syntax       = syntax_32;
+	}
+    }
 
     cmd_def.option_count = option_count;
-    cmd_def.syntax       = sys_64bit ? syntax_64 : syntax_32;
 
     return &cmd_def;
 }

@@ -9,7 +9,7 @@
  *
  * mips_start_of_legal_notice
  * 
- * Copyright (c) 2004 MIPS Technologies, Inc. All rights reserved.
+ * Copyright (c) 2006 MIPS Technologies, Inc. All rights reserved.
  *
  *
  * Unpublished rights (if any) reserved under the copyright laws of the
@@ -189,6 +189,94 @@ arch_excep_pending( void );
  ************************************************************************/
 void
 arch_excep_eoi(
+    UINT32 index );
+
+
+/************************************************************************
+ *
+ *                          arch_eic_init
+ *  Description :
+ *  -------------
+ *
+ *  Initialise EIC (Extended Interrupt Controller)
+ *
+ *  Parameters :
+ *  ------------
+ *
+ *  Return values :
+ *  ---------------
+ *
+ *  None
+ *
+ ************************************************************************/
+void
+arch_eic_init(void);
+
+
+/************************************************************************
+ *
+ *                          arch_eic_enable_int
+ *  Description :
+ *  -------------
+ *
+ *  Enable EIC interrupt
+ *
+ *  Parameters :
+ *  ------------
+ *
+ *  cpu_int: EIC interrupt to enable
+ *
+ *  Return values :
+ *  ---------------
+ *
+ *  None
+ *
+ ************************************************************************/
+void 
+arch_eic_enable_int(
+    UINT32 ic_line );	/* Interrupt source				*/
+
+
+/************************************************************************
+ *
+ *                          arch_eic_disable_int
+ *  Description :
+ *  -------------
+ *
+ *  Disable EIC interrupt
+ *
+ *  Parameters :
+ *  ------------
+ *
+ *  cpu_int: EIC interrupt to disable
+ *
+ *  Return values :
+ *  ---------------
+ *
+ *  None
+ *
+ ************************************************************************/
+void 
+arch_eic_disable_int(
+    UINT32 cpu_int );	/* Interrupt source				*/
+
+
+/************************************************************************
+ *
+ *                          arch_eic_eoi
+ *  Description :
+ *  -------------
+ *
+ *  Perform EOI cycle for indicated interrupt on EIC
+ *
+ *  Return values :
+ *  ---------------
+ *
+ *  None
+ *
+ ************************************************************************/
+void
+arch_eic_eoi(
     UINT32 index );
 
 

@@ -9,7 +9,7 @@
  *
  * mips_start_of_legal_notice
  * 
- * Copyright (c) 2004 MIPS Technologies, Inc. All rights reserved.
+ * Copyright (c) 2006 MIPS Technologies, Inc. All rights reserved.
  *
  *
  * Unpublished rights (if any) reserved under the copyright laws of the
@@ -167,6 +167,7 @@ arch_pci_config_controller(
       case MIPS_REVISION_CORID_CORE_SYS :
       case MIPS_REVISION_CORID_CORE_FPGA2 :
       case MIPS_REVISION_CORID_CORE_EMUL_SYS :
+      case MIPS_REVISION_CORID_CORE_FPGA3 :
 
         /**** MIPS system controller ****/
 
@@ -581,6 +582,7 @@ arch_pci_config_access(
       case MIPS_REVISION_CORID_CORE_SYS :
       case MIPS_REVISION_CORID_CORE_FPGA2 :
       case MIPS_REVISION_CORID_CORE_EMUL_SYS :
+      case MIPS_REVISION_CORID_CORE_FPGA3 :
 
         /**** MIPS system controller ****/
 

@@ -19,7 +19,7 @@
  *
  * mips_start_of_legal_notice
  * 
- * Copyright (c) 2004 MIPS Technologies, Inc. All rights reserved.
+ * Copyright (c) 2006 MIPS Technologies, Inc. All rights reserved.
  *
  *
  * Unpublished rights (if any) reserved under the copyright laws of the
@@ -579,21 +579,21 @@ ide_ctrl(
         identify_struct->min_cycle_time_dma =		  buf_id[i++];
         identify_struct->recommended_cycle_time_dma =	  buf_id[i++];
         identify_struct->minimum_cycle_time_pio =	  buf_id[i++];
-        identify_struct->minimom_cycle_time_pio_iordy =	  buf_id[i++];
+        identify_struct->minimum_cycle_time_pio_iordy =	  buf_id[i++];
 
 	for( t=0; t<59; t++ )
 	{
-            identify_struct->reserved3[59] =		  buf_id[i++];
+            identify_struct->reserved3[t] =		  buf_id[i++];
 	}
 
 	for( t=0; t<32; t++ )
 	{
-            identify_struct->vendor_specific1[32] =	  buf_id[i++];
+            identify_struct->vendor_specific1[t] =	  buf_id[i++];
 	}
 
 	for( t=0; t<96; t++ )
 	{
-	    identify_struct->reserved4[96] =		  buf_id[i++];
+	    identify_struct->reserved4[t] =		  buf_id[i++];
 	}
     }
 

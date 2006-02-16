@@ -9,7 +9,7 @@
  *
  * mips_start_of_legal_notice
  * 
- * Copyright (c) 2004 MIPS Technologies, Inc. All rights reserved.
+ * Copyright (c) 2006 MIPS Technologies, Inc. All rights reserved.
  *
  *
  * Unpublished rights (if any) reserved under the copyright laws of the
@@ -134,6 +134,26 @@ LEAF(sys_init_processor)
 	li	t1, STATUS_MIPS32_64_MSK
 	and	t0, t1
 	li	t1, STATUS_MIPS24K
+	or	t0, t1
+	MTC0(	t0, C0_Status )
+2:
+	/* Check if it is a MIPS 34K processor */	
+	li	t0, MIPS_34K
+	bne	k1, t0, 2f
+	nop
+
+	/* Setup MIPS34K specifics (implementation dependent fields) */
+	MFC0(   t0, C0_Config )
+	li	t1, CONFIG0_MIPS32_64_MSK
+	and	t0, t1
+	li	t1, CONFIG0_MIPS34K
+	or	t0, t1
+	MTC0(	t0, C0_Config )
+
+	MFC0(   t0, C0_Status )
+	li	t1, STATUS_MIPS32_64_MSK
+	and	t0, t1
+	li	t1, STATUS_MIPS34K
 	or	t0, t1
 	MTC0(	t0, C0_Status )
 2:

@@ -14,7 +14,7 @@
  *
  * mips_start_of_legal_notice
  * 
- * Copyright (c) 2004 MIPS Technologies, Inc. All rights reserved.
+ * Copyright (c) 2006 MIPS Technologies, Inc. All rights reserved.
  *
  *
  * Unpublished rights (if any) reserved under the copyright laws of the
@@ -77,6 +77,9 @@
 
 #ifndef MIPS_Release2
 #define MIPS_Release2
+#endif
+#ifndef MIPS_MT
+#define MIPS_MT
 #endif
 #include <ArchDefs.h>
 
@@ -210,6 +213,12 @@
 #define MIPS_24K			( (K_PRIdCoID_MIPS << S_PRIdCoID) | \
 					  (K_PRIdImp_24K   << S_PRIdImp) )
 
+#define MIPS_24KE			( (K_PRIdCoID_MIPS << S_PRIdCoID) | \
+					  (K_PRIdImp_24KE   << S_PRIdImp) )
+
+#define MIPS_34K			( (K_PRIdCoID_MIPS << S_PRIdCoID) | \
+					  (K_PRIdImp_34K   << S_PRIdImp) )
+
 #define QED_RM52XX			( (C0_PRID_COMP_NOT_MIPS32_64 << \
 					      S_PRIdCoID) |	 \
 					  (K_PRIdImp_R5200  << S_PRIdImp) )
@@ -253,11 +262,6 @@
  *
  *  The bug is identified as : C16
  */
-#ifndef SET_MIPS0
-#define SET_MIPS0()
-#define SET_PUSH()
-#define SET_POP()
-#endif
 #define ICACHE_INVALIDATE_WORKAROUND(reg) \
 SET_PUSH();				  \
 SET_MIPS0();				  \
@@ -296,7 +300,8 @@ SET_POP();				  \
  *  The "sll zero,zero,1" notation is compiler backwards compatible.
  */
 #define SSNOP   sll zero,zero,1
-#define NOPS	SSNOP; SSNOP; SSNOP; SSNOP
+#define EHB     sll zero,zero,3
+#define NOPS	SSNOP; SSNOP; SSNOP; EHB
 
 /*  Workaround for bug in early revisions of MIPS 4K family of 
  *  processors.
@@ -348,6 +353,19 @@ SET_POP();				  \
 #define WRPGPR( rd, rt )\
 		.##word (0x41c00000 | ((rd) <<11) | (rt<<16))
 
+
+/* MT ASE */
+#define DVPE(rt) \
+		.##word (0x41600001 | ((rt)<<16))
+
+#define DMT(rt)	\
+		.##word (0x41600bc1 | ((rt)<<16))
+
+#define EVPE(rt) \
+		.##word (0x41600021 | ((rt)<<16))
+
+#define EMT(rt)	\
+		.##word (0x41600be1 | ((rt)<<16))
 
 /* Instruction opcode fields */
 #define OPC_SPECIAL   0x0
@@ -434,6 +452,7 @@ SET_POP();				  \
 #define MIPS5K_COUNT_CLK_PER_CYCLE	2
 #define MIPS20Kc_COUNT_CLK_PER_CYCLE	1
 #define MIPS24K_COUNT_CLK_PER_CYCLE     2
+#define MIPS34K_COUNT_CLK_PER_CYCLE     2
 #define MIPSM4K_COUNT_CLK_PER_CYCLE     2
 
 /**** MIPS 4K/5K families specific fields of CONFIG register ****/
@@ -530,6 +549,7 @@ SET_POP();				  \
 
 #define S_ConfigMM              18     /* 24K specific, merging enable/disable */
 #define M_ConfigMM              (0x1 << S_ConfigMM)
+
 
 #endif /* #ifndef MIPS_H */
 

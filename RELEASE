@@ -1,25 +1,13 @@
 MIPS YAMON(tm) Release Notes
 ============================
 
-Revision:     02.06
-Release Date: 20040323
+Revision:     02.11
+Release Date: 20060216
 
 
 Reason for release:
 -------------------
-Minor bugfixes
-
-
-Principal modifications since last release:
--------------------------------------------
-Corrected L2 cache management
-
-
-Known issues/bugs:
-------------------
-None.
-Refer to latest Errata for updates to these Notes.
-
+Bugfix for 24K/34K data cache initialisation
 
 Boards supported :
 ------------------
@@ -31,6 +19,7 @@ Atlas with following Core boards :
 Malta with following Core boards :
     CoreFPGA
     CoreFPGA-2
+    CoreFPGA3
     CoreLV
     CoreBonito64
     Core20K
@@ -49,5 +38,6 @@ MIPS 4KSc, 4KSd
 MIPS M4K
 MIPS 5Kc, 5Kf, 5KE, 5KEf
 MIPS 20Kc, 25Kf
-MIPS 24Kc, 24Kf
+MIPS 24Kc, 24Kf, 24Ke
+MIPS 34Kc, 34Kf
 QED  RM5261, RM7061A

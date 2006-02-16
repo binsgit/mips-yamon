@@ -9,7 +9,7 @@
  *
  * mips_start_of_legal_notice
  * 
- * Copyright (c) 2004 MIPS Technologies, Inc. All rights reserved.
+ * Copyright (c) 2006 MIPS Technologies, Inc. All rights reserved.
  *
  *
  * Unpublished rights (if any) reserved under the copyright laws of the
@@ -310,6 +310,8 @@ END( EXCEP_init_reg_mask )
  *
  *  Parameters :
  *  ------------
+ *	
+ *   a0: if set, install EIC vectors.
  *
  *  Return values :
  *  ---------------
@@ -323,8 +325,13 @@ LEAF( EXCEP_install_exc_in_ram )
 #define ADDR			a0  /* also used as arg to sys_cache..() */
 #define STATUS_INT		t3
 #define RA			t4
-	
+#define EICMODE			t5
+#define EICOFFSET		t5
+#define EICINCR			t6
+#define EICCOUNT		t7	
+		
 	move	RA, ra
+	move	EICMODE, a0
 
 	/* Disable interrupts */
 	MFC0(   t1, C0_Status )
@@ -350,13 +357,50 @@ LEAF( EXCEP_install_exc_in_ram )
 	jal	setup_yamon_vector
 	li	ADDR, 0x200	/* Int, CauseIV=1 */	
 
+	beqz	EICMODE, noneicmode
+	 nop
+	
 	jal	setup_yamon_vector_ejtag
-	li	ADDR, SYS_EJTAG_RAM_VECTOR_OFS
+	 li	ADDR, SYS_EJTAG_RAM_VECTOR_OFS
 
 	jal	setup_yamon_vector
-	li	ADDR, SYS_NMI_RAM_VECTOR_OFS
-
+	 li	ADDR, SYS_NMI_RAM_VECTOR_OFS
 	
+	MFC0_SEL_OPCODE(R_t0, R_C0_IntCtl, R_C0_SelIntCtl)
+	li	EICINCR, M_IntCtlVS
+	and	EICINCR, t0
+	
+	li	EICCOUNT, 62
+	move	EICOFFSET, EICINCR
+	
+1:	li	ADDR, 0x200
+	jal	setup_yamon_vector
+	 addu	ADDR, EICOFFSET
+	addu	EICOFFSET, EICINCR
+	bnez	EICCOUNT, 1b
+	 subu	EICCOUNT, 1
+
+	b	donevectors
+	 nop
+
+noneicmode:
+	/*
+	 * In non-EIC mode, install NMI/EJTAG compatibility
+	 * so that old code will continue to work
+	 */
+	jal	setup_yamon_vector_ejtag
+	 li	ADDR, SYS_OLD_EJTAG_RAM_VECTOR_OFS
+
+	jal	setup_yamon_vector_ejtag_redirect
+	 li	ADDR, SYS_EJTAG_RAM_VECTOR_OFS
+	
+	jal	setup_yamon_vector_nmi_forward
+	 li	ADDR, SYS_OLD_NMI_RAM_VECTOR_OFS
+
+	jal	setup_yamon_vector_nmi_redirect
+	 li	ADDR, SYS_NMI_RAM_VECTOR_OFS
+			
+donevectors:	
 	/* Clear BEV so that ram handlers are used */
 	MFC0(   a0, C0_Status)
 	li	t2, ~M_StatusBEV
@@ -373,6 +417,17 @@ LEAF( EXCEP_install_exc_in_ram )
 	jr	ra
 	nop
 
+setup_yamon_vector_nmi_forward:
+	.set	reorder
+	la	t2, ram_vector_nmi_forward
+	b	setup_yamon_vector_copy
+	.set	noreorder
+		
+setup_yamon_vector_ejtag_redirect:
+	.set	reorder
+	la	t2, ram_vector_ejtag_redirect
+	b	setup_yamon_vector_copy
+	.set	noreorder
 	
 setup_yamon_vector_ejtag:
 	la	t2, ram_vector_ejtag	
@@ -380,6 +435,8 @@ setup_yamon_vector_ejtag:
 	/* Save existing data of exception vector location */
 	/* Copy ram vector code to exception vector location */
 
+setup_yamon_vector_copy:
+	
 	li	t1, KSEG0BASE
 	or	ADDR, t1		/* Destination   */
 
@@ -392,6 +449,12 @@ setup_yamon_vector_ejtag:
 	b	cache_flush_vector
 	nop
 
+setup_yamon_vector_nmi_redirect:
+	.set	reorder
+	la	t2, ram_vector_nmi_redirect
+	b	setup_yamon_vector_general
+	.set	noreorder
+	
 setup_yamon_vector:
 	la	t2, ram_vector_normal
 
@@ -459,14 +522,48 @@ ram_vector_general:
 
 ram_vector_ejtag:
 	/*  This code is copied to the exception vector
-	 *  location reserved (by YAMON) for EJTAG (i.e. 0x80000300)
+	 *  location reserved (by YAMON) for EJTAG:
+	 *  SYS_EJTAG_RAM_VECTOR_OFFS/SYS_OLD_EJTAG_RAM_VECTOR_OFFS
 	 *  (2 words are copied).
 	 *  This entry is software redirected from addr 0xbf000480.
 	 *  Please see the file reset.S for a note about hazards.
 	 */
 	j	exc_handler_ejtag
         mtc0    k1, C0_DESAVE
-	
+
+ram_vector_ejtag_redirect:
+	/*  This code is copied to the exception vector
+	 *  location reserved (by YAMON) for EJTAG:
+	 *  SYS_EJTAG_RAM_VECTOR_OFS
+	 *  (2 words are copied).
+	 *  This entry is software redirected from addr 0xbf000480.
+	 *  Please see the file reset.S for a note about hazards.
+	 */
+	b	.-SYS_EJTAG_RAM_VECTOR_OFS+SYS_OLD_EJTAG_RAM_VECTOR_OFS
+	 nop
+
+ram_vector_nmi_forward:
+	/*  This code is copied to the exception vector
+	 *  location reserved (by YAMON) for EJTAG:
+	 *  SYS_OLD_NMI_RAM_VECTOR_OFS
+	 *  (2 words are copied).
+	 *  This entry is software redirected from addr 0xbf000480.
+	 *  Please see the file reset.S for a note about hazards.
+	 */
+	j	exc_handler_nmi
+	 nop
+
+ram_vector_nmi_redirect:
+	/*  This code is copied to the exception vector
+	 *  location reserved (by YAMON) for NMI:
+	 *  SYS_NMI_RAM_VECTOR_OFS
+	 *  (2 words are copied).
+	 *  This entry is software redirected from addr 0xbf000480.
+	 *  Please see the file reset.S for a note about hazards.
+	 */
+	b	.-SYS_NMI_RAM_VECTOR_OFS+SYS_OLD_NMI_RAM_VECTOR_OFS
+	 li	k0, 0		/* when copied: "li k0, vector_offset" */
+				
 END( EXCEP_yamon_ram_vectors )
 
 
@@ -550,6 +647,60 @@ exc_handler_cacheerr:
 	/* Set up k0 again and jump to exc_handler */
 	b	exc_handler
 	li	k0, SYS_CACHEERR_RAM_VECTOR_OFS
+
+
+/*************************************************************
+**      central entry for NMI exceptions
+*/
+exc_handler_nmi:
+	/* Determine processor manufacturer */
+	MFC0(   k0, C0_PRId)
+	li	k1, M_PRIdCoID
+	and     k0, k1
+	beqz	k0, NoMT		# Not a MIPS32/MIPS64 implementation
+	 nop
+	
+	.set	push
+	.set	mips32
+	MFC0(	k0, C0_Config)		# Read Config0 for the M bit
+	bgez	k0, NoMT		# Branch if no Config1
+	 nop
+	MFC0(	k0, C0_Config1)		# Read Config1 for the M bit
+	bgez	k0, NoMT		# Branch if no Config2
+	 nop
+	MFC0(	k0, C0_Config2)		# Read Config2 for the M bit
+	bgez	k0, NoMT		# Branch if no Config3
+	 nop
+	MFC0(	k0, C0_Config3)		# Finally, read what we really want
+	andi	k0, M_Config3MT		# Is the MT ASE implemented?
+	beqz	k0, NoMT		# Branch if so
+	 nop
+
+HaveMT:
+	MFC0(	k0, C0_TCBind)		# Is this VPE0?
+	andi	k0, M_TCBindCurVPE
+
+/*
+ * If any TC arrives here that is not running on VPE0, it sits in the following
+ * tight loop waiting to be halted by the master VPE
+ */
+
+10:	bnez	k0, 10b			# Enter tight loop if not master processor
+	 nop
+
+/*
+ * Here on VPE0.  Stop all other VPEs and threads
+ */
+	DVPE(R_zero)			# Stop all other VPEs
+	DMT(R_zero)			# Stop all threads on this VPE
+	ehb
+
+NoMT:
+	.set	pop	
+	/* Reset k0 and jump to general handler */
+	
+	b	exc_handler
+	 li	k0, SYS_NMI_RAM_VECTOR_OFS
 
 
 /*************************************************************

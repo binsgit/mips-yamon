@@ -10,7 +10,7 @@
  *
  * mips_start_of_legal_notice
  * 
- * Copyright (c) 2004 MIPS Technologies, Inc. All rights reserved.
+ * Copyright (c) 2006 MIPS Technologies, Inc. All rights reserved.
  *
  *
  * Unpublished rights (if any) reserved under the copyright laws of the
@@ -106,15 +106,15 @@ strtoull(
 	switch( base )
 	{
 	  case 8 :
-	    cutoff = 0x1fffffffffffffff;
+	    cutoff = 0x1fffffffffffffffULL;
 	    cutlim = 7;
 	    break;
 	  case 10 :
-	    cutoff = 0x1999999999999999;
+	    cutoff = 0x1999999999999999ULL;
 	    cutlim = 5;
 	    break;
 	  case 16 :
-	    cutoff = 0x0fffffffffffffff;
+	    cutoff = 0x0fffffffffffffffULL;
 	    cutlim = 0xf;
 	    break;
 	}
@@ -132,7 +132,7 @@ strtoull(
 			continue;
 		if ((acc > cutoff) || (acc == cutoff && c > cutlim)) {
 			any = -1;
-			acc = 0xffffffffffffffff;
+			acc = 0xffffffffffffffffULL;
 			errno = ERANGE;
 		} else {
 			any = 1;

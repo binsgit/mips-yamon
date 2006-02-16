@@ -11,7 +11,7 @@
  *
  * mips_start_of_legal_notice
  * 
- * Copyright (c) 2004 MIPS Technologies, Inc. All rights reserved.
+ * Copyright (c) 2006 MIPS Technologies, Inc. All rights reserved.
  *
  *
  * Unpublished rights (if any) reserved under the copyright laws of the
@@ -87,6 +87,7 @@ SECTIONS
     *(.text)
     _ecode = ABSOLUTE(.) ;	/* End of code 			    */
     *(.rodata)
+    *(.rodata.*)
 
     . = ALIGN(8);
     _etext = ABSOLUTE(.);	/* End of code and read-only data   */
@@ -117,7 +118,7 @@ SECTIONS
 
   /**** Uninitialised data ****/
 
-  _fbss = .;			/* Start of unitialised data	    */
+  _fbss = .;			/* Start of uninitialised data	    */
 
   .sbss : 
   { 
@@ -130,7 +131,7 @@ SECTIONS
     *(COMMON)
   }
 
-  _end = . ;		/* End of unitialised data	    */
+  _end = . ;		/* End of uninitialised data	    */
 
   .gptab.sdata : { *(.gptab.data) *(.gptab.sdata) }
   .gptab.sbss : { *(.gptab.bss) *(.gptab.sbss) }

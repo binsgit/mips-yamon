@@ -9,7 +9,7 @@
  *
  * mips_start_of_legal_notice
  * 
- * Copyright (c) 2004 MIPS Technologies, Inc. All rights reserved.
+ * Copyright (c) 2006 MIPS Technologies, Inc. All rights reserved.
  *
  *
  * Unpublished rights (if any) reserved under the copyright laws of the
@@ -188,7 +188,29 @@ static t_cp0_reg regs[] =
     { "DWatchLo0",     64, SYSCON_CPU_CP0_DWATCHLO0_ID,        -1                  ,0,0},
     { "DWatchHi0",     64, SYSCON_CPU_CP0_DWATCHHI0_ID,        -1                  ,0,0},
     { "DWatchLo1",     64, SYSCON_CPU_CP0_DWATCHLO1_ID,        -1                  ,0,0},
-    { "DWatchHi1",     64, SYSCON_CPU_CP0_DWATCHHI1_ID,        -1                  ,0,0}
+    { "DWatchHi1",     64, SYSCON_CPU_CP0_DWATCHHI1_ID,        -1                  ,0,0},
+
+    { "MVPControl",    32, SYSCON_CPU_CP0_MVPCONTROL_ID,       -1		   ,0,0},
+    { "MVPConf0",      32, SYSCON_CPU_CP0_MVPCONF0_ID,         -1		   ,0,0},
+    { "MVPConf1",      32, SYSCON_CPU_CP0_MVPCONF1_ID,         -1		   ,0,0},
+    { "VPEControl",    32, SYSCON_CPU_CP0_VPECONTROL_ID,       -1		   ,0,0},
+    { "VPEConf0",      32, SYSCON_CPU_CP0_VPECONF0_ID,         -1		   ,0,0},
+    { "VPEConf1",      32, SYSCON_CPU_CP0_VPECONF1_ID,         -1		   ,0,0},
+    { "YQMask",        32, SYSCON_CPU_CP0_YQMASK_ID,           -1		   ,0,0},
+    { "VPESchedule",   32, SYSCON_CPU_CP0_VPESCHEDULE_ID,      -1		   ,0,0},
+    { "VPEScheFBack",  32, SYSCON_CPU_CP0_VPESCHEFBACK_ID,     -1		   ,0,0},
+    { "TCStatus",      32, SYSCON_CPU_CP0_TCSTATUS_ID,         -1		   ,0,0},
+    { "TCBind",        32, SYSCON_CPU_CP0_TCBIND_ID,           -1		   ,0,0},
+    { "TCRestart",     64, SYSCON_CPU_CP0_TCRESTART_ID,        -1		   ,0,0},
+    { "TCHalt",        32, SYSCON_CPU_CP0_TCHALT_ID,           -1		   ,0,0},
+    { "TCContext",     64, SYSCON_CPU_CP0_TCCONTEXT_ID,        -1		   ,0,0},
+    { "TCSchedule",    32, SYSCON_CPU_CP0_TCSCHEDULE_ID,       -1		   ,0,0},
+    { "TCScheFBack",   32, SYSCON_CPU_CP0_TCSCHEFBACK_ID,      -1		   ,0,0},
+    { "SRSConf0",      32, SYSCON_CPU_CP0_SRSCONF0_ID,         -1		   ,0,0},
+    { "SRSConf1",      32, SYSCON_CPU_CP0_SRSCONF1_ID,         -1		   ,0,0},
+    { "SRSConf2",      32, SYSCON_CPU_CP0_SRSCONF2_ID,         -1		   ,0,0},
+    { "SRSConf3",      32, SYSCON_CPU_CP0_SRSCONF3_ID,         -1		   ,0,0},
+    { "SRSConf4",      32, SYSCON_CPU_CP0_SRSCONF4_ID,         -1		   ,0,0}
 };
 #define REG_COUNT (sizeof(regs)/sizeof(t_cp0_reg))
 
@@ -225,6 +247,7 @@ print_reg(
 
 static UINT32
 print_regs(
+    UINT32     tc,
     bool       all,
     bool       silent,
     UINT32     index_single,
@@ -398,10 +421,9 @@ find_reg(
 {
     UINT32 i;
 
-    for( i=0; 
-         (strcasecmp(reg_name, regs[i].name) != 0) &&
-         (i < REG_COUNT); 
-         i++ );
+    for (i = 0; i < REG_COUNT; i++)
+	if (strcasecmp(reg_name, regs[i].name) == 0)
+	    break;
  
     return i;
 }
@@ -497,6 +519,7 @@ print_reg(
  ************************************************************************/
 static UINT32
 print_regs(
+    UINT32     tc,	   
     bool       all,
     bool       silent,
     UINT32     index_single,
@@ -529,10 +552,24 @@ print_regs(
 	    syscon_id  = regs[i].syscon_id;
 	    gdb_offset = regs[i].gdb_offset;
 
-            rc = 
-                (width == 64) ?
+	    if (sys_mt && tc != 0) {
+		t_syscon_reginfo_def reginfo;
+		reginfo.id = syscon_id;
+		rc = SYSCON_read (SYSCON_CPU_REGINFO_ID, &reginfo, sizeof(reginfo));
+		
+		if (rc == OK) {
+		    if (width == 64)
+			value64 = (UINT64) sys_cp0_mtread32(reginfo.reg, reginfo.sel, tc);
+		    else
+			value32 = sys_cp0_mtread32(reginfo.reg, reginfo.sel, tc);
+		}
+	    }
+	    else {
+		rc = 
+		    (width == 64) ?
                     SYSCON_read( syscon_id, &value64, sizeof(UINT64) ) :
 		    SYSCON_read( syscon_id, &value32, sizeof(UINT32) );
+	    }
 
 	    if( (rc == OK) && context )
 	    {
@@ -686,8 +723,9 @@ sys_l2_flush_all( void )
  ************************************************************************/
 UINT32
 sys_cp0_printreg_all( 
-    t_gdb_regs *context ) // If not NULL, this holds the context to be dumped.
-			  // If NULL, print current values of all CP0 regs.
+    UINT32 tc,
+    t_gdb_regs  *context ) // If not NULL, this holds the context to be dumped.
+			   // If NULL, print current values of all CP0 regs.
 {
     static bool init = TRUE;
 
@@ -706,10 +744,10 @@ sys_cp0_printreg_all(
     }
 
     /* Pass 1 : Get availability and values of registers and determine indentations */
-    print_regs( TRUE, TRUE,  0, context );
+    print_regs( tc, TRUE, TRUE,  0, context );
 
     /* Pass 2 : Print values */
-    return print_regs( TRUE, FALSE, 0, context );
+    return print_regs( tc, TRUE, FALSE, 0, context );
 }
 
 
@@ -723,18 +761,19 @@ sys_cp0_printreg_all(
  *
  ************************************************************************/
 UINT32
-sys_cp0_printreg( 
+sys_cp0_printreg(
+    UINT32 tc,	     // TC to use
     char *reg_name ) // Name of register.
 {
     /* Register selected by name */
     UINT32 i = find_reg( reg_name );
 
     /* Pass 1 (get availability and value of register */
-    print_regs( FALSE, TRUE, i, NULL );
+    print_regs(tc, FALSE, TRUE, i, NULL );
 
     return ( i == REG_COUNT ) ?
                SHELL_ERROR_UNKNOWN_CP0_REG :
-               print_regs( FALSE, FALSE, i, NULL ); /* Pass 2 : Print value */
+	print_regs(tc, FALSE, FALSE, i, NULL ); /* Pass 2 : Print value */
 }
 
 
@@ -749,6 +788,7 @@ sys_cp0_printreg(
  ************************************************************************/
 UINT32
 sys_cp0_writereg(
+    UINT32  tc,	      // TC to use
     char   *reg_name, // Name of register.
     UINT64 value )    // Value to be written.
 {

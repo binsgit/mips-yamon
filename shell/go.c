@@ -11,7 +11,7 @@
  *
  * mips_start_of_legal_notice
  * 
- * Copyright (c) 2004 MIPS Technologies, Inc. All rights reserved.
+ * Copyright (c) 2006 MIPS Technologies, Inc. All rights reserved.
  *
  *
  * Unpublished rights (if any) reserved under the copyright laws of the
@@ -407,6 +407,8 @@ shell_shift_to_user(
     if ( EXCEP_save_context(&shell_context) == 0 )
     {
 	/* first return - after context save */
+	/* flush dcache to memory in case application initialises caches */
+	sys_dcache_flush_all();
 	/* Shift to application */
 	EXCEP_exc_handler_ret( &appl_context );
 	/* dead end */

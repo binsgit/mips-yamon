@@ -1,7 +1,7 @@
 /*
  * mips_start_of_legal_notice
  * 
- * Copyright (c) 2004 MIPS Technologies, Inc. All rights reserved.
+ * Copyright (c) 2006 MIPS Technologies, Inc. All rights reserved.
  *
  *
  * Unpublished rights (if any) reserved under the copyright laws of the
@@ -64,7 +64,7 @@
  *
  * Notes:
  *
- * ArchDefs.h: 1.126
+ * ArchDefs.h: 1.179
  */
 
 #ifndef _ArchDefs_h_
@@ -94,7 +94,7 @@
     #define INT64_C(c) c
 #endif /* defined(__ASSEMBLER__) */
 
-
+
 /*
  ************************************************************************
  *                I N S T R U C T I O N   F O R M A T S                 *
@@ -328,7 +328,7 @@
  * +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
  */
 
-
+
 /*
  * Vector Type
  *
@@ -364,7 +364,7 @@
 #define M_InstnL		(0x1 << S_InstnL)
 
 
-
+
 /*
  ************************************************************************
  *      M I P S 1 6  I N S T R U C T I O N   F O R M A T S              *
@@ -569,7 +569,7 @@
 #define M_M16_InstnFrameSize    (0xf << S_M16_InstnFrameSize)
 
 
-
+
 /*
  *************************************************************************
  *         V I R T U A L   A D D R E S S   D E F I N I T I O N S         *
@@ -590,6 +590,7 @@
 #define A_K3BASE		0xe0000000
 #endif
 #define M_KMAPPED		0x40000000		/* KnSEG address is mapped if bit is one */
+#define M_KUNCACHED		0x20000000		/* K[01]SEG address is uncached if bit is one */
 
 
 #ifdef MIPS_Model64
@@ -1646,13 +1647,21 @@
 #define M_EntryHiVPN264		UINT64_C(0x000000ffffffe000)
 
 #ifdef MIPS_Release2 
+
 #define S_EntryHiVPN2X		11
 #define M_EntryHiVPN2X		(0x3 << S_EntryHiVPN2X)
-#endif
+
+#define M_EntryHi0Fields	0x00000700
+#define M_EntryHiRFields	0x00000000
+#define M_EntryHi0Fields64	UINT64_C(0x0000000000000700)
+
+#else
 
 #define M_EntryHi0Fields	0x00001f00
 #define M_EntryHiRFields	0x00000000
 #define M_EntryHi0Fields64	UINT64_C(0x0000000000001f00)
+
+#endif
 
 #else /* MIPS_SmartMIPS_ASE */
 
@@ -1733,7 +1742,7 @@
 #define M_StatusFR		(0x1 << S_StatusFR)
 #define S_StatusRE		25			/* Enable reverse endian (R/W) */
 #define M_StatusRE		(0x1 << S_StatusRE)
-#define S_StatusMX		24			/* Enable access to MDMX resources (MIPS64 only) (R/W) */
+#define S_StatusMX		24			/* Enable access to MDMX and DSP ASE's (R/W) */
 #define M_StatusMX		(0x1 << S_StatusMX)
 #define S_StatusPX		23			/* Enable access to 64-bit instructions/data (MIPS64 only) (R/W) */
 #define M_StatusPX		(0x1 << S_StatusPX)
@@ -1820,6 +1829,7 @@
 
 #define S_IntCtlIPTI    29
 #define M_IntCtlIPTI    (0x7 << S_IntCtlIPTI)
+#define W_IntCtlIPTI	3
 #define S_IntCtlIPPCI   26
 #define M_IntCtlIPPCI   (0x7 << S_IntCtlIPPCI)
 #define S_IntCtlVS      5
@@ -2097,16 +2107,22 @@
 #define	EXC_TRAP		EXC_TR
 #define EX_FPE			15			/* floating point exception */
 #define EXC_FPE			(EX_FPE << S_CauseExcCode)
+#define EX_CEU			17			/* CorExtend exception */
+#define EXC_CEU			(EX_CEU << S_CauseExcCode)
 #define EX_C2E			18			/* COP2 exception */
 #define EXC_C2E			(EX_C2E << S_CauseExcCode)
 #define EX_MDMX			22			/* MDMX exception */
 #define EXC_MDMX		(EX_MDMX << S_CauseExcCode)
 #define EX_WATCH		23			/* Watch exception */
 #define EXC_WATCH		(EX_WATCH << S_CauseExcCode)
-#define	EX_MCHECK	        24			/* Machine check exception */
-#define	EXC_MCHECK 		(EX_MCHECK << S_CauseExcCode)
-#define	EX_CacheErr	        30			/* Cache error caused re-entry to Debug Mode */
-#define	EXC_CacheErr 		(EX_CacheErr << S_CauseExcCode)
+#define EX_MCHECK	    24 		/* Machine check exception */
+#define EXC_MCHECK  	(EX_MCHECK << S_CauseExcCode)
+#define EX_THREAD	        25			/* MT Thread exception */
+#define EXC_THREAD 		(EX_THREAD << S_CauseExcCode)
+#define EX_DSPDIS	        26			/* DSP Disabled exception */
+#define EXC_DSPDIS 		(EX_DSPDIS << S_CauseExcCode)
+#define EX_CacheErr	        30			/* Cache error caused re-entry to Debug Mode */
+#define EXC_CacheErr 	(EX_CacheErr << S_CauseExcCode)
 
 
 /*
@@ -2169,10 +2185,12 @@
 #define K_PRIdCoID_Philips 6
 #define K_PRIdCoID_Toshiba 7
 #define K_PRIdCoID_LSI 8
-#define K_PRIdCoID_UNANNOUNCED9 9
+#define K_PRIdCoID_Intrinsity 9
 #define K_PRIdCoID_UNANNOUNCED10 10
 #define K_PRIdCoID_Lexra 11
-#define K_PRIdCoID_NextAvailable 12 /* Next available encoding */
+#define K_PRIdCoID_UNANNOUNCED12 12
+#define K_PRIdCoID_UNANNOUNCED13 13
+#define K_PRIdCoID_NextAvailable 14 /* Next available encoding */
 
 
 /*
@@ -2201,6 +2219,9 @@
 #define K_PRIdImp_Topaz		0x93	/*   Alternate (obsolete) name */
 #define K_PRIdImp_TopazTLB	0x93	/*   Alternate (obsolete) name */
 
+#define K_PRIdImp_34K		0x95	/* MIPS32 34K */
+#define K_PRIdImp_24KE		0x96	/* MIPS32 24KE */
+
 #define K_PRIdImp_R3000		0x01
 #define K_PRIdImp_R4000		0x04
 #define K_PRIdImp_R10000	0x09
@@ -2225,6 +2246,12 @@
 #define C0_EBase		$15,1
 #define R_C0_EBase		15
 #define R_C0_SelEBase		1
+
+
+#ifdef MIPS_MT
+#define S_EBaseVPENum		0			/* VPE number in the CPUNum field */
+#define M_EBaseVPENum		(0xf << S_EBaseVPENum)
+#endif 
 
 #define S_EBaseVA		12	 		/* Exception Base (R/W) */
 #define M_EBaseVA		(0xfffff << S_EBaseVA)
@@ -2263,14 +2290,17 @@
 #define M_ConfigBE		(0x1 << S_ConfigBE)
 #define S_ConfigAT		13			/* Architecture type (R) */
 #define M_ConfigAT		(0x3 << S_ConfigAT)
+#define W_ConfigAT		2
 #define S_ConfigAR		10			/* Architecture revision (R) */
 #define M_ConfigAR		(0x7 << S_ConfigAR)
 #define S_ConfigMT		7			/* MMU Type (R) */
 #define M_ConfigMT		(0x7 << S_ConfigMT)
+#define W_ConfigMT		3
 #define S_ConfigVI		3			/* Icache is virtual (R) */
 #define M_ConfigVI		(0x1 << S_ConfigVI)
 #define S_ConfigK0		0			/* Kseg0 coherency algorithm (R/W) */
 #define M_ConfigK0		(0x7 << S_ConfigK0)
+#define W_ConfigK0		3
 
 /*
  * The following definitions are technically part of the "reserved for
@@ -2281,8 +2311,10 @@
  */
 #define S_ConfigK23		28			/* Kseg2/3 coherency algorithm (FM MMU only) (R/W) */
 #define M_ConfigK23		(0x7 << S_ConfigK23)
+#define W_ConfigK23		3
 #define S_ConfigKU		25			/* Kuseg coherency algorithm (FM MMU only) (R/W) */
 #define M_ConfigKU		(0x7 << S_ConfigKU)
+#define W_ConfigKU		3
 
 #define M_Config0Fields		0x00000070
 #define M_ConfigRFields		0x8000ff88
@@ -2335,19 +2367,26 @@
 #define M_Config1More		(0x1 << S_Config1M)
 #define S_Config1MMUSize 	25			/* Number of MMU entries - 1 (R) */
 #define M_Config1MMUSize 	(0x3f << S_Config1MMUSize)
+#define W_Config1MMUSize 	6
 #define S_Config1IS		22			/* Icache sets per way (R) */
 #define M_Config1IS		(0x7 << S_Config1IS)
+#define W_Config1IS		3
 #define S_Config1IL		19			/* Icache line size (R) */
 #define M_Config1IL		(0x7 << S_Config1IL)
+#define W_Config1IL		3
 #define S_Config1IA		16			/* Icache associativity - 1 (R) */
 #define M_Config1IA		(0x7 << S_Config1IA)
+#define W_Config1IA		3
 #define S_Config1DS		13			/* Dcache sets per way (R) */
 #define M_Config1DS		(0x7 << S_Config1DS)
+#define W_Config1DS		3
 #define S_Config1DL		10			/* Dcache line size (R) */
 #define M_Config1DL		(0x7 << S_Config1DL)
+#define W_Config1DL		3
 #define S_Config1DA		7			/* Dcache associativity (R) */
 #define M_Config1DA		(0x7 << S_Config1DA)
 #define S_Config1C2		6			/* Coprocessor 2 present (R) */
+#define W_Config1DA		3
 #define M_Config1C2		(0x1 << S_Config1C2)
 #define S_Config1MD		5			/* Denotes MDMX present (R) */
 #define M_Config1MD		(0x1 << S_Config1MD)
@@ -2361,6 +2400,7 @@
 #define M_Config1EP		(0x1 << S_Config1EP)
 #define S_Config1FP		0			/* Denotes floating point present (R) */
 #define M_Config1FP		(0x1 << S_Config1FP)
+#define W_Config1FP		1
 
 #define M_Config10Fields	0x00000000
 #define M_Config1RFields	0xffffffff
@@ -2468,10 +2508,10 @@
  *  3 3 2 2 2 2 2 2 2 2 2 2 1 1 1 1 1 1 1 1 1 1
  *  1 0 9 8 7 6 5 4 3 2 1 0 9 8 7 6 5 4 3 2 1 0 9 8 7 6 5 4 3 2 1 0
  * +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
- * | |                                             | |V|V| |   | | |
- * | |                                             |L|E|I| |   | | |
- * |M|                                             |P|I|n|S|   |S|T| Config3
- * | |                                             |A|C|t|P|   |M|L|
+ * | |                                       |D|   | |V|V| | | | | |
+ * | |                                       |S|   |L|E|I| | |M| | |
+ * |M|                                       |P|   |P|I|n|S| |T|S|T| Config3
+ * | |                                       |P|   |A|C|t|P| | |M|L|
  * +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
  */
 
@@ -2481,11 +2521,8 @@
 
 #define S_Config3M		31			/* Additional Config registers present (R) */
 #define M_Config3M		(0x1 << S_Config3M)
-#define S_Config3SM		1			/* Denotes SmartMIPS ASE present (R) */
-#define M_Config3SM		(0x1 << S_Config3SM)
-#define S_Config3TL		0			/* Denotes Tracing Logic present (R) */
-#define M_Config3TL		(0x1 << S_Config3TL)
-
+#define S_Config3DSPP           10                      /* DSP Present */
+#define M_Config3DSPP           (0x1 << S_Config3DSPP)
 #define S_Config3LPA  		7			/* Large Physical address support */
 #define M_Config3LPA  		(0x1 << S_Config3LPA)
 #define S_Config3VEIC  		6
@@ -2494,7 +2531,12 @@
 #define M_Config3VInt  		(0x1 << S_Config3VInt)
 #define S_Config3SP             4			/* Small Page & PageGrain present */
 #define M_Config3SP             (0x1 << S_Config3SP)
-
+#define S_Config3MT             2                       /* MT ASE is implemented */
+#define M_Config3MT             (0x1 << S_Config3MT)
+#define S_Config3SM		1			/* Denotes SmartMIPS ASE present (R) */
+#define M_Config3SM		(0x1 << S_Config3SM)
+#define S_Config3TL		0			/* Denotes Tracing Logic present (R) */
+#define M_Config3TL		(0x1 << S_Config3TL)
 
 #ifdef MIPS_Release2
 #define M_Config30Fields	0xffffff00
@@ -2704,6 +2746,121 @@
 
 /*
  ************************************************************************
+ *     T r a c e C o n t r o l   R E G I S T E R   ( 2 3, SELECT 1 )    *
+ ************************************************************************
+ */
+#define C0_TraceControl		$23,1
+#define R_C0_TraceControl	23
+#define R_C0_SelTraceControl	1
+
+#define S_TraceControlTS	31			/* Trace Select */
+#define M_TraceControlTS	(0x1 << S_TraceControlTS)
+#define S_TraceControlUT	30			/* User Triggered */
+#define M_TraceControlUT	(0x1 << S_TraceControlUT)
+#define S_TraceControlTPC       28                      /* Trace PC */
+#define M_TraceControlTPC       (0x1 << S_TraceControlTPC)
+#define S_TraceControlTB	27			/* Trace Branch */
+#define M_TraceControlTB	(0x1 << S_TraceControlTB)
+#define S_TraceControlIO	26			/* Inhibit Overflow */
+#define M_TraceControlIO	(0x1 << S_TraceControlIO)
+#define S_TraceControlD		25			/* Debug Mode Enable */
+#define M_TraceControlD		(0x1 << S_TraceControlD)
+#define S_TraceControlE		24			/* Exception Mode Enable */
+#define M_TraceControlE		(0x1 << S_TraceControlE)
+#define S_TraceControlK		23			/* Kernel Mode Enable */
+#define M_TraceControlK		(0x1 << S_TraceControlK)
+#define S_TraceControlS		22			/* Supervisor Mode Enable */
+#define M_TraceControlS		(0x1 << S_TraceControlS)
+#define S_TraceControlU		21			/* User Mode Enable */
+#define M_TraceControlU		(0x1 << S_TraceControlU)
+#define S_TraceControlASID_M	13			/* ASID Mask */
+#define M_TraceControlASID_M	(0xff << S_TraceControlASID_M)
+#define S_TraceControlASID	5			/* ASID */
+#define M_TraceControlASID	(0xff << S_TraceControlASID)
+#define S_TraceControlG		4			/* Global (all ASIDs) */
+#define M_TraceControlG		(0x1 << S_TraceControlG)
+#define S_TraceControlTFCR	3			/* Trace Function Call and Return */
+#define M_TraceControlTFCR	(0x1 << S_TraceControlTFCR)
+#define S_TraceControlTLSM	2			/* Trace Load Store Misses */
+#define M_TraceControlTLSM	(0x1 << S_TraceControlTLSM)
+#define S_TraceControlTIM	1			/* Trace Instruction Missses */
+#define M_TraceControlTIM	(0x1 << S_TraceControlTIM)
+#define S_TraceControlOn	0			/* Master Trace Enable */
+#define M_TraceControlOn	(0x1 << S_TraceControlOn)
+
+/* Reserved bits */
+#define M_TraceControlR		(0x1 << 29)
+
+
+/*
+ ************************************************************************
+ *   T r a c e C o n t r o l 2   R E G I S T E R   ( 2 3, SELECT 2 )    *
+ ************************************************************************
+ */
+#define C0_TraceControl2	$23,2
+#define R_C0_TraceControl2	23
+#define R_C0_SelTraceControl2	2
+
+#define S_TraceControl2CPUIdV   29                      /* Trace Specified VPE only */
+#define M_TraceControl2CPUIdV   (0x1 << S_TraceControl2CPUIdV)
+#define S_TraceControl2CPUId    21                      /* VPE number to trace */
+#define M_TraceControl2CPUId    (0xff << S_TraceControl2CPUId)
+#define S_TraceControl2TCV      20                      /* Trace Specified TC only */
+#define M_TraceControl2TCV      (0x1 << S_TraceControl2TCV)
+#define S_TraceControl2TCNum    12                      /* TC number to trace */
+#define M_TraceControl2TCNum    (0xff << S_TraceControl2TCNum)
+#define S_TraceControl2Mode     7                       /* Trace Mode */
+#define M_TraceControl2Mode     (0x1f << S_TraceControl2Mode)
+#define S_TraceControl2ValidModes 5			/* Trace Modes supported by the processor */
+#define M_TraceControl2ValidModes (0x3 << S_TraceControl2ValidModes)
+#define S_TraceControl2TBI	4			/* Trace Buffers Implemented */
+#define M_TraceControl2TBI	(0x1f << S_TraceControl2TBI)
+#define S_TraceControl2TBU	3			/* Trace Buffer in Use */
+#define M_TraceControl2TBU	(0x1f << S_TraceControl2TBU)
+#define S_TraceControl2SyP	0			/* Sync Period */
+#define M_TraceControl2SyP	(0x7 << S_TraceControl2SyP)
+
+/* Reserved bits */
+#define M_TraceControl2R	(0x3 << 30)
+
+
+/*
+ ************************************************************************
+ *   U s e r T r a c e D a t a   R E G I S T E R   ( 2 3, SELECT 3 )    *
+ ************************************************************************
+ */
+#define C0_UserTraceData	$23,3
+#define R_C0_UserTraceData	23
+#define R_C0_SelUserTraceData	3
+
+#if defined(MIPS_Model64)
+#define M_UserTraceDataData	UINT64_C(0xffffffffffffffff)
+#else
+#define M_UserTraceDataData	0xffffffff
+#endif
+
+
+/*
+ ************************************************************************
+ *        T r a c e B P C   R E G I S T E R   ( 2 3, SELECT 4 )         *
+ ************************************************************************
+ */
+#define C0_TraceBPC		$23,4
+#define R_C0_TraceBPC		23
+#define R_C0_SelTraceBPC	4
+
+#define S_TraceBPCDE		31			/* Enable EJTAG data breakpoint triggers */
+#define M_TraceBPCDE		(0x1 << S_TraceBPCDE)
+#define S_TraceBPCDBPOn		16			/* Enable individual EJTAG data breakpoints to trigger tracing */
+#define M_TraceBPCDBPOn		(0x7fff << S_TraceBPCDBPOn)
+#define S_TraceBPCIE		15			/* Enable EJTAG instruction breakpoint triggers */
+#define M_TraceBPCIE		(0x1 << S_TraceBPCIE)
+#define S_TraceBPCIBPOn		0			/* Enable individual EJTAG instruction breakpoints to trigger tracing */
+#define M_TraceBPCIBPOn		(0x7fff << S_TraceBPCIBPOn)
+
+
+/*
+ ************************************************************************
  *                 D E P C   R E G I S T E R   ( 2 4 )                  *
  ************************************************************************
  * 	
@@ -2733,9 +2890,9 @@
  *  3 3 2 2 2 2 2 2 2 2 2 2 1 1 1 1 1 1 1 1 1 1
  *  1 0 9 8 7 6 5 4 3 2 1 0 9 8 7 6 5 4 3 2 1 0 9 8 7 6 5 4 3 2 1 0
  * +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
- * | |                                       |           |I| | | |E|
- * |M|                    0                  |   Event   |E|U|S|K|X| PerfCnt
- * | |                                       |           | | | | |L|
+ * | | |                                     |           |I| | | |E|
+ * |M|W|                  0                  |   Event   |E|U|S|K|X| PerfCnt
+ * | | |                                     |           | | | | |L|
  * +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
  *
  *
@@ -2754,6 +2911,10 @@
 
 #define S_PerfCntM		31			/* More performance counters exist (R) */
 #define M_PerfCntM		(1 << S_PerfCntM)
+#ifdef MIPS_Release2 
+#define S_PerfCntW		30			/* Event count is 64 bits (R) */
+#define M_PerfCntW		(1 << S_PerfCntW)
+#endif
 #define S_PerfCntEvent		5			/* Enabled event (R/W) */
 #define M_PerfCntEvent		(0x3f << S_PerfCntEvent)
 #define S_PerfCntIE		4			/* Interrupt Enable (R/W) */
@@ -2767,9 +2928,13 @@
 #define S_PerfCntEXL		0			/* Enable counting while EXL==1 (R/W) */
 #define M_PerfCntEXL		(1 << S_PerfCntEXL)
 
+#ifdef MIPS_Release2 
+#define M_PerfCnt0Fields	0x3ffff800
+#define M_PerfCntRFields	0xc0000000
+#else
 #define M_PerfCnt0Fields	0x7ffff800
 #define M_PerfCntRFields	0x80000000
-
+#endif
 
 /*
  ************************************************************************
@@ -2975,6 +3140,616 @@
 #define M_DESAVERFields		0x00000000
 #define M_DESAVE0Fields64	UINT64_C(0x0000000000000000)
 #define M_DESAVERFields64	UINT64_C(0x0000000000000000)
+
+
+
+
+/*****************************************************************************
+ *
+ *  Multi-Threading ASE Control registers
+ *
+ *****************************************************************************/
+
+#ifdef MIPS_MT
+
+/*
+ ************************************************************************
+ *        M V P C o n t r o l   R E G I S T E R   ( 0, SELECT 1 )       * MVPControl
+ ************************************************************************
+ * 	
+ *  3 3 2 2 2 2 2 2 2 2 2 2 1 1 1 1 1 1 1 1 1 1
+ *  1 0 9 8 7 6 5 4 3 2 1 0 9 8 7 6 5 4 3 2 1 0 9 8 7 6 5 4 3 2 1 0
+ * +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+ * |                  0                                      |S|V|E| MTConfig
+ * |                                                         |T|P|V|
+ * |                                                         |L|C|P|
+ * |                                                         |B| | |
+ * +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+ */
+
+#define C0_MVPCtl       $0, 1
+#define R_C0_MVPCtl     0
+#define R_C0_SelMVPCtl  1
+
+#define S_MVPCtlSTLB   2  /* Share TLBs */
+#define M_MVPCtlSTLB   (0x1 << S_MVPCtlSTLB)
+#define S_MVPCtlVPC    1  /* VPE configuration state */
+#define M_MVPCtlVPC    (0x1 << S_MVPCtlVPC)
+#define S_MVPCtlEVP    0  /* Enable Virtual Processors */
+#define M_MVPCtlEVP    (0x1 << S_MVPCtlEVP)
+
+
+/*
+ ************************************************************************
+ *        M V P C o n f 0   R E G I S T E R   ( 0, SELECT 2 )           * MVPConf0
+ ************************************************************************
+ * 	
+ *  3 3 2 2 2 2 2 2 2 2 2 2 1 1 1 1 1 1 1 1 1 1
+ *  1 0 9 8 7 6 5 4 3 2 1 0 9 8 7 6 5 4 3 2 1 0 9 8 7 6 5 4 3 2 1 0
+ * +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+ * |M|M|T|G|  0    |   PTLBE       |T| | PVPE  | 0 |     PTC       | MVPConf0
+ * | |2|L|S|       |               |C| |       |   |               |
+ * | | |B| |       |               |A| |       |   |               |
+ * | | |s| |       |               | | |       |   |               |  
+ * +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+ */
+
+#define C0_MVPConf0     $0,2
+#define R_C0_MVPConf0    0
+#define R_C0_SelMVPConf0 2
+
+#define S_MVPConf0M     31 /* Conf1 reg present */
+#define M_MVPConf0M     (0x1 << S_MVPConf0M)
+#define S_MVPConf0M2    30 /* Conf2 reg present */
+#define M_MVPConf0M2    (0x1 << S_MVPConf0M2)
+#define S_MVPConf0TLBS  29 /* TLB sharable */
+#define M_MVPConf0TLBS  (0x1 << S_MVPConf0TLBS)
+#define S_MVPConf0GS    28 /* Gating Storage Present */
+#define M_MVPConf0GS    (0x1 << S_MVPConf0GS)
+#define S_MVPConf0PTLBE 16 /* total TLB entries */
+#define M_MVPConf0PTLBE (0xff << S_MVPConf0PTLBE)
+#define S_MVPConf0TCA   15 /* TCs allocatable */
+#define M_MVPConf0TCA   (0x1 << S_MVPConf0TCA)
+#define W_MVPConf0PTLBE 8
+#define S_MVPConf0PVPE  10 /* total VPE contexts */
+#define M_MVPConf0PVPE  (0xf << S_MVPConf0PVPE)
+#define W_MVPConf0PVPE  4
+#define S_MVPConf0PTC   0  /* total TC contexts */
+#define M_MVPConf0PTC   (0xff << S_MVPConf0PTC)
+#define W_MVPConf0PTC   10
+
+
+
+/*
+ ************************************************************************
+ *        M V P C o n f 1   R E G I S T E R   ( 0, SELECT 3 )           * MVPConf1
+ ************************************************************************
+ * 	
+ *  3 3 2 2 2 2 2 2 2 2 2 2 1 1 1 1 1 1 1 1 1 1
+ *  1 0 9 8 7 6 5 4 3 2 1 0 9 8 7 6 5 4 3 2 1 0 9 8 7 6 5 4 3 2 1 0
+ * +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+ * |C|C|   |               |   |               |   |               |
+ * |1|1| 0 |  PCX          | 0 |   PCP2        | 0 |    PCP1       |   MVPConf1
+ * |M|F|   |               |   |               |   |               | 
+ * +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+ */
+
+#define C0_MVPConf1     $0,3
+#define R_C0_MVPConf1    0
+#define R_C0_SelMVPConf1 3
+
+#define S_MVPConf1C1M    31 /* CP1 is media-extention capable */
+#define M_MVPConf1C1M    (0x1 << S_MVPConf1C1M)
+#define S_MVPConf1C1F    30 /* CP1 is floating-point capable */
+#define M_MVPConf1C1F    (0x1 << S_MVPConf1C1F)
+#define W_MVPConf1C1F    1
+#define S_MVPConf1PCX    20 /* total UDI contexts */
+#define M_MVPConf1PCX    (0xff << S_MVPConf1PCX)
+#define S_MVPConf1PCP2   10 /* total Cop2 contexts */
+#define M_MVPConf1PCP2   (0xff << S_MVPConf1PCP2)
+#define S_MVPConf1PCP1   0 /* total Cop1 contexts */
+#define M_MVPConf1PCP1   (0xff << S_MVPConf1PCP1)
+#define W_MVPConf1PCP1   10
+
+
+/*
+ ************************************************************************
+ *        M V P C o n f 2   R E G I S T E R   ( 0, SELECT 3 )           * MVPConf2
+ ************************************************************************
+ * 	
+ *  3 3 2 2 2 2 2 2 2 2 2 2 1 1 1 1 1 1 1 1 1 1
+ *  1 0 9 8 7 6 5 4 3 2 1 0 9 8 7 6 5 4 3 2 1 0 9 8 7 6 5 4 3 2 1 0
+ * +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+ * |                                                       |T|S|I|D|
+ * |                                                       |N|N|N|N|   MVPConf2
+ * |                                                       |C|C|C|C| 
+ * +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+ */
+
+#define C0_MVPConf2     $0,4
+#define R_C0_MVPConf2    0
+#define R_C0_SelMVPConf2 4
+
+#define S_MVPConf2DNC 	0 /* Primary Data Cache noncoherent */
+#define M_MVPConf2DNC   (1 << S_MVPConf2DNC)
+#define S_MVPConf2INC 	1 /* Primary Instruction Cache noncoherent */
+#define M_MVPConf2INC   (1 << S_MVPConf2INC)
+#define S_MVPConf2SNC 	2 /* Secondary Cache noncoherent */
+#define M_MVPConf2SNC   (1 << S_MVPConf2SNC)
+#define S_MVPConf2TNC 	3 /* Tertiary Cache noncoherent */
+#define M_MVPConf2TNC   (1 << S_MVPConf2TNC)
+
+#define M_MVPConf2ZeroFields ~(M_MVPConf2DNC|M_MVPConf2INC|M_MVPConf2SNC|M_MVPConf2TNC)
+
+
+/*
+ ************************************************************************
+ *      V P E C o n t r o l   R E G I S T E R   ( 1, SELECT 1 )         * VPEControl
+ ************************************************************************
+ * 	
+ *  3 3 2 2 2 2 2 2 2 2 2 2 1 1 1 1 1 1 1 1 1 1
+ *  1 0 9 8 7 6 5 4 3 2 1 0 9 8 7 6 5 4 3 2 1 0 9 8 7 6 5 4 3 2 1 0
+ * +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+ * |       0           |Y|G|0|EXCPT|T|      0      |    TargTC     |
+ * |                   |S|S| |     |E|             |               |
+ * |                   |I|I| |     | |             |               | 
+ * +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+ */
+
+
+#define C0_VPECtl       $1,1
+#define R_C0_VPECtl      1
+#define R_C0_SelVPECtl   1
+
+#define S_VPECtlYSI      21 /* YIELD Scheduler Intercept */
+#define M_VPECtlYSI      (0x1 << S_VPECtlYSI)
+#define S_VPECtlGSI      20 /* Gating Storage Scheduler Intercept */
+#define M_VPECtlGSI      (0x1 << S_VPECtlGSI)
+
+#define S_VPECtlEXCPT    16 /* Exception sub-code */
+#define M_VPECtlEXCPT    (0x7 << S_VPECtlEXCPT)
+
+/* Value definitions for the Exception sub-codes */
+#define K_VPECtlExcptTU    0 /* Thread Underflow */
+#define K_VPECtlExcptTO    1 /* Thread Overflow */
+#define K_VPECtlExcptIYQ   2 /* Invalid Yield Qualifier */
+#define K_VPECtlExcptGSE   3 /* Gating Storage Exception */
+#define K_VPECtlExcptYSE   4 /* Yield Scheduler Exception */
+#define K_VPECtlExcptGSSE  5 /* Gating Storage Scheduler Exception */
+#define K_VPECtlExcptRes1  6 /* Reserved exception subcode */
+#define K_VPECtlExcptRes2  7 /* Reserved exception subcode */
+
+#define S_VPECtlTE       15 /* Theads Enabled */
+#define M_VPECtlTE       (0x1 << S_VPECtlTE)
+
+#define S_VPECtlTargTC   0  /* TC number used on MTTR/MFTR instructions */
+#define M_VPECtlTargTC   (0xff << S_VPECtlTargTC)
+#define W_VPECtlTargTC   8
+
+
+/*
+ ************************************************************************
+ *        V P E C o n f 0   R E G I S T E R   ( 1, SELECT 2 )           * VPEConf0
+ ************************************************************************
+ * 	
+ *  3 3 2 2 2 2 2 2 2 2 2 2 1 1 1 1 1 1 1 1 1 1
+ *  1 0 9 8 7 6 5 4 3 2 1 0 9 8 7 6 5 4 3 2 1 0 9 8 7 6 5 4 3 2 1 0
+ * +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+ * |M| 0 |     XTC       |                  0                  |M|V| VPEConf0
+ * | |   |               |                                     |V|P|
+ * | |   |               |                                     |P|A|
+ * +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+ */
+
+#define C0_VPEConf0     $1,2
+#define R_C0_VPEConf0    1
+#define R_C0_SelVPEConf0 2
+
+#define S_VPEConf0M     31 /* reg present */
+#define M_VPEConf0M     (0x1 << S_VPEConf0M)
+#define S_VPEConf0XTC   21
+#define M_VPEConf0XTC   (0xff << S_VPEConf0XTC)
+#define W_VPEConf0XTC   8
+#define S_VPEConf0MVP   1 /* master Virtual Processor */
+#define M_VPEConf0MVP   (0x1 << S_VPEConf0MVP)
+#define S_VPEConf0VPA   0 /* Virtual processor activated */
+#define M_VPEConf0VPA   (0x1 << S_VPEConf0VPA)
+
+
+
+/*
+ ************************************************************************
+ *        V P E C o n f 1   R E G I S T E R   ( 1, SELECT 3 )           * VPEConf1
+ ************************************************************************
+ * 	
+ *  3 3 2 2 2 2 2 2 2 2 2 2 1 1 1 1 1 1 1 1 1 1
+ *  1 0 9 8 7 6 5 4 3 2 1 0 9 8 7 6 5 4 3 2 1 0 9 8 7 6 5 4 3 2 1 0
+ * +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+ * |   0   |    NCX        | 0 |      NCP2     | 0 |    NCP1       | VPEConf1
+ * +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+ */
+
+#define C0_VPEConf1     $1,3
+#define R_C0_VPEConf1    1
+#define R_C0_SelVPEConf1 3
+
+#define S_VPEConf1NCX    20 /* number of UDI state instatiations available */
+#define M_VPEConf1NCX    (0xff << S_VPEConf1NCX)
+#define S_VPEConf1NCP2   10 /* number of CP2 state instatiations available */
+#define M_VPEConf1NCP2   (0xff << S_VPEConf1NCP2)
+#define S_VPEConf1NCP1   0  /* number of CP1 state instatiations available */
+#define M_VPEConf1NCP1   (0xff << S_VPEConf1NCP1)
+
+
+/*
+ ************************************************************************
+ *      Y Q M a s k   R E G I S T E R   ( 1, SELECT 4 )                 * YQMask
+ ************************************************************************
+ * 	
+ *  3 3 2 2 2 2 2 2 2 2 2 2 1 1 1 1 1 1 1 1 1 1
+ *  1 0 9 8 7 6 5 4 3 2 1 0 9 8 7 6 5 4 3 2 1 0 9 8 7 6 5 4 3 2 1 0
+ * +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+ * |0|                   Mask                                      |  YQMask
+ * +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+ */
+
+#define C0_YQMask     $1,4
+#define R_C0_YQMask    1
+#define R_C0_SelYQMask 4
+
+#define M_YQMask       0x7fffffff
+
+
+/*
+ ************************************************************************
+ *      V P E S c h e d u l e   R E G I S T E R   ( 1, SELECT 5 )       * VPESchedule
+ ************************************************************************
+ * 	
+ *  3 3 2 2 2 2 2 2 2 2 2 2 1 1 1 1 1 1 1 1 1 1
+ *  1 0 9 8 7 6 5 4 3 2 1 0 9 8 7 6 5 4 3 2 1 0 9 8 7 6 5 4 3 2 1 0
+ * +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+ * |                Scheduler Vector                               | 
+ * +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+ */
+
+#define C0_VPESchedule     $1,5
+#define R_C0_VPESchedule    1
+#define R_C0_SelVPESchedule 5
+
+
+/*
+ ************************************************************************
+ *      V P E S c h e F B a c k   R E G I S T E R   ( 1, SELECT 6 )     * VPEScheFBack
+ ************************************************************************
+ * 	
+ *  3 3 2 2 2 2 2 2 2 2 2 2 1 1 1 1 1 1 1 1 1 1
+ *  1 0 9 8 7 6 5 4 3 2 1 0 9 8 7 6 5 4 3 2 1 0 9 8 7 6 5 4 3 2 1 0
+ * +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+ * |                Scheduler Feedback                             | 
+ * +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+ */
+
+
+#define C0_VPEScheFBack       $1,6
+#define R_C0_VPEScheFBack     1
+#define R_C0_SelVPEScheFBack  6
+
+
+/*
+ ************************************************************************
+ *            T C S t a t u s    R E G I S T E R   ( 2, SELECT 1 )      * TCStatus
+ ************************************************************************
+ * 	
+ *  3 3 2 2 2 2 2 2 2 2 2 2 1 1 1 1 1 1 1 1 1 1
+ *  1 0 9 8 7 6 5 4 3 2 1 0 9 8 7 6 5 4 3 2 1 0 9 8 7 6 5 4 3 2 1 0
+ * +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+ * |TCU3..0|T| 0 | R |T|T|D|  Impl |D|0|A| T |I| 0 |    TASID      |
+ * |       |M|   | N |S|D|T|       |A| | | K |X|   |               |
+ * |       |X|   | S |S|S| |       | | | | S |M|   |               |
+ * |       | |   | T |T| | |       | | | | U |T|   |               |
+ * +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+ */
+
+#define C0_TCStatus     $2,1
+#define R_C0_TCStatus    2
+#define R_C0_SelTCStatus 1
+
+#define S_TCStatusTCU    28 /* thread cop 3,2,1,0 enable bits */
+#define M_TCStatusTCU    (0xf << S_TCStatusTCU)
+#define S_TCStatusTCU3	 31 			/* No longer used in Release 2 */
+#define M_TCStatusTCU3   (0x1 << S_TCStatusTCU3)
+#define S_TCStatusTCU2	 30
+#define M_TCStatusTCU2	 (0x1 << S_TCStatusTCU2)
+#define S_TCStatusTCU1	 29
+#define M_TCStatusTCU1	 (0x1 << S_TCStatusTCU1)
+#define S_TCStatusTCU0	 28
+#define M_TCStatusTCU0	 (0x1 << S_TCStatusTCU0)
+#define S_TCStatusTMX  	 27
+#define M_TCStatusTMX  	 (0x1 << S_TCStatusTMX)
+#define S_TCStatusRNST   23 /* Run state of TC */
+#define M_TCStatusRNST   (0x3 << S_TCStatusRNST)
+#define S_TCStatusTSSt   22 /* Thread Single Step */
+#define M_TCStatusTSSt   (0x1 << S_TCStatusTSSt)
+#define S_TCStatusTDS    21 /* thread Delay Slot bit  */
+#define M_TCStatusTDS    (0x1 << S_TCStatusTDS)
+#define S_TCStatusDT     20 /* dirty TC */
+#define M_TCStatusDT     (0x1 << S_TCStatusDT)
+#define S_TCStatusDA     15 /* dynamic allocation enabled  */
+#define M_TCStatusDA     (0x1 << S_TCStatusDA)
+#define S_TCStatusA      13 /* thread active */
+#define M_TCStatusA      (0x1 << S_TCStatusA)
+#define S_TCStatusTKSU   11 /* Kernel/Supervisor/User state   */
+#define M_TCStatusTKSU   (0x3 << S_TCStatusTKSU)
+#define S_TCStatusIXMT   10 /* interrupt exempt - don't use this TC for interrupt handling */
+#define M_TCStatusIXMT   (0x1 << S_TCStatusIXMT)
+#define S_TCStatusTASID  0  /* TC ASID field */
+#define M_TCStatusTASID  (0xff << S_TCStatusTASID)
+
+
+/* Value definitions for the Runstate sub-codes */
+#define K_TCStatusRNSTRun   0 /* running */
+#define K_TCStatusRNSTWait  1 /* waiting */
+#define K_TCStatusRNSTYield 2 /* blocked on yield */
+#define K_TCStatusRNSTStore 3 /* blocked on gating storage */
+ 
+#define M_TCStatus0Fields 0x06004300
+
+/*
+ ***********************************************************************
+ *            T C B i n d    R E G I S T E R   ( 2, SELECT 2 )         * TCBind
+ ***********************************************************************
+ * 	
+ *  3 3 2 2 2 2 2 2 2 2 2 2 1 1 1 1 1 1 1 1 1 1
+ *  1 0 9 8 7 6 5 4 3 2 1 0 9 8 7 6 5 4 3 2 1 0 9 8 7 6 5 4 3 2 1 0
+ * +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+ * |  0  | CurTC         | A0  |       0                   | CurVPE| 
+ * +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+ */
+
+#define C0_TCBind     $2,2
+#define R_C0_TCBind    2
+#define R_C0_SelTCBind 2
+
+#define S_TCBindCurTC  21 /* Current TC number (index) */
+#define M_TCBindCurTC  (0xff << S_TCBindCurTC)
+#define W_TCBindCurTC  8
+
+#define S_TCBindA0     18 /* Predefined 0 bits allowing easy setup of a TC Index */
+#define M_TCBindA0     (0x7 << S_TCBindA0)
+
+#define S_TCBindCurVPE 0 /* VPE index */
+#define M_TCBindCurVPE (0xf << S_TCBindCurVPE)
+#define W_TCBindCurVPE 4
+
+
+/*
+ ************************************************************************
+ *            T C R e s t a r t   R E G I S T E R   ( 2, SELECT 3 )     * TCRestart
+ ************************************************************************
+ * 	
+ *  6 // 3 3 2 2 2 2 2 2 2 2 2 2 1 1 1 1 1 1 1 1 1 1
+ *  3 // 1 0 9 8 7 6 5 4 3 2 1 0 9 8 7 6 5 4 3 2 1 0 9 8 7 6 5 4 3 2 1 0
+ * +-+//+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+ * |  //                   Thread Restart Address                       | 
+ * +-+//+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+ */
+
+#define C0_TCRestart     $2,3
+#define R_C0_TCRestart    2
+#define R_C0_SelTCRestart 3
+
+
+
+/*
+ ************************************************************************
+ *               T C H a l t   R E G I S T E R   ( 2, SELECT 4 )        * TCHalt
+ ************************************************************************
+ * 	
+ *  3 3 2 2 2 2 2 2 2 2 2 2 1 1 1 1 1 1 1 1 1 1
+ *  1 0 9 8 7 6 5 4 3 2 1 0 9 8 7 6 5 4 3 2 1 0 9 8 7 6 5 4 3 2 1 0
+ * +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+ * |                                                             |H| 
+ * +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+ */
+
+#define C0_TCHalt      $2,4
+#define R_C0_TCHalt    2
+#define R_C0_SelTCHalt 4
+
+#define S_TCHaltH 0
+#define M_TCHaltH (0x1 << S_TCHaltH)
+
+
+/*
+ ************************************************************************
+ *          T C C o n t e x t   R E G I S T E R   ( 2, SELECT 5 )       * TCContext
+ ************************************************************************
+ * 	
+ *  6 // 3 3 2 2 2 2 2 2 2 2 2 2 1 1 1 1 1 1 1 1 1 1
+ *  3 // 1 0 9 8 7 6 5 4 3 2 1 0 9 8 7 6 5 4 3 2 1 0 9 8 7 6 5 4 3 2 1 0
+ * +-+//+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+ * |  //                      ThreadContext                             | 
+ * +-+//+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+ */
+
+#define C0_TCContext     $2,5
+#define R_C0_TCContext    2
+#define R_C0_SelTCContext 5
+
+#define M_TCContext 0xffffffff
+
+
+/*
+ ************************************************************************
+ *           T C S c h e d u l e   R E G I S T E R   ( 2, SELECT 6 )    * TCSchedule
+ ************************************************************************
+ * 	
+ *  3 3 2 2 2 2 2 2 2 2 2 2 1 1 1 1 1 1 1 1 1 1
+ *  1 0 9 8 7 6 5 4 3 2 1 0 9 8 7 6 5 4 3 2 1 0 9 8 7 6 5 4 3 2 1 0
+ * +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+ * |                Scheduler Hint                                 | 
+ * +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+ */
+
+#define C0_TCSchedule     $2,6
+#define R_C0_TCSchedule    2
+#define R_C0_SelTCSchedule 6
+
+
+
+/*
+ ************************************************************************
+ *           T C S c h e F B a c k   R E G I S T E R   ( 2, SELECT 7 )  * TCScheFBack
+ ************************************************************************
+ * 	
+ *  3 3 2 2 2 2 2 2 2 2 2 2 1 1 1 1 1 1 1 1 1 1
+ *  1 0 9 8 7 6 5 4 3 2 1 0 9 8 7 6 5 4 3 2 1 0 9 8 7 6 5 4 3 2 1 0
+ * +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+ * |                Scheduler Feedback                             | 
+ * +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+ */
+
+#define C0_TCScheFBack      $2,7
+#define R_C0_TCScheFBack    2
+#define R_C0_SelTCScheFBack 7
+
+
+
+
+
+/*
+ ************************************************************************
+ *           S R S C o n f 0   R E G I S T E R   ( 6, SELECT 1 )        * SRSConf0
+ ************************************************************************
+ * 	
+ *  3 3 2 2 2 2 2 2 2 2 2 2 1 1 1 1 1 1 1 1 1 1
+ *  1 0 9 8 7 6 5 4 3 2 1 0 9 8 7 6 5 4 3 2 1 0 9 8 7 6 5 4 3 2 1 0
+ * +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+ * |M|0|        SRS3       |        SRS2       |        SRS1       | 
+ * +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+ */
+
+#define C0_SRSConf0      $6,1
+#define R_C0_SRSConf0    6
+#define R_C0_SelSRSConf0 1
+
+#define S_SRSConf0M    31
+#define M_SRSConf0M    (0x1 << S_SRSConf0M)
+#define S_SRSConf0SRS3 20
+#define M_SRSConf0SRS3 (0x3ff << S_SRSConf0SRS3)
+#define S_SRSConf0SRS2 10
+#define M_SRSConf0SRS2 (0x3ff << S_SRSConf0SRS2)
+#define S_SRSConf0SRS1 0
+#define M_SRSConf0SRS1 (0x3ff << S_SRSConf0SRS1)
+
+
+/*
+ ************************************************************************
+ *           S R S C o n f 1   R E G I S T E R   ( 6, SELECT 2 )        * SRSConf1
+ ************************************************************************
+ * 	
+ *  3 3 2 2 2 2 2 2 2 2 2 2 1 1 1 1 1 1 1 1 1 1
+ *  1 0 9 8 7 6 5 4 3 2 1 0 9 8 7 6 5 4 3 2 1 0 9 8 7 6 5 4 3 2 1 0
+ * +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+ * |M|0|        SRS3       |        SRS2       |        SRS1       | 
+ * +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+ */
+
+#define C0_SRSConf1      $6,2
+#define R_C0_SRSConf1    6
+#define R_C0_SelSRSConf1 2
+
+#define S_SRSConf1M    31
+#define M_SRSConf1M    (0x1 << S_SRSConf1M)
+#define S_SRSConf1SRS3 20
+#define M_SRSConf1SRS3 (0x3ff << S_SRSConf1SRS3)
+#define S_SRSConf1SRS2 10
+#define M_SRSConf1SRS2 (0x3ff << S_SRSConf1SRS2)
+#define S_SRSConf1SRS1 0
+#define M_SRSConf1SRS1 (0x3ff << S_SRSConf1SRS1)
+
+
+/*
+ ************************************************************************
+ *           S R S C o n f 2   R E G I S T E R   ( 6, SELECT 3 )        * SRSConf2
+ ************************************************************************
+ * 	
+ *  3 3 2 2 2 2 2 2 2 2 2 2 1 1 1 1 1 1 1 1 1 1
+ *  1 0 9 8 7 6 5 4 3 2 1 0 9 8 7 6 5 4 3 2 1 0 9 8 7 6 5 4 3 2 1 0
+ * +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+ * |M|0|        SRS3       |        SRS2       |        SRS1       | 
+ * +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+ */
+
+#define C0_SRSConf2      $6,3
+#define R_C0_SRSConf2    6
+#define R_C0_SelSRSConf2 3
+
+#define S_SRSConf2M    31
+#define M_SRSConf2M    (0x1 << S_SRSConf2M)
+#define S_SRSConf2SRS3 20
+#define M_SRSConf2SRS3 (0x3ff << S_SRSConf2SRS3)
+#define S_SRSConf2SRS2 10
+#define M_SRSConf2SRS2 (0x3ff << S_SRSConf2SRS2)
+#define S_SRSConf2SRS1 0
+#define M_SRSConf2SRS1 (0x3ff << S_SRSConf2SRS1)
+
+
+/*
+ ************************************************************************
+ *           S R S C o n f 3   R E G I S T E R   ( 6, SELECT 4 )        * SRSConf3
+ ************************************************************************
+ * 	
+ *  3 3 2 2 2 2 2 2 2 2 2 2 1 1 1 1 1 1 1 1 1 1
+ *  1 0 9 8 7 6 5 4 3 2 1 0 9 8 7 6 5 4 3 2 1 0 9 8 7 6 5 4 3 2 1 0
+ * +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+ * |M|0|        SRS3       |        SRS2       |        SRS1       | 
+ * +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+ */
+
+#define C0_SRSConf3      $6,4
+#define R_C0_SRSConf3    6
+#define R_C0_SelSRSConf3 4
+
+#define S_SRSConf3M    31
+#define M_SRSConf3M    (0x1 << S_SRSConf3M)
+#define S_SRSConf3SRS3 20
+#define M_SRSConf3SRS3 (0x3ff << S_SRSConf3SRS3)
+#define S_SRSConf3SRS2 10
+#define M_SRSConf3SRS2 (0x3ff << S_SRSConf3SRS2)
+#define S_SRSConf3SRS1 0
+#define M_SRSConf3SRS1 (0x3ff << S_SRSConf3SRS1)
+
+
+/*
+ ************************************************************************
+ *           S R S C o n f 4   R E G I S T E R   ( 6, SELECT 5 )        * SRSConf4
+ ************************************************************************
+ * 	
+ *  3 3 2 2 2 2 2 2 2 2 2 2 1 1 1 1 1 1 1 1 1 1
+ *  1 0 9 8 7 6 5 4 3 2 1 0 9 8 7 6 5 4 3 2 1 0 9 8 7 6 5 4 3 2 1 0
+ * +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+ * |M|0|        SRS3       |        SRS2       |        SRS1       | 
+ * +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+ */
+
+#define C0_SRSConf4      $6,5
+#define R_C0_SRSConf4    6
+#define R_C0_SelSRSConf4 5
+
+#define S_SRSConf4M    31
+#define M_SRSConf4M    (0x1 << S_SRSConf4M)
+#define S_SRSConf4SRS3 20
+#define M_SRSConf4SRS3 (0x3ff << S_SRSConf4SRS3)
+#define S_SRSConf4SRS2 10
+#define M_SRSConf4SRS2 (0x3ff << S_SRSConf4SRS2)
+#define S_SRSConf4SRS1 0
+#define M_SRSConf4SRS1 (0x3ff << S_SRSConf4SRS1)
+
+
+
+
+#endif /* MIPS_MT */
 
 
 /*
@@ -3231,6 +4006,8 @@
 #endif
 #define M_FIR0Fields		0xfff00000
 #define M_FIRRFields		0x000fffff
+
+
 
 /*
  ************************************************************************
@@ -3498,5 +4275,53 @@
 #define M_FIX_LONG_SIGN 	(UINT64_C(0x1) << S_FIX_LONG_SIGN)
 #define S_FIX_LONG_VALUE	0
 #define M_FIX_LONG_VALUE	(UINT64_C(0x7fffffffffffffff) << S_FIX_LONG_VALUE)
+
+/*
+ ************************************************************************
+ *        D S P C o n t r o l   R E G I S T E R                         * DSPControl
+ ************************************************************************
+ * 	
+ *  3 3 2 2 2 2 2 2 2 2 2 2 1 1 1 1 1 1 1 1 1 1
+ *  1 0 9 8 7 6 5 4 3 2 1 0 9 8 7 6 5 4 3 2 1 0 9 8 7 6 5 4 3 2 1 0
+ * +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+ * |       |       |               | |E| |           | |           |
+ * |   0   | cconf |     ouflag    |0|F|c|  scount   |0|   pos     | DSPControl
+ * |       |       |               | |I| |           | |           |
+ * +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+ */
+
+#define S_DSPCtlCcond  24
+#define M_DSPCtlCcond  (0xf << S_DSPCtlCcond)
+
+#define S_DSPCtlOuflag 16
+#define M_DSPCtlOuflag (0xff << S_DSPCtlOuflag)
+
+#define S_DSPCtlEFI    14
+#define M_DSPCtlEFI    (0x1  << S_DSPCtlEFI)
+#define S_DSPCtlC      13
+#define M_DSPCtlC      (0x1  << S_DSPCtlC)
+#define S_DSPCtlScount 7
+#define M_DSPCtlScount (0x3f << S_DSPCtlScount)
+#define S_DSPCtlPos    0
+#define M_DSPCtlPos    (0x3f << S_DSPCtlPos)
+
+/* Subfield definitions for the Ouflag bits: */
+#define M_DSPCtlOuflagAccs (0xf  << S_DSPCtlOuflag)
+#define S_DSPCtlOuflagExt  23
+#define M_DSPCtlOuflagExt  (0x1 << S_DSPCtlOuflagExt)
+#define S_DSPCtlOuflagSll  22
+#define M_DSPCtlOuflagSll  (0x1 << S_DSPCtlOuflagSll)
+#define S_DSPCtlOuflagMul  21
+#define M_DSPCtlOuflagMul  (0x1 << S_DSPCtlOuflagMul)
+#define S_DSPCtlOuflagAdd  20
+#define M_DSPCtlOuflagAdd  (0x1 << S_DSPCtlOuflagAdd)
+#define S_DSPCtlOuflagAc3  19
+#define M_DSPCtlOuflagAc3  (0x1 << S_DSPCtlOuflagAc3)
+#define S_DSPCtlOuflagAc2  18
+#define M_DSPCtlOuflagAc2  (0x1 << S_DSPCtlOuflagAc2)
+#define S_DSPCtlOuflagAc1  17
+#define M_DSPCtlOuflagAc1  (0x1 << S_DSPCtlOuflagAc1)
+#define S_DSPCtlOuflagAc0  16
+#define M_DSPCtlOuflagAc0  (0x1 << S_DSPCtlOuflagAc0)
 
 #endif /* _ArchDefs_h_ */

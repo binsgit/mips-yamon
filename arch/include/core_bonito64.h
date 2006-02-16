@@ -9,7 +9,7 @@
  *
  * mips_start_of_header
  * 
- *  $Id: core_bonito64.h,v 1.10 2001/07/12 09:43:09 soc Exp $
+ *  $Id: core_bonito64.h,v 1.11 2002/03/14 14:35:54 eggerts Exp $
  * 
  * Copyright (c) [Year(s)] MIPS Technologies, Inc. All rights reserved.
  *

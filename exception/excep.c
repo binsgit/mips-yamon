@@ -35,7 +35,7 @@
  *
  * mips_start_of_legal_notice
  * 
- * Copyright (c) 2004 MIPS Technologies, Inc. All rights reserved.
+ * Copyright (c) 2006 MIPS Technologies, Inc. All rights reserved.
  *
  *
  * Unpublished rights (if any) reserved under the copyright laws of the
@@ -109,7 +109,8 @@
  ************************************************************************/
 
 /* max. number of interrupt sources from the CPU */
-#define MAX_INTERRUPTS        (C0_STATUS_IM_MAX + 1)
+#define MAX_CPUINTERRUPTS        8	/* nonEIC mode */
+#define MAX_EICINTERRUPTS        64	/* EIC mode */
 
 /* max. number of exception codes from the CPU */
 #define MAX_EXCEPTIONS        (EX_MCHECK + 1)
@@ -176,7 +177,7 @@ typedef struct
     t_EXCEP_handler	      ejtag;
 
     /* CPU Interrupt handler table. */
-    t_EXCEP_int_handler_list  interrupt[MAX_INTERRUPTS];
+    t_EXCEP_int_handler_list  interrupt[MAX_EICINTERRUPTS];
 
     /* Int. controller handler table. */
     t_EXCEP_ctrl_handler_list controller[MAX_IC];
@@ -284,7 +285,7 @@ static char *(cause_names[]) =
   /* 22		          */ NULL,
   /* EX_WATCH  */ "Reference to WatchHi/WatchLo address",
   /* EX_MCHECK */ "Machine check",
-  /* 25		          */ NULL,
+  /* EX_THREAD */ "Thread",
   /* 26		          */ NULL,
   /* 27		          */ NULL,
   /* 28		          */ NULL,
@@ -355,6 +356,20 @@ cacheerr_handler(
 INT32 
 EXCEP_init( void ) 
 {
+    if (sys_eicmode) {
+	UINT32 data;
+
+	arch_eic_init();
+
+	/* Set IntCtl vector spacing */
+	SYSCON_read (SYSCON_CPU_CP0_INTCTL_ID,
+			 (void *)&data, sizeof(UINT32));
+	data &= ~M_IntCtlVS;
+	data |= (K_IntCtlVS32 << S_IntCtlVS);
+	SYSCON_write (SYSCON_CPU_CP0_INTCTL_ID,
+		      (void *)&data, sizeof(UINT32));
+    }
+
     /* Initialize interrupt controller */
     arch_excep_init_intctrl(&excep_ic_count, &excep_ic_int);
 
@@ -379,7 +394,7 @@ EXCEP_init( void )
     EXCEP_init_reg_mask();
 
     /* set up ram vectors and clear cp0 status BEV */
-    EXCEP_install_exc_in_ram();
+    EXCEP_install_exc_in_ram(sys_eicmode);
 
     return OK;
 }
@@ -578,7 +593,7 @@ EXCEP_deregister_esr(
  ************************************************************************/
 INT32 
 EXCEP_register_cpu_isr(
-    UINT32      cpu_int,	     /* CPU interrupt, 0..7		*/
+    UINT32      cpu_int,	     /* CPU interrupt, 0..7 or 0..63	*/
     t_EXCEP_isr handler,	     /* ISR to be registered		*/
     void        *data,   	     /* Data reference to be registered */
     t_EXCEP_ref *ref )	             /* OUT : Handle for deregistration */
@@ -596,7 +611,12 @@ EXCEP_register_cpu_isr(
     {
         h = &table.default_int;
     }
-    else if( cpu_int >= MAX_INTERRUPTS )
+    else if(!sys_eicmode && cpu_int >= MAX_CPUINTERRUPTS )
+    {
+        /* Interrupt specified is unknown */
+        rc = ERROR_EXCEP_ILLEGAL_INTERRUPT;
+    }
+    else if( cpu_int >= MAX_EICINTERRUPTS )
     {
         /* Interrupt specified is unknown */
         rc = ERROR_EXCEP_ILLEGAL_INTERRUPT;
@@ -640,7 +660,10 @@ EXCEP_register_cpu_isr(
         /* Enable interrupt mask */
 	if( enable )
 	{
-            sys_enable_int_mask( cpu_int );
+	    if (sys_eicmode)
+		arch_eic_enable_int (cpu_int);
+	    else
+		sys_enable_int_mask( cpu_int );
 	}
     }
 
@@ -695,7 +718,7 @@ EXCEP_deregister_cpu_isr(
     }
     else
     {
-        for( i=0; (i<MAX_INTERRUPTS) && (rc != OK); i++ )
+        for( i=0; (i<MAX_EICINTERRUPTS) && (rc != OK); i++ )
         {
             list = &table.interrupt[ i ];
 	
@@ -709,7 +732,10 @@ EXCEP_deregister_cpu_isr(
 		    if( list->list_size == 0 )
 		    {
 		        /* Disable interrupt mask */
-			sys_disable_int_mask( i );
+			if (sys_eicmode)
+			    arch_eic_disable_int (i);
+			else
+			    sys_disable_int_mask( i );
 		    }
 
 		    rc = OK;
@@ -941,7 +967,6 @@ EXCEP_store_handlers(
       case EXCEP_HANDLERS_GDB :
         memcpy( &table_gdb,   &table, sizeof(t_table) );
 	break;
-      default : /* Should not happen */
     }
 
     /* Restore interrupt enable status */
@@ -977,7 +1002,6 @@ EXCEP_set_handlers(
       case EXCEP_HANDLERS_GDB :
         memcpy( &table, &table_gdb,   sizeof(t_table) );
 	break;
-      default : /* Should not happen */
     }
 
     /* Restore interrupt enable status */
@@ -1072,7 +1096,7 @@ EXCEP_print_context(
     }
 
     /* CP0 registers */
-    sys_cp0_printreg_all( context );
+    sys_cp0_printreg_all( 0, context );
 
     printf( "\n" );
     
@@ -1340,6 +1364,41 @@ exception_ejtag(
  ************************************************************************/
 
 
+static void
+runhandlers (
+    t_EXCEP_int_handler_list *table_interrupt )
+{
+    UINT32 h;
+    t_INT_handler	     *int_handler;
+
+    if( table_interrupt->list_size == 0 )
+    {
+	/* No registered handler, so use default */
+
+	if( table.default_int.handler )
+	{
+	    /* A default handler has been registered, so call it */
+	    table.default_int.handler(table.default_int.data);
+	}
+	else
+	{
+	    /* No default handler has been registered, so call our own */
+	    default_handler( "Unregistered CPU interrupt occurred", NULL );
+	    return;	/* default_handler never returns */
+	}
+    }
+    else
+    {
+	/* For one int. line, more handlers may be registered */
+	for( h=0; h < INT_HANDLERS_PER_LINE; h++)
+	{
+	    int_handler = &table_interrupt->int_handler[h];
+
+	    if( int_handler->handler != NULL)
+		(*int_handler->handler)(int_handler->data);
+	}
+    }
+}
 
 /************************************************************************
  *
@@ -1359,10 +1418,9 @@ exception_ejtag(
 static void 
 interrupt_sr( void )
 {
-    UINT32                   h, index;
+    UINT32                   index;
     UINT32		     int_pending;
     t_EXCEP_int_handler_list *table_interrupt;
-    t_INT_handler	     *int_handler;
     t_gdb_regs               *p_context;
 
     /*  Determine the pending interrupts based on CAUSE register IP field
@@ -1370,12 +1428,15 @@ interrupt_sr( void )
      */
     p_context = EXCEP_get_context_ptr();
 
-    int_pending = ((p_context->cp0_cause & M_CauseIP) >> S_CauseIP) &
-	          ((p_context->cp0_status & M_StatusIM) >> S_StatusIM);
+    if (sys_eicmode) {
+	index = (p_context->cp0_cause & M_CauseRIPL) >> S_CauseRIPL;
+	table_interrupt = &table.interrupt[index];
+	runhandlers (table_interrupt);
+    }
+    else {
+	int_pending = ((p_context->cp0_cause & M_CauseIP) >> S_CauseIP) &
+	    ((p_context->cp0_status & M_StatusIM) >> S_StatusIM);
 
-    /* validate 'int_pending' */
-    if(int_pending <= (M_CauseIP >> S_CauseIP) )
-    {
         /* Handle the 8 possible interrupts: 0..7 */
 
         /* do call handlers for all pending interrupts */
@@ -1390,39 +1451,8 @@ interrupt_sr( void )
 
 	    table_interrupt = &table.interrupt[index];
 
-	    if( table_interrupt->list_size == 0 )
-	    {
-	        /* No registered handler, so use default */
-
-                if( table.default_int.handler )
-		{
-		    /* A default handler has been registered, so call it */
-                    table.default_int.handler(table.default_int.data);
-		}
-                else
-                {
-		    /* No default handler has been registered, so call our own */
-		    default_handler( "Unregistered CPU interrupt occurred", NULL );
-	            return;	/* default_handler never returns */
-                }
-	    }
-	    else
-	    {
-                /* For one int. line, more handlers may be registered */
-                for( h=0; h < INT_HANDLERS_PER_LINE; h++)
-                {
-		    int_handler = &table_interrupt->int_handler[h];
-
-                    if( int_handler->handler != NULL)
-                        (*int_handler->handler)(int_handler->data);
-                }
-            }
-        }
-    }
-    else
-    {
-        /* Should not happen */
-	while(1);
+	    runhandlers (table_interrupt);
+	}
     }
 }
 

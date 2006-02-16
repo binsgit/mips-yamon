@@ -9,7 +9,7 @@
  *
  * mips_start_of_legal_notice
  * 
- * Copyright (c) 2004 MIPS Technologies, Inc. All rights reserved.
+ * Copyright (c) 2006 MIPS Technologies, Inc. All rights reserved.
  *
  *
  * Unpublished rights (if any) reserved under the copyright laws of the
@@ -105,7 +105,13 @@ LEAF(__reset_handler)
  * will shift to cached when caches have been initialised.
  */	
 	.set noreorder
+	.set noat
 
+	/* Don't touch cause if we got here from an NMI */
+	MFC0(   k0, C0_Status)
+	sll	k0, (31-S_StatusNMI)
+	bltz	k0, 1f
+	
 	/* Setup cause register (clear cause code)  */
 	li	k0, M_CauseIV
 	MTC0(	k0, C0_Cause)
@@ -119,8 +125,10 @@ LEAF(__reset_handler)
 	 *
 	 *  sys_platform_early will set k0 = Product ID.
 	 */
+1:	
 	j       sys_platform_early
-	nop
+	 nop
+	.set	at
 
 sys_platform_early_done:
 	

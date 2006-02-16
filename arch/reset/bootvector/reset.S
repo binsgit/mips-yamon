@@ -9,7 +9,7 @@
  *
  * mips_start_of_legal_notice
  * 
- * Copyright (c) 2004 MIPS Technologies, Inc. All rights reserved.
+ * Copyright (c) 2006 MIPS Technologies, Inc. All rights reserved.
  *
  *
  * Unpublished rights (if any) reserved under the copyright laws of the
@@ -138,12 +138,15 @@ LEAF(__reset_vector)
 
 	/* Disable interrupts and KSU field (power up issue) */
 	MFC0(   k0, C0_Status)
+	sll	k1, k0, (31-S_StatusNMI)	/* Is this really from an NMI? */
+	bltz	k1, 1f
+	and	k1, M_StatusNMI >> S_StatusNMI
 	li	k1, ~(M_StatusIE | M_StatusKSU)
 	and	k0, k1
 	MTC0(	k0, C0_Status)
 
 	/* Determine endianness */
-	li	k1, KSEG1BASE
+1:	li	k1, KSEG1BASE
 	la	k0, digit
 	or	k0, k1
 	lb	k0, 0(k0)
@@ -265,27 +268,63 @@ disp_cacheerr:
 	
 
 .org 0x480
-       /* 0xBFC00480 EJTAG debug exception -- don't touch ANY GPR */
-       /******************************************************************
-	* This exception cannot be moved from here, so below code
-	* transfers it to RAM entry 0x80000300. The RAM entry will look
-	* similar, which may give this sequence of machine instructions:
-	*	bfc0049c:  jr    v0
-	*	bfc004a0:  mfc0  v0, C0_DESAVE
-	*	    (v0):  mtc0  xx, CO-DESAVE
-	* Notes on hazard:
-	* On CPUs without GPR interlocking, xx must be different from v0.
-	* The mfc0 and mtc0 placed back to back should not be a problem,
-	* as the read in CP0 takes place at an earlier stage than write,
-	* and DESAVE is a scratchpad register with no operational effects.
-	* Below: Two instructions between mtc0 and mfc0 is sufficient.
-	*/
-       mtc0     v0, C0_DESAVE
-       li       v0, KSEG0(SYS_EJTAG_RAM_VECTOR_OFS)
-       jr	v0
-       mfc0     v0, C0_DESAVE
+	/* 0xBFC00480 EJTAG debug exception -- don't touch ANY GPR */
+	/******************************************************************
+	 * This exception cannot be moved from here, so below code
+	 * transfers it to RAM entry SYS_EJTAG_RAM_VECTOR_OFS. The RAM entry will look
+	 * similar, which may give this sequence of machine instructions:
+	 *	bfc0049c:  jr    v0
+	 *	bfc004a0:  mfc0  v0, C0_DESAVE
+	 *	    (v0):  mtc0  xx, CO_DESAVE
+	 * Notes on hazard:
+	 * On CPUs without GPR interlocking, xx must be different from v0.
+	 * The mfc0 and mtc0 placed back to back should not be a problem,
+	 * as the read in CP0 takes place at an earlier stage than write,
+	 * and DESAVE is a scratchpad register with no operational effects.
+	 * Below: Two instructions between mtc0 and mfc0 is sufficient.
+	 */
+	.set	noat
+	mtc0    v0, C0_DESAVE
 
+	mfc0	v0, C0_PRId
+	srl	v0, S_PRIdCoID
+	and	v0, (M_PRIdCoID>>S_PRIdCoID)
+	bnez	v0, ejtagmips3264
+	 nop
 
+	mfc0	v0, C0_PRId
+	andi	v0, M_PRIdImp
+	xori	v0, (QED_RM52XX & M_PRIdImp)
+	beqz	v0, ejtag64
+	 xori	v0, (QED_RM52XX & M_PRIdImp)
+	xori	v0, (QED_RM70XX & M_PRIdImp)
+	beqz	v0, ejtag64
+	 nop
+
+	/* fall through to ejtag32 */
+	
+ejtag32:
+	li      v0, KSEG0(SYS_EJTAG_RAM_VECTOR_OFS)
+	jr	v0
+	 mfc0    v0, C0_DESAVE
+	
+ejtagmips3264:
+	mfc0	v0, C0_Config
+	srl	v0, S_ConfigAT
+	and	v0, (M_ConfigAT >> S_ConfigAT)
+	xori	v0, K_ConfigAT_MIPS32
+	beqz	v0, ejtag32
+	 nop
+	
+	/* fall through to ejtag64 */
+	
+ejtag64:
+	li      v0, KSEG0(SYS_EJTAG_RAM_VECTOR_OFS)
+	.set	mips64
+	jr	v0
+	 dmfc0    v0, C0_DESAVE
+	.set	mips0
+	
 .org 0x500
        /* 0xBFC00500 Vector table for shell functions */
 

@@ -9,7 +9,7 @@
  *
  * mips_start_of_legal_notice
  * 
- * Copyright (c) 2004 MIPS Technologies, Inc. All rights reserved.
+ * Copyright (c) 2006 MIPS Technologies, Inc. All rights reserved.
  *
  *
  * Unpublished rights (if any) reserved under the copyright laws of the
@@ -121,6 +121,12 @@
 /* MIPS 24K specifics */
 #define STATUS_MIPS24K	    0
 #define CONFIG0_MIPS24K  ((K_CacheAttrCN << S_ConfigK23) |\
+			  (K_CacheAttrCN << S_ConfigKU)  |\
+			  (M_ConfigMM))
+
+/* MIPS 34K specifics */
+#define STATUS_MIPS34K	    0
+#define CONFIG0_MIPS34K  ((K_CacheAttrCN << S_ConfigK23) |\
 			  (K_CacheAttrCN << S_ConfigKU)  |\
 			  (M_ConfigMM))
 

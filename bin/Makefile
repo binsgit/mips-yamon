@@ -1,4 +1,3 @@
-
 # ********************************************************************
 #
 # Makefile used for building YAMON.
@@ -36,7 +35,7 @@
 #
 # mips_start_of_legal_notice
 # 
-# Copyright (c) 2004 MIPS Technologies, Inc. All rights reserved.
+# Copyright (c) 2006 MIPS Technologies, Inc. All rights reserved.
 #
 #
 # Unpublished rights (if any) reserved under the copyright laws of the
@@ -97,8 +96,16 @@
 # things, you have to adapt to your specific environment.
 # ********************************************************************
 
-# Tool-chain used for compilation of target code (cygnus or sde).
+# Tool-chain used for compilation of target code (cygnus, sde or linux).
+#TOOLCHAIN = cygnus
 TOOLCHAIN = sde
+#TOOLCHAIN = linux
+
+# Gcc major version number affects gcc options
+# If it is not set the Makefile will attempt to determine the version
+# in use automatically
+#GCC_VERSION=2
+#GCC_VERSION=3
 
 ifeq ($(TOOLCHAIN),cygnus)
 # version 2.96
@@ -110,10 +117,28 @@ endif
 
 ifeq ($(TOOLCHAIN),sde)
 # sde version 4.1sb (gcc version 2.96)
+# sde version 5.03.06 (gcc version 2.96)
+# sde version 6.01 (gcc version 3.4)
 CC        = sde-gcc
 LD        = sde-ld
 OBJCOPY   = sde-objcopy
 OBJDUMP   = sde-objdump
+endif
+
+ifeq ($(TOOLCHAIN),linux)
+CC        = mipsel-linux-gcc
+LD        = mipsel-linux-ld
+OBJCOPY   = mipsel-linux-objcopy
+OBJDUMP   = mipsel-linux-objdump
+endif
+
+ifndef (GCC_VERSION)
+GCC_VERSION = $(shell \
+	if $(CC) -v 2>&1 | fgrep 'gcc version 3.' >/dev/null; then \
+	  echo "3"; \
+	else \
+	  echo "2"; \
+	fi)
 endif
 
 # Perl interpreter
@@ -147,7 +172,7 @@ BSS_OLD = 0
 # Revision
 # ********************************************************************
 REVMAJ = 02
-REVMIN = 06
+REVMIN = 11
 
 # ********************************************************************
 # Target prefix.
@@ -349,7 +374,9 @@ BUILD_DEFS = $(WORKAROUND_BONITO) $(WORKAROUND_NO_CACHE) $(KSEG0_UNCACHED)
 # ********************************************************************
 
 ifeq ($(TOOLCHAIN),sde)
-AS_OPTS   = -no-traditional-cpp
+ ifneq (,$(strip $(filter 2,$(GCC_VERSION))))
+  AS_OPTS   = -no-traditional-cpp
+ endif
 TEST_SIZE = test_size
 endif
 
@@ -382,7 +409,19 @@ INCLUDE   = -I$(ROOT)/include -I$(ROOT)/arch/include
 W_OPTS    = -Wimplicit -Wformat
 REV_OPTS  = '-D_REVMAJ_="$(REVMAJ)"' '-D_REVMIN_="$(REVMIN)"'
 
-CC_OPTS   = -mips2 -g -mcpu=r4000 -D_32_ -O2 -G0 -fno-builtin $(W_OPTS) $(REV_OPTS) $(INCLUDE) $(DEBUG) $(SIMULATE) $(BUILD_DEFS) -$(ENDIAN) -D$(ENDIAN)
+ifndef CPUTUNE
+ ifneq (,$(strip $(filter 2,$(GCC_VERSION))))
+  CPUTUNE	=-mcpu=r4600
+ else
+  CPUTUNE	=-mtune=r4600
+ endif
+endif
+
+CC_OPTS   = -mips2 $(CPUTUNE) -g -D_32_ -O2 -G0 -fno-builtin $(W_OPTS) $(REV_OPTS) $(INCLUDE) $(DEBUG) $(SIMULATE) $(BUILD_DEFS) -$(ENDIAN) -D$(ENDIAN)
+
+ifeq ($(TOOLCHAIN),linux)
+CC_OPTS   += -mno-abicalls -fno-pic
+endif
 
 ifeq ($(BSS_OLD),0)
 CC_OPTS_A = $(CC_OPTS) $(AS_OPTS) -D_ASSEMBLER_
@@ -396,11 +435,17 @@ MAKEFILE  = $(MAKEDIR)/Makefile
 # Options to linker (currently none).
 LD_OPTS   =
 
+ifneq (,$(strip $(filter 2,$(GCC_VERSION))))
+  BFDPREF	  = elf32-
+else
+  BFDPREF	  = elf32-trad
+endif
+
 # Linker output format.
 ifeq ($(ENDIAN),EB)
-OFORMAT   = elf32-bigmips
+  OFORMAT   = $(BFDPREF)bigmips
 else
-OFORMAT   = elf32-littlemips
+  OFORMAT   = $(BFDPREF)littlemips
 endif
 
 # Options to objdump
@@ -437,14 +482,17 @@ test_install :
 	@$(PERL) $(TOOLDIR)/test_install.pl
 
 fpuemul :
-	$(CD) $(ROOT)/fpuemul; $(MAKE) TOOLCHAIN=$(TOOLCHAIN)
+	$(CD) $(ROOT)/fpuemul; $(MAKE) TOOLCHAIN=$(TOOLCHAIN) CC=$(CC) LD=$(LD) CPUTUNE=$(CPUTUNE) GCC_VERSION=$(GCC_VERSION) BFDPREF=$(BFDPREF)
 
 test_size :
+	@echo Checking size...
 	@space=`$(OBJDUMP) -h $(IMAGE_ELF) | \
-	awk '/dat/ { \
-	    $$5=substr($$5, length($$5)-7, 8); \
-	    print "16 i ",$$3,$$5,"+ $(MAX_ADDRESS) - p" \
-	}' | \
+	awk 'BEGIN { load = 0; size = 0 } \
+	     /dat/ { \
+		    $$5=substr($$5, length($$5)-7, 8); \
+		    load = $$3; size = $$5; \
+	     } \
+	     END { print "16 i ",load,size,"+ $(MAX_ADDRESS) - p "}' | \
 	tr '[a-f]' '[A-F]' | dc` ;\
 	if test $$space -gt 0; then \
 	    echo "" ;\
@@ -498,7 +546,7 @@ $(IMAGE_SREC) : $(IMAGE_ELF)
 	$(OBJCOPY) -O srec $(IMAGE_ELF) $(IMAGE_SREC)
 
 $(IMAGE_ELF) : $(OBJ) $(LD_SCRIPT)
-	$(LD) $(LD_OPTS) -T $(LD_SCRIPT) -o $(IMAGE_ELF) -Map $(IMAGE_MAP) -oformat $(OFORMAT) $(OBJ)
+	$(LD) $(LD_OPTS) -T $(LD_SCRIPT) -o $(IMAGE_ELF) -Map $(IMAGE_MAP) --oformat $(OFORMAT) $(OBJ)
 
 $(OBJ_C) : %.o : %.c 
 	$(CC) -c $(CC_OPTS) -o $@ $<
@@ -527,7 +575,7 @@ clean :
 depend: test_install dep
 	$(CD) $(EL_PATH); $(MAKE) -f ./../$(MAKEFILE) ENDIAN=EL dep
 	$(CD) $(EB_PATH); $(MAKE) -f ./../$(MAKEFILE) ENDIAN=EB dep
-	$(CD) $(ROOT)/fpuemul; $(MAKE) TOOLCHAIN=$(TOOLCHAIN) depend
+	$(CD) $(ROOT)/fpuemul; $(MAKE) TOOLCHAIN=$(TOOLCHAIN) CC=$(CC) depend
 
 TAGS:
 	(cd ..; rm -f TAGS; find . -name "*.[chS]" | xargs $(TAGS) --append -t )

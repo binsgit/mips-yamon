@@ -9,7 +9,7 @@
  *
  * mips_start_of_legal_notice
  * 
- * Copyright (c) 2004 MIPS Technologies, Inc. All rights reserved.
+ * Copyright (c) 2006 MIPS Technologies, Inc. All rights reserved.
  *
  *
  * Unpublished rights (if any) reserved under the copyright laws of the
@@ -197,7 +197,7 @@ arch_platform_init(
 
             /* Perform early core specific initialisation */
 	    /*  Setup Base address for PCI IO access. */
-            arch_core_init( TRUE, MALTA_CPUINT_COREHI, TRUE );
+            arch_core_init( TRUE, 0, FALSE );
 
             /* Enable I/O access */
 
@@ -433,7 +433,9 @@ arch_platform_init(
           case PRODUCT_MALTA_ID :
 
 	    /* Perform core specific initialisation */
-            arch_core_init( FALSE, MALTA_CPUINT_COREHI, TRUE );
+            arch_core_init( FALSE,
+			    sys_eicmode ? MALTA_EICINT_COREHI : MALTA_CPUINT_COREHI,
+			    TRUE );
 
 	    /**** Setup SMI (System Management Interrupt) ****/
 
@@ -471,7 +473,7 @@ arch_platform_init(
 	    R16( base + PIIX4_GLBSTS_OFS ) = 0xFFFF;
 
             /* Register ISR for SMI interrupts */
-	    EXCEP_register_cpu_isr( MALTA_CPUINT_SMI,
+	    EXCEP_register_cpu_isr( sys_eicmode ? MALTA_EICINT_SMI : MALTA_CPUINT_SMI,
 				    smi_isr,
 				    NULL,
 				    NULL );

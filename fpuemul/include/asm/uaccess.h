@@ -1,4 +1,4 @@
-/* $Id: uaccess.h,v 1.2 2002/02/01 12:10:00 kjelde Exp $
+/* $Id: uaccess.h,v 1.5 2002/09/19 13:16:08 kjelde Exp $
  *
  * This file is subject to the terms and conditions of the GNU General Public
  * License.  See the file "COPYING" in the main directory of this archive

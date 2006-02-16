@@ -12,7 +12,7 @@
  *
  * mips_start_of_legal_notice
  * 
- * Copyright (c) 2004 MIPS Technologies, Inc. All rights reserved.
+ * Copyright (c) 2006 MIPS Technologies, Inc. All rights reserved.
  *
  *
  * Unpublished rights (if any) reserved under the copyright laws of the
@@ -83,40 +83,49 @@
 
 //#define NET_DEBUG            1
 
-#define get1( src, dest )    { dest = *(UINT8*)src++ ; }
+#define _incr(src, type)	(src) += sizeof(type) / sizeof(*(src))
+#define _get(src, type)		*((type*)(src))
+#define _getx(src, type)	_get((src), type); _incr((src), type)
+#define _put(src, dest, type)	*((type*)(dest)) = (type)(src)
+#define _putx(src, dest, type)	_put((src), (dest), type); _incr((dest), type)
 
-#define get2( src, dest )    { dest = *((UINT16*)src)++ ; }
+#define get1(src, dest)		{ dest = _getx(src, UINT8); }
+
+#define get2(src, dest)		{ dest = _getx(src, UINT16); }
 
 #if EB
-#define get4( src, dest )    { dest = *((UINT16*)src)++; \
-                               dest = (dest << 16) | *((UINT16*)src)++ ; }
+#define get4(src, dest)		{ dest = _getx(src, UINT16); \
+                                  dest = (dest << 16) | _getx(src, UINT16); }
 #endif
+
 #if EL
-#define get4( src, dest )    { dest = *((UINT16*)src)++ ; \
-                               dest = dest | (*((UINT16*)src)++ << 16) ; }
+#define get4(src, dest)		{ dest = _getx(src, UINT16); \
+                                  dest = dest | (_get(src, UINT16) << 16); _incr(src, UINT16); }
 #endif
 
-#define get6( src, dest )    { *(UINT8*)&dest = *(UINT8*)src++ ;   \
-                               *((UINT8*)&dest+1) = *(UINT8*)src++ ;   \
-                               *((UINT8*)&dest+2) = *(UINT8*)src++ ;   \
-                               *((UINT8*)&dest+3) = *(UINT8*)src++ ;   \
-                               *((UINT8*)&dest+4) = *(UINT8*)src++ ;   \
-                               *((UINT8*)&dest+5) = *(UINT8*)src++ ; }
+#define get6(src, dest)		{ *((UINT8*)&dest+0) = _getx(src, UINT8); \
+                                  *((UINT8*)&dest+1) = _getx(src, UINT8); \
+                                  *((UINT8*)&dest+2) = _getx(src, UINT8); \
+                                  *((UINT8*)&dest+3) = _getx(src, UINT8); \
+                                  *((UINT8*)&dest+4) = _getx(src, UINT8); \
+                                  *((UINT8*)&dest+5) = _getx(src, UINT8); }
 
+#define put1(src, dest)		{ _putx(src, dest, UINT8); }
 
-#define put1( src, dest )    { *(volatile UINT8*)dest++ = src ; }
+#define put2(src, dest)		{ _putx(src, dest, UINT16); }
 
-#define put2( src, dest )    { *((volatile UINT16*)dest)++ = src ; }
+#if 1
 
-#define putbe2( src, dest )  { *(volatile UINT8*)dest++ = (src) >> 8 ; \
-                               *(volatile UINT8*)dest++ = (UINT8)src ; }
+#define putbe2(src, dest)	{ _putx(src >> 8, dest, UINT8); \
+                                  _putx(src, dest, UINT8); }
 
-#define put4( src, dest )    { *((volatile UINT16*)dest)++ = ((UINT16*)&src)[0] ; \
-                               *((volatile UINT16*)dest)++ = ((UINT16*)&src)[1] ; }
+#define put4(src, dest)		{ _putx(((UINT16*)&src)[0], dest, UINT16); \
+                                  _putx(((UINT16*)&src)[1], dest, UINT16); }
 
-#define put6( src, dest )    { *((volatile UINT16*)dest)++ = ((UINT16*)&src)[0] ; \
-                               *((volatile UINT16*)dest)++ = ((UINT16*)&src)[1] ; \
-                               *((volatile UINT16*)dest)++ = ((UINT16*)&src)[2] ; }
+#define put6(src, dest)		{ _putx(((UINT16*)&src)[0], dest, UINT16); \
+                                  _putx(((UINT16*)&src)[1], dest, UINT16); \
+                                  _putx(((UINT16*)&src)[2], dest, UINT16); }
+#endif
 
 #define IF_ERROR( completion, function )  \
 { \

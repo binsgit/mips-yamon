@@ -5,7 +5,7 @@
  *
  * Copyright (c) 1998 Harald Koerfgen
  *
- * $Id: isadep.h,v 1.1.1.3 2001/04/30 11:02:58 carstenl Exp $
+ * $Id: isadep.h,v 1.2 2002/02/01 12:10:00 kjelde Exp $
  */
 #include <linux/config.h>
 

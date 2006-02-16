@@ -9,7 +9,7 @@
  *
  * mips_start_of_legal_notice
  * 
- * Copyright (c) 2004 MIPS Technologies, Inc. All rights reserved.
+ * Copyright (c) 2006 MIPS Technologies, Inc. All rights reserved.
  *
  *
  * Unpublished rights (if any) reserved under the copyright laws of the
@@ -350,6 +350,7 @@ shell_arch_cache_config(
         break;
 
       case MIPS_24K :
+      case MIPS_34K :
         *mapping      = mapping_24k;
 	*config_count = CACHE_COUNT_24K;
         break;

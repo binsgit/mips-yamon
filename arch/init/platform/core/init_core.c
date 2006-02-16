@@ -8,7 +8,7 @@
  *
  * mips_start_of_legal_notice
  * 
- * Copyright (c) 2004 MIPS Technologies, Inc. All rights reserved.
+ * Copyright (c) 2006 MIPS Technologies, Inc. All rights reserved.
  *
  *
  * Unpublished rights (if any) reserved under the copyright laws of the
@@ -148,9 +148,6 @@ arch_core_init(
 {
     UINT32 clock_period_ns;
 
-    /* Store cpu parameter */
-    cpu_isr_parm = cpu_isr;
-
     if( early )
     {
         /* Setup North Bridge mapping global variable */
@@ -176,6 +173,7 @@ arch_core_init(
 	  case MIPS_REVISION_CORID_CORE_SYS :
 	  case MIPS_REVISION_CORID_CORE_FPGA2 :
 	  case MIPS_REVISION_CORID_CORE_EMUL_SYS :
+	  case MIPS_REVISION_CORID_CORE_FPGA3 :
 	    /* Setup North Bridge mapping global variable */
 	    sys_nb_base = MSC01_REGADDR_BASE;
 	    malta_pci_io_base = CORE_SYS_PCIIO_BASE;
@@ -189,6 +187,9 @@ arch_core_init(
     }
     else
     {
+	/* Store cpu parameter */
+	cpu_isr_parm = cpu_isr;
+
         switch( sys_corecard )
         {
           case MIPS_REVISION_CORID_QED_RM5261 :
@@ -292,6 +293,7 @@ arch_core_init(
 	  case MIPS_REVISION_CORID_CORE_SYS :
 	  case MIPS_REVISION_CORID_CORE_FPGA2 :
 	  case MIPS_REVISION_CORID_CORE_EMUL_SYS :
+	  case MIPS_REVISION_CORID_CORE_FPGA3 :
 
 	    /* Register ISR */
 	    if( cpu_isr_parm )
@@ -314,27 +316,29 @@ arch_core_init(
 	    /* Set up interrupt controller */
 	    /* enable interrupt line 1 (pci p-err and pci s-err) */
 	    {
+		if (!sys_eicmode) {
 #define MSC01_IC_PCIINTNO 1
 #define IC_REG(ofs) (*(volatile UINT32*)&msc01_ic_regbase[ofs])
-		UINT8 *msc01_ic_regbase = (UINT8 *)MSC01_IC_REG_BASE;
+		    UINT8 *msc01_ic_regbase = (UINT8 *)MSC01_IC_REG_BASE;
 
-		IC_REG(MSC01_IC_SUP_OFS + (MSC01_IC_PCIINTNO*MSC01_IC_SUP_STEP)) =
-		            (0<<MSC01_IC_SUP_EDGE_SHF) | (0<<MSC01_IC_SUP_PRI_SHF);
+		    IC_REG(MSC01_IC_SUP_OFS + (MSC01_IC_PCIINTNO*MSC01_IC_SUP_STEP)) =
+			(0<<MSC01_IC_SUP_EDGE_SHF) | (0<<MSC01_IC_SUP_PRI_SHF);
 
-		IC_REG(MSC01_IC_DISL_OFS) = 0xffffffff;
-		IC_REG(MSC01_IC_DISH_OFS) = 0xffffffff;
-		IC_REG(MSC01_IC_ENAL_OFS) = 1 << MSC01_IC_PCIINTNO;
+		    IC_REG(MSC01_IC_DISL_OFS) = 0xffffffff;
+		    IC_REG(MSC01_IC_DISH_OFS) = 0xffffffff;
+		    IC_REG(MSC01_IC_ENAL_OFS) = 1 << MSC01_IC_PCIINTNO;
 
-		IC_REG(MSC01_IC_GENA_OFS) = MSC01_IC_GENA_GENA_BIT;
+		    IC_REG(MSC01_IC_GENA_OFS) = MSC01_IC_GENA_GENA_BIT;
 #undef IC_REG
+		}
 
 		/* Enable interrupt source */
 		REG(MSC01_PCI_REG_BASE, MSC01_PCI_INTCFG) =
-		             MSC01_PCI_INTCFG_MWP_BIT |
-		             MSC01_PCI_INTCFG_MRP_BIT |
-		             MSC01_PCI_INTCFG_SWP_BIT |
-		             MSC01_PCI_INTCFG_SRP_BIT |
-		             MSC01_PCI_INTCFG_SE_BIT ;
+		    MSC01_PCI_INTCFG_MWP_BIT |
+		    MSC01_PCI_INTCFG_MRP_BIT |
+		    MSC01_PCI_INTCFG_SWP_BIT |
+		    MSC01_PCI_INTCFG_SRP_BIT |
+		    MSC01_PCI_INTCFG_SE_BIT ;
 	    }
 
 	    break;

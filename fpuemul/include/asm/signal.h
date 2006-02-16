@@ -1,4 +1,4 @@
-/* $Id: signal.h,v 1.1.1.1 2000/10/23 14:03:23 carstenl Exp $
+/* $Id: signal.h,v 1.2 2002/02/01 12:10:00 kjelde Exp $
  *
  * This file is subject to the terms and conditions of the GNU General Public
  * License.  See the file "COPYING" in the main directory of this archive

@@ -9,7 +9,7 @@
  *
  * mips_start_of_legal_notice
  * 
- * Copyright (c) 2004 MIPS Technologies, Inc. All rights reserved.
+ * Copyright (c) 2006 MIPS Technologies, Inc. All rights reserved.
  *
  *
  * Unpublished rights (if any) reserved under the copyright laws of the
@@ -112,6 +112,9 @@ bool   sys_mips32_64;
 bool   sys_mips16e;
 bool   sys_smallpage_support;
 bool   sys_ejtag;
+bool   sys_mt;
+bool   sys_dsp;
+bool   sys_eicmode;
 UINT8  sys_arch_rev;
 UINT32 sys_fpu;
 

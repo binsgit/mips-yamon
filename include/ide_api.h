@@ -25,7 +25,7 @@
  *
  * mips_start_of_legal_notice
  * 
- * Copyright (c) 2004 MIPS Technologies, Inc. All rights reserved.
+ * Copyright (c) 2006 MIPS Technologies, Inc. All rights reserved.
  *
  *
  * Unpublished rights (if any) reserved under the copyright laws of the
@@ -146,7 +146,7 @@ typedef struct
     UINT16    min_cycle_time_dma;
     UINT16    recommended_cycle_time_dma;
     UINT16    minimum_cycle_time_pio;
-    UINT16    minimom_cycle_time_pio_iordy;
+    UINT16    minimum_cycle_time_pio_iordy;
     UINT16    reserved3[59];
     UINT16    vendor_specific1[32];
     UINT16    reserved4[96];

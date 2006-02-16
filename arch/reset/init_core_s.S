@@ -9,7 +9,7 @@
  *
  * mips_start_of_legal_notice
  * 
- * Copyright (c) 2004 MIPS Technologies, Inc. All rights reserved.
+ * Copyright (c) 2006 MIPS Technologies, Inc. All rights reserved.
  *
  *
  * Unpublished rights (if any) reserved under the copyright laws of the
@@ -344,6 +344,12 @@ SLEAF(access_core)
 	nop
 1:
 	li	t8, MIPS_REVISION_CORID_CORE_FPGA2
+	bne	t7, t8, 1f
+	nop
+	j	access_msc01
+	nop
+1:	
+	li	t8, MIPS_REVISION_CORID_CORE_FPGA3
 	bne	t7, t8, 1f
 	nop
 	j	access_msc01

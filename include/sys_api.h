@@ -8,7 +8,7 @@
  *
  * mips_start_of_legal_notice
  * 
- * Copyright (c) 2004 MIPS Technologies, Inc. All rights reserved.
+ * Copyright (c) 2006 MIPS Technologies, Inc. All rights reserved.
  *
  *
  * Unpublished rights (if any) reserved under the copyright laws of the
@@ -168,6 +168,9 @@ extern bool	   sys_mips32_64;
 extern bool	   sys_mips16e;
 extern bool	   sys_smallpage_support;
 extern bool	   sys_ejtag;
+extern bool	   sys_eicmode;
+extern bool	   sys_mt;
+extern bool	   sys_dsp;
 extern UINT8	   sys_arch_rev; /* Reflects the C0_Config.AR field */
 extern UINT32	   sys_fpu;	/* if set, contains cp1_fir value */
 
@@ -499,6 +502,50 @@ sys_cp0_write64(
     UINT32 number,	/* Register number (0..31) */
     UINT32 sel,		/* sel field (0..7)	   */
     UINT64 value );	/* Value to be written	   */
+
+
+/************************************************************************
+ *
+ *                          sys_cp0_mtread32
+ *  Description :
+ *  -------------
+ *
+ *  Read 32 bit CP0 register
+ *
+ *  Return values :
+ *  ---------------
+ *
+ *  Value read
+ *
+ ************************************************************************/
+UINT32
+sys_cp0_mtread32(
+    UINT32 number,	/* Register number (0..31) */
+    UINT32 sel,		/* sel field (0..7)	   */
+    UINT32 tc		/* TC to use               */
+    );
+
+/************************************************************************
+ *
+ *                          sys_cp0_mtwrite32
+ *  Description :
+ *  -------------
+ *
+ *  Write 32 bit CP0 register
+ *
+ *  Return values :
+ *  ---------------
+ *
+ *  None
+ *
+ ************************************************************************/
+void
+sys_cp0_mtwrite32(
+    UINT32 number,	/* Register number (0..31) */
+    UINT32 sel,		/* sel field (0..7)	   */
+    UINT32 value,	/* Value to be written	   */
+    UINT32 tc		/* TC to use               */
+    );
 
 
 /************************************************************************
@@ -1056,6 +1103,8 @@ sys_cpu_mmu_config(
  *  sys_mips32_64
  *  sys_mips16e
  *  sys_ejtag
+ *  sys_mt
+ *  sys_dsp
  *  sys_arch_rev
  *  sys_fpu
  *  sys_cpu_cache_coherency
@@ -1286,9 +1335,10 @@ sys_validate_range(
  *
  ************************************************************************/
 UINT32
-sys_cp0_printreg_all( 
-    t_gdb_regs *context ); // If not NULL, this holds the context to be dumped.
-			   // If NULL, print current values of all CP0 regs.
+sys_cp0_printreg_all(
+    UINT32 tc,		    // TC to use
+    t_gdb_regs  *context ); // If not NULL, this holds the context to be dumped.
+		  	    // If NULL, print current values of all CP0 regs.
 
 /************************************************************************
  *
@@ -1301,7 +1351,8 @@ sys_cp0_printreg_all(
  ************************************************************************/
 UINT32
 sys_cp0_printreg( 
-    char *reg_name ); // Name of register.
+    UINT32 tc,	        // TC to use
+    char *reg_name );   // Name of register.
 
 
 /************************************************************************
@@ -1315,6 +1366,7 @@ sys_cp0_printreg(
  ************************************************************************/
 UINT32
 sys_cp0_writereg(
+    UINT32 tc,	      // TC to use
     char   *reg_name, // Name of register.
     UINT64 value );   // Value to be written.
 
@@ -1353,6 +1405,8 @@ EXTERN( sys_mips32_64 )
 EXTERN( sys_mips16e )
 EXTERN( sys_smallpage_support )
 EXTERN( sys_ejtag )
+EXTERN( sys_mt )
+EXTERN( sys_dsp )
 EXTERN( sys_arch_rev )
 EXTERN( sys_fpu )
 
@@ -1374,8 +1428,20 @@ EXTERN( sys_fpu )
  *  for CacheErr, EJTAG and NMI exceptions.
  */
 # define SYS_CACHEERR_RAM_VECTOR_OFS     0x100
-# define SYS_EJTAG_RAM_VECTOR_OFS        0x300 /* chosen by YAMON */
-# define SYS_NMI_RAM_VECTOR_OFS          0x380 /* chosen by YAMON */
+/*
+ * YAMON 2.06 and earlier installed used these locations
+ * to transfer NMI/EJTAG exceptions to an application
+ */
+# define SYS_OLD_EJTAG_RAM_VECTOR_OFS    0x300 /* chosen by YAMON */
+# define SYS_OLD_NMI_RAM_VECTOR_OFS      0x380 /* chosen by YAMON */
+/*
+ * With the introduction of EIC support in 2.07 and later, these vectors
+ * have been moved here.
+ * For backwards compatibility, applications should install
+ * handlers at both these addreses unless EIC mode is in use
+ */
+# define SYS_EJTAG_RAM_VECTOR_OFS        0xa00 /* chosen by YAMON */
+# define SYS_NMI_RAM_VECTOR_OFS          0xa80 /* chosen by YAMON */
 
 #endif /* #ifndef SYS_API_H */
 
