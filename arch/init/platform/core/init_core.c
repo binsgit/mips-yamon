@@ -174,6 +174,7 @@ arch_core_init(
 	  case MIPS_REVISION_CORID_CORE_FPGA2 :
 	  case MIPS_REVISION_CORID_CORE_EMUL_SYS :
 	  case MIPS_REVISION_CORID_CORE_FPGA3 :
+	  case MIPS_REVISION_CORID_CORE_24K :
 	    /* Setup North Bridge mapping global variable */
 	    sys_nb_base = MSC01_REGADDR_BASE;
 	    malta_pci_io_base = CORE_SYS_PCIIO_BASE;
@@ -294,6 +295,7 @@ arch_core_init(
 	  case MIPS_REVISION_CORID_CORE_FPGA2 :
 	  case MIPS_REVISION_CORID_CORE_EMUL_SYS :
 	  case MIPS_REVISION_CORID_CORE_FPGA3 :
+	  case MIPS_REVISION_CORID_CORE_24K :
 
 	    /* Register ISR */
 	    if( cpu_isr_parm )

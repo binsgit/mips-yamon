@@ -100,6 +100,7 @@
 UINT32 sys_processor;
 UINT32 sys_platform;
 UINT32 sys_corecard;
+UINT32 sys_sysconid;
 UINT32 sys_manid;
 UINT32 sys_manpd;
 UINT32 sys_nb_base;

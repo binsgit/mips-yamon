@@ -157,6 +157,26 @@ LEAF(sys_init_processor)
 	or	t0, t1
 	MTC0(	t0, C0_Status )
 2:
+	/* Check if it is a MIPS 74K processor */	
+	li	t0, MIPS_74K
+	bne	k1, t0, 2f
+	nop
+
+	/* Setup MIPS74K specifics (implementation dependent fields) */
+	MFC0(   t0, C0_Config )
+	li	t1, CONFIG0_MIPS32_64_MSK
+	and	t0, t1
+	li	t1, CONFIG0_MIPS74K
+	or	t0, t1
+	MTC0(	t0, C0_Config )
+
+	MFC0(   t0, C0_Status )
+	li	t1, STATUS_MIPS32_64_MSK
+	and	t0, t1
+	li	t1, STATUS_MIPS74K
+	or	t0, t1
+	MTC0(	t0, C0_Status )
+2:
 	/* Check if it is a MIPS 4K/5K family processor */
 	li	t0, MIPS_4Kc
 	beq	k1, t0, 1f

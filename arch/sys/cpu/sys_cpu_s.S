@@ -793,7 +793,7 @@ END(sys_cpu_type)
  *  Description :
  *  -------------
  *
- *  Enable/disable L2 cache (This function is specific to QED_RM70XX)
+ *  Enable/disable L2 cache
  *
  *  a0 = 0 -> disable, else enable
  *
@@ -805,44 +805,50 @@ END(sys_cpu_type)
  ************************************************************************/
 LEAF( sys_cpu_l2_enable )
 
-	la	t0, sys_processor
-	lw	t0, 0(t0)
-	li	t1, QED_RM70XX
-	beq	t0, t1, 1f
-	nop
-	/* Only QED7061A supports enable/disable of L2 cache */
+	MFC0(   t1, C0_PRId)
+	and     t0, t1, (M_PRIdCoID|M_PRIdImp)
+	beq	t0, QED_RM70XX, 1f
+	 nop
+	
+	and     t0, t1, M_PRIdCoID
+	/* Check if it is a MIPS32/64 processor */	
+	bne	t0, (C0_PRID_COMP_NOT_MIPS32_64 << S_PRIdCoID), 1f
+	 nop
+	
+	/* No L2 enable/disable support */
 	jr	ra
-	nop
+	 nop
+
 1:	
 	/* Reserve space on stack */
-	addiu	sp, -8*4
+	subu	sp, 4*4
 
 	/* Store registers */
 	sw	ra, 0(sp)
 	sw	s0, 4(sp)
-	sw	s1, 8(sp)	
+	sw	s1, 8(sp)
+	sw	s2, 12(sp)
 
 	/* Copy registers to preserved registers */
 	move	s0, a0
-
+	
 	/* Disable interrupts */
 	MFC0(   s1, C0_Status )	
-	li	t0, ~M_StatusIE
-	and	t0, s1
+	and	t0, s1, ~M_StatusIE
 	MTC0(   t0, C0_Status )
 
+	move	s2, t1		# PRID
+	
 	/* Flush D-Cache */
-	addiu	sp, -4*4
+	subu	sp, 4*4
 	la      t0, sys_dcache_flush_all
 	jal	t0
-	nop
-	addiu	sp, 4*4
+	 nop
+	addu	sp, 4*4
 
 	/* Get L2 cache size */
-	la	a0, sys_l2cache_lines
-	lw	a0, 0(a0)
-	la	a1, sys_l2cache_linesize
-	lw	a1, 0(a1)
+	lw	a0, sys_l2cache_lines
+	lw	a1, sys_l2cache_linesize
 	multu	a0, a1
 	mflo	a0
 	
@@ -850,34 +856,60 @@ LEAF( sys_cpu_l2_enable )
 	la	t0, sys_cpu_l2_enable_uncached
 	KSEG1A( t0)
 	jr	t0
-	nop
+	 nop
 
 sys_cpu_l2_enable_uncached :
 
 	beq	s0, zero, 2f
-	nop
+	 nop
 
+	and	t0, s2,(M_PRIdCoID|M_PRIdImp)
+	beq	t0, QED_RM70XX, sys_cpu_l2_enable_rm7061
+	 nop
+	
+sys_cpu_l2_enable_mips:
+	/* Enable L2 cache */
+	MFC0_SEL_OPCODE( R_t0, R_C0_Config2, R_C0_SelConfig2 )     
+	and	t0, ~M_Config2L2B
+	MTC0_SEL_OPCODE( R_t0, R_C0_Config2, R_C0_SelConfig2 )
+	b	sys_cpu_l2_enable_init
+	 nop
+
+sys_cpu_l2_enable_rm7061:	
 	/* Enable L2 cache */
 	MFC0(   t0, C0_Config )
-	li	t1, C0_CONFIG_QED_RM70XX_SE_BIT
-	or	t0, t1
+	or	t0, C0_CONFIG_QED_RM70XX_SE_BIT
 	MTC0(   t0, C0_Config )	
-
+	
+sys_cpu_l2_enable_init:	
 	/* Initialise L2 cache */
 	la	t0, sys_init_l2cache_flash
 	KSEG1A( t0)
-	li	a2, QED_RM70XX	
 	jalr	t0
-	nop
+	 nop
 
 	b	3f
-	nop
+	 nop
+
 2:		
+	and	t0, s2,(M_PRIdCoID|M_PRIdImp)
+	beq	t0, QED_RM70XX, sys_cpu_l2_disable_rm7061
+	 nop
+	
+sys_cpu_l2_disable_mips:
+	/* Disable L2 cache */
+	MFC0_SEL_OPCODE( R_t0, R_C0_Config2, R_C0_SelConfig2 )     
+	or	t0, M_Config2L2B
+	MTC0_SEL_OPCODE( R_t0, R_C0_Config2, R_C0_SelConfig2 )
+	b	3f
+	 nop
+	
+sys_cpu_l2_disable_rm7061:	
 	/* Disable L2 cache */
 	MFC0(   t0, C0_Config )
-	li	t1, ~C0_CONFIG_QED_RM70XX_SE_BIT
-	and	t0, t1
+	and	t0, ~C0_CONFIG_QED_RM70XX_SE_BIT
 	MTC0(   t0, C0_Config )	
+	
 3:
 	/* Restore CP0 STATUS */
 	MTC0(   s1, C0_Status )
@@ -886,12 +918,58 @@ sys_cpu_l2_enable_uncached :
 	lw	ra, 0(sp)
 	lw	s0, 4(sp)
 	lw	s1, 8(sp)
+	lw	s2, 12(sp)
 
 	jr	ra
-	addiu	sp, 8*4
+	addiu	sp, 4*4
 	
 END( sys_cpu_l2_enable )	
 
+/************************************************************************	
+ *
+ *                          sys_cpu_l2_enabled
+ *  Description :
+ *  -------------
+ *
+ *  Return enable status of L2 cache
+ *
+ *  Return values :
+ *  ---------------
+ *
+ *  v0 = 0 -> disabled, else enabled
+ *
+ ************************************************************************/
+LEAF( sys_cpu_l2_enabled )
+
+	MFC0(   t1, C0_PRId)
+	and     t0, t1, (M_PRIdCoID|M_PRIdImp)
+	beq	t0, QED_RM70XX, sys_cpu_l2_enabled_rm7061
+	 nop
+	
+	and     t0, t1, M_PRIdCoID
+	/* Check if it is a MIPS32/64 processor */	
+	bne	t0, (C0_PRID_COMP_NOT_MIPS32_64 << S_PRIdCoID), sys_cpu_l2_enabled_mips
+	 nop
+	
+	/* No L2 enable/disable support, assume it is enabled*/
+	li	v0, 1
+	jr	ra
+	 nop
+
+sys_cpu_l2_enabled_mips:
+	MFC0_SEL_OPCODE( R_t0, R_C0_Config2, R_C0_SelConfig2 )     
+	and	t0, M_Config2L2B
+	j	ra
+	 seq	v0, t0, zero
+
+sys_cpu_l2_enabled_rm7061:	
+	MFC0(   t0, C0_Config )
+	and	t0, C0_CONFIG_QED_RM70XX_SE_BIT
+	jr	ra
+	 sne	v0, t0, zero
+	
+END( sys_cpu_l2_enabled )
+	
 
 /************************************************************************
  *  Implementation : Static functions

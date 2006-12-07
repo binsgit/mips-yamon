@@ -130,6 +130,12 @@
 			  (K_CacheAttrCN << S_ConfigKU)  |\
 			  (M_ConfigMM))
 
+/* MIPS 74K specifics */
+#define STATUS_MIPS74K	    0
+#define CONFIG0_MIPS74K  ((K_CacheAttrCN << S_ConfigK23) |\
+			  (K_CacheAttrCN << S_ConfigKU)  |\
+			  (M_ConfigMM))
+
 /* MIPS 20Kc/25Kf specifics (excluding generic MIPS32/MIPS64 fields) */
 #ifdef WORKAROUND_20KC_25KF
 #define STATUS_MIPS20KC_25KF	(0x1 << 16)

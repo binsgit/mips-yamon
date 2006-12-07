@@ -168,10 +168,10 @@ arch_pci_config_controller(
       case MIPS_REVISION_CORID_CORE_FPGA2 :
       case MIPS_REVISION_CORID_CORE_EMUL_SYS :
       case MIPS_REVISION_CORID_CORE_FPGA3 :
+      case MIPS_REVISION_CORID_CORE_24K :
 
-        /**** MIPS system controller ****/
-
-        DISP_STR( "SOCit101" );
+	/**** MIPS system controller: SOC-it or ROCit ****/
+	DISP_STR( sys_sysconid == MSC01_ID_SC_ROCIT ? "ROCit" : "SOCit101" );
 
 	/* Setup known device data */
 	controller->vendorid = PCI_VENDID_MIPS;
@@ -583,6 +583,7 @@ arch_pci_config_access(
       case MIPS_REVISION_CORID_CORE_FPGA2 :
       case MIPS_REVISION_CORID_CORE_EMUL_SYS :
       case MIPS_REVISION_CORID_CORE_FPGA3 :
+      case MIPS_REVISION_CORID_CORE_24K :
 
         /**** MIPS system controller ****/
 

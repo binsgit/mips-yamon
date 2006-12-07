@@ -107,15 +107,19 @@ static char *name_24KEc     = "MIPS 24KEc";
 static char *name_24KEf     = "MIPS 24KEf";
 static char *name_34Kc      = "MIPS 34Kc";
 static char *name_34Kf      = "MIPS 34Kf";
+static char *name_74Kc      = "MIPS 74Kc";
+static char *name_74Kf      = "MIPS 74Kf";
 static char *name_m4k	    = "MIPS M4K";
 static char *name_qed52xx   = "QED RM5261";  /* Assume 5261  */
 static char *name_qed70xx   = "QED RM7061A"; /* Assume 7061A */
 
 #define BPW_SETTINGS	8
-static UINT32 bpw[BPW_SETTINGS];
+static UINT32 ibpw[BPW_SETTINGS];
+static UINT32 dbpw[BPW_SETTINGS];
 
 #define ASSOC_SETTINGS	8
-static UINT32 assoc[ASSOC_SETTINGS];
+static UINT32 iassoc[ASSOC_SETTINGS];
+static UINT32 dassoc[ASSOC_SETTINGS];
 
 
 /************************************************************************
@@ -199,6 +203,8 @@ sys_decode_procid( void )
         return sys_fpu ? name_24KEf : name_24KEc;
       case MIPS_34K :
         return sys_fpu ? name_34Kf : name_34Kc;
+      case MIPS_74K :
+        return sys_fpu ? name_74Kf : name_74Kc;
       case MIPS_M4K :
         return name_m4k;
       case QED_RM52XX :
@@ -320,16 +326,16 @@ sys_cpu_cache_bpw(
 {
     UINT32 spw, spw_min, linesize;
 
-    sys_array->array = bpw;
-
     /* Calc number of sets (lines) per way and determine linesize */      
     if( icache )
     {
+	sys_array->array = ibpw;
         spw      = sys_icache_lines / sys_icache_assoc;
         linesize = sys_icache_linesize;
     }
     else
     {
+	sys_array->array = dbpw;
         spw      = sys_dcache_lines / sys_dcache_assoc;
         linesize = sys_dcache_linesize;
     }
@@ -343,11 +349,12 @@ sys_cpu_cache_bpw(
 	 break;
       case MIPS_5K       :
       case MIPS_5KE      :
+         spw_min = 128;
+	 /* Fall through !! */
       case MIPS_24K      :
       case MIPS_24KE     :
       case MIPS_34K      :
-         spw_min = 128;
-	 /* Fall through !! */
+      case MIPS_74K      :
       case MIPS_4Kc      :
       case MIPS_4Kmp     :
       case MIPS_4KEc     :
@@ -369,20 +376,20 @@ sys_cpu_cache_bpw(
 	  */
 	 while( (spw >= spw_min) && (sys_array->count < BPW_SETTINGS - 1) )
 	 {
-	     bpw[sys_array->count] = spw * linesize;  /* Calc bytes per way */
+	     sys_array->array[sys_array->count] = spw * linesize;  /* Calc bytes per way */
 	     sys_array->count++;
 	     spw >>= 1;
          }
 
 	 /* 0 bytes per way is also possible by setting line size to 0 */
-	 bpw[sys_array->count] = 0;
+	 sys_array->array[sys_array->count] = 0;
 	 sys_array->count++;
 
 	 break;
 
       default :
          /* Not possible to configure cache size */
-	 bpw[0]		  = spw * linesize;
+	 sys_array->array[0]		  = spw * linesize;
          sys_array->count = 1;
 	 break;
     }
@@ -401,10 +408,16 @@ sys_cpu_cache_assoc(
     UINT32 i;
     UINT32 index;
     
-    sys_array->array = assoc;
+    if (icache) {
+	sys_array->array = iassoc;
+        max = sys_icache_assoc;
+    }
+    else {
+	sys_array->array = dassoc;
+        max = sys_dcache_assoc;
+    }
 
     /* Determine max associativity */      
-    max = icache ? sys_icache_assoc : sys_dcache_assoc;
 
     switch( sys_processor )
     {
@@ -426,6 +439,7 @@ sys_cpu_cache_assoc(
       case MIPS_24K      :
       case MIPS_24KE     :
       case MIPS_34K      :
+      case MIPS_74K      :
 	/*  Valid way counts are 1..max. 
 	 *  The MIN macro is not really necessary.
 	 */
@@ -433,7 +447,7 @@ sys_cpu_cache_assoc(
 	     index < MIN( ASSOC_SETTINGS, max );
 	     index++, i-- )
         {
-	    assoc[index] = i;
+	    sys_array->array[index] = i;
 	}
    
 	sys_array->count = max;
@@ -442,7 +456,7 @@ sys_cpu_cache_assoc(
 
       default :
         /* Not possible to configure cache size */
-	assoc[0] = max;
+	sys_array->array[0] = max;
         sys_array->count = 1;
 	break;
     }

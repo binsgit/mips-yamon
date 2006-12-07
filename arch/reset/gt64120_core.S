@@ -130,7 +130,15 @@ LEAF(gt64120_write_reg)
 
 	/* Perform the write */
 	GT_SW(	a1, 0, a0 )
-		
+
+	/*
+	 * It's possible that GT_SDRAM_B0_OFS or GT_SDRAM_B2_OFS
+	 * have been modified, which may require an SDRAM configuration
+	 * cycle if the CAS latency/burst length is changed, but as the
+	 * low level code has already setup theses values correctly, don't
+	 * bother doing a config cycle now
+	 */
+	
 	/* Done */
 	jr	ra
 	move    v0, zero
@@ -589,21 +597,30 @@ SLEAF(gt64120_configure_sdram)
 	 */
 
 	li     ACCUM, (GT_SDRAM_B0_BW_64       << GT_SDRAM_B0_BW_SHF)	     |\
+		      (1		       << GT_SDRAM_B0_FTDIS_SHF)     |\
 		      (GT_SDRAM_B0_SRASPRCHG_3 << GT_SDRAM_B0_SRASPRCHG_SHF) |\
 		      (GT_SDRAM_B0_SRAS2SCAS_3 << GT_SDRAM_B0_SRAS2SCAS_SHF)
 	
-	/*  CAS latency field : Galileo only supports CAS latency = 2 */
 	li	a0, SPD_CASLAT	/* CAS latency field in SPD device    */
 	jal	sys_spd_read	/* v1 = CAS latencies supported byte  */
-	nop
+	 nop
 	bne	v0, zero, error_sdram
-	nop
+	 nop
+	
 	and	t0, v1, SPD_CASLAT_2_BIT
-	beq	t0, zero, error_sdram
-	li	v0, ERROR_SDRAM_CASLAT
-
+	bnez	t0, 2f
+	 and	t0, v1, SPD_CASLAT_3_BIT
+	
+	beqz	t0, error_sdram
+	 li	v0, ERROR_SDRAM_CASLAT
+	
+3:
+	b	0f
+	 ori	ACCUM, (GT_SDRAM_B0_CASLAT_3 << GT_SDRAM_B0_CASLAT_SHF)
+2:
 	ori	ACCUM, (GT_SDRAM_B0_CASLAT_2 << GT_SDRAM_B0_CASLAT_SHF)
-
+0:
+		
 #define DEV_BANKS       s6
 #define ROWS	        s7
 #define COLS	        s8
@@ -680,18 +697,25 @@ Mbit16:
 
 burstlen:	
 		
-	/* Burst length field : Galileo only supports burstlen = 8 */
 	li	a0, SPD_BURSTLEN
 	jal	sys_spd_read	     /* v1 = burstlen byte */
-	nop
+	 nop
 	bne	v0, zero, error_sdram
-	nop
-	and	t0, v1, SPD_BURSTLEN_8_MSK
-	beq	t0, zero, error_sdram
-	li	v0, ERROR_SDRAM_BURSTLEN
-	
-	ori	ACCUM, (GT_SDRAM_B0_BLEN_8 << GT_SDRAM_B0_BLEN_SHF)
+	 nop
 
+	and	t0, v1, SPD_BURSTLEN_8_MSK
+	bnez	t0, 8f
+	 and	t0, v1, SPD_BURSTLEN_4_MSK
+	beqz	t0, error_sdram
+	 li	v0, ERROR_SDRAM_BURSTLEN
+	
+4:
+	b	0f
+	 ori	ACCUM, (GT_SDRAM_B0_BLEN_4 << GT_SDRAM_B0_BLEN_SHF)
+8:
+	ori	ACCUM, (GT_SDRAM_B0_BLEN_8 << GT_SDRAM_B0_BLEN_SHF)
+0:
+	
 	/*  Parity field :
 	 *  If SDRAM module supports parity, enable parity support.
 	 *  else if SDRAM module supports ECC, indicate error.
@@ -740,6 +764,11 @@ dev_banks2:
 
 write_bank_parms:		
 
+	/*
+	 * Write the SDRAM configuration registers now
+	 * but wait until the decoder is set up before
+	 * attempting to configure the SDRAM
+	 */
 	move	t0, ACCUM		
 	GT_SW(	ACCUM, GT_SDRAM_B0_OFS, GTBASE )
 	GT_SW(	t0,    GT_SDRAM_B2_OFS, GTBASE )
@@ -877,6 +906,25 @@ store_sdram_cfg :
 	add	REGHI, GTBASE, GT_SCS3HD_OFS
 	jal	setup_dev_decode
 	nop
+
+	/*
+	 * The SDRAM SCAS latency and burst length may have been changed
+	 * Now that the chip decodes have been configured
+	 * we can update the SDRAM mode register
+	 */
+	li	t0, GT_SDRAM_OPMODE_OP_MODE
+	GT_SW(	t0,    GT_SDRAM_OPMODE_OFS, GTBASE )
+
+	la	t0, KSEG1(0)
+	sw	zero, (t0)
+	/* Configure second bank if present */
+	beqz	BSIZE1,1f
+	 addu	t0, BSIZE0
+	sw	zero, (t0)
+1:	
+	li	t0, GT_SDRAM_OPMODE_OP_NORMAL
+	GT_SW(	t0,    GT_SDRAM_OPMODE_OFS, GTBASE )
+	
 
 	move	v0, zero
 	addu	v1, BSIZE0, BSIZE1

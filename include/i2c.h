@@ -87,6 +87,6 @@
 #define I2C_ACK_BIT		0
 #define I2C_NACK_BIT		1
 
-#define MAX_I2C_FREQ_KHZ	1700
+#define MAX_I2C_FREQ_KHZ	400
 
 #endif /* #ifndef I2C_H */

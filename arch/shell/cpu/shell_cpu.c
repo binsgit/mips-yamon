@@ -201,6 +201,15 @@ static t_shell_cache_config_name_val mapping_24k[] =
     { "wt",
       "Write-through, no write allocate",
       K_CacheAttrCWTnWA  
+    },
+    { "l2on",    
+      "Secondary cache on",
+      SHELL_CACHE_CONFIG_L2_ENABLE
+    },
+
+    { "l2off",    
+      "Secondary cache off",
+      SHELL_CACHE_CONFIG_L2_DISABLE
     }
 };
 #define CACHE_COUNT_24K \
@@ -350,9 +359,14 @@ shell_arch_cache_config(
         break;
 
       case MIPS_24K :
+      case MIPS_24KE:
       case MIPS_34K :
+      case MIPS_74K :
         *mapping      = mapping_24k;
-	*config_count = CACHE_COUNT_24K;
+	if (sys_l2cache)
+	    *config_count = CACHE_COUNT_24K;
+	else
+	    *config_count = CACHE_COUNT_24K-2;
         break;
 
       case QED_RM52XX :

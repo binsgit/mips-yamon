@@ -930,36 +930,61 @@ info_cpu( void )
     }
 
     /* Secondary CACHE SIZE */
-    if( SYSCON_read( SYSCON_CPU_SCACHE_SIZE_CURRENT_ID, 
-		     &wdata_cur, 
-		     sizeof(wdata_cur)) == OK )
+    if( (SYSCON_read( SYSCON_CPU_SCACHE_SIZE_ID, 
+		     &wdata, 
+		     sizeof(wdata)) == OK) &&
+        (SYSCON_read( SYSCON_CPU_SCACHE_SIZE_CURRENT_ID, 
+		      &wdata_cur, 
+		      sizeof(wdata_cur)) == OK) )
     {
         if(SHELL_PUTS( "SCACHE size =" )) return FALSE;
-        sprintf( msg, "%d kByte\n", wdata_cur/1024 );
+	if( wdata == wdata_cur )
+	    sprintf( msg, "%d kByte\n", wdata_cur/1024 );
+	else
+	    sprintf( msg, "%d (%d) kByte\n", wdata_cur/1024, wdata/1024 );
 	if(SHELL_PUTS_INDENT( msg, INDENT )) return FALSE;
     }
     
     /* Secondary LINESIZE */
-    if( SYSCON_read( SYSCON_CPU_SCACHE_LINESIZE_CURRENT_ID, 
+    if( (SYSCON_read( SYSCON_CPU_SCACHE_LINESIZE_ID, 
+		      &wdata, 
+		      sizeof(wdata)) == OK ) &&
+	(SYSCON_read( SYSCON_CPU_SCACHE_LINESIZE_CURRENT_ID, 
 		     &wdata_cur, 
-		     sizeof(wdata_cur)) == OK )
+		      sizeof(wdata_cur)) == OK ) )
     {
         if(SHELL_PUTS( "SCACHE line size =" )) return FALSE;
-        sprintf( msg, "%d bytes\n", wdata_cur );
+	if( wdata == wdata_cur )
+	    sprintf( msg, "%d bytes\n", wdata_cur );
+	else
+	    sprintf( msg, "%d (%d) bytes\n", wdata_cur, wdata );	
         if(SHELL_PUTS_INDENT( msg, INDENT )) return FALSE;
     }
 
     /* Secondary CACHE ASSOC */
-    if( SYSCON_read( SYSCON_CPU_SCACHE_ASSOC_CURRENT_ID, 
-		     &wdata_cur, 
-		     sizeof(wdata_cur)) == OK )
+    if( (SYSCON_read( SYSCON_CPU_SCACHE_ASSOC_ID, 
+		     &wdata, 
+		     sizeof(wdata)) == OK ) &&
+	(SYSCON_read( SYSCON_CPU_SCACHE_ASSOC_CURRENT_ID, 
+		      &wdata_cur, 
+		      sizeof(wdata_cur)) == OK ) )
     {
         if(SHELL_PUTS( "SCACHE associativity =" )) return FALSE;
 
         if (wdata_cur == 1)
-	    sprintf( msg, "direct mapped\n" );
+	    sprintf( msg, "direct mapped" );
 	else
-   	    sprintf( msg, "%d-way\n", wdata_cur );
+   	    sprintf( msg, "%d-way", wdata_cur );
+
+	if( wdata != wdata_cur )
+	{
+	    if( wdata == 1 )
+		sprintf( &msg[strlen(msg)], " (direct mapped)\n" );
+	    else
+		sprintf( &msg[strlen(msg)], " (%d-way)\n", wdata );
+	}
+	else
+	    sprintf( &msg[strlen(msg)], "\n" );
 
         if(SHELL_PUTS_INDENT( msg, INDENT )) return FALSE;
     }
@@ -1279,7 +1304,7 @@ info_sysctrl( void )
 		    &wdata, sizeof(wdata)) == OK)
     {
         if(SHELL_PUTS("SDRAM external width =" )) return FALSE;
-        strcpy( msg, wdata == 1
+        strcpy( msg, wdata == 2 ? "Full (64" : wdata == 1
                      ? ( sys_64bit ? "Full (64" : "Full (32" )
                      : ( sys_64bit ? "Half (32" : "Half (16" ) );
 	strcat( msg, " bit)\n" );
@@ -1385,12 +1410,30 @@ info_sysctrl( void )
         if(SHELL_PUTS_INDENT( msg, INDENT )) return FALSE;
     }
  
-    /* System RAM Write burst length */
+    /* System RAM Read burst length */
     if(SYSCON_read( SYSCON_BOARD_SYSTEMRAM_READ_BURSTLEN_CFG_ID,
 		    &wdata, sizeof(wdata)) == OK)
     {
         if(SHELL_PUTS("SDRAM read burst length =" )) return FALSE;
         sprintf( msg, "%d\n", wdata );
+        if(SHELL_PUTS_INDENT( msg, INDENT )) return FALSE;
+    }
+ 
+    /* System RAM RAS min */
+    if(SYSCON_read( SYSCON_BOARD_SYSTEMRAM_RASMIN_CYCLES_CFG_ID,
+		    &wdata, sizeof(wdata)) == OK)
+    {
+        if(SHELL_PUTS("SDRAM RAS min =" )) return FALSE;
+        sprintf( msg, "%d ram cycles\n", wdata );
+        if(SHELL_PUTS_INDENT( msg, INDENT )) return FALSE;
+    }
+ 
+    /* System RAM RAS to RAS */
+    if(SYSCON_read( SYSCON_BOARD_SYSTEMRAM_RAS2RAS_CYCLES_CFG_ID,
+		    &wdata, sizeof(wdata)) == OK)
+    {
+        if(SHELL_PUTS("SDRAM RAS to RAS =" )) return FALSE;
+        sprintf( msg, "%d ram cycles\n", wdata );
         if(SHELL_PUTS_INDENT( msg, INDENT )) return FALSE;
     }
  

@@ -174,6 +174,7 @@ arch_platform_init(
 	        else
 		    sys_corecard = MIPS_REVISION_CORID_CORE_EMUL_20K;
 	    }
+	    sys_sysconid = REGFIELD(REG32(MSC01_SC_ID), MSC01_SC_ID_ID);
         }
 	else
 	    sys_corecard = MIPS_REVISION_CORID_NA;

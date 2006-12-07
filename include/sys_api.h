@@ -156,6 +156,7 @@ extern UINT32      sys_busfreq_hz;
 extern UINT32	   sys_platform;
 extern UINT32	   sys_processor;
 extern UINT32	   sys_corecard;
+extern UINT32      sys_sysconid;
 extern UINT32	   sys_manid;
 extern UINT32	   sys_manpd;
 
@@ -201,6 +202,9 @@ UINT32 sys_determine_icache_assoc_flash(    UINT32 procid );
 UINT32 sys_determine_dcache_linesize_flash( UINT32 procid );
 UINT32 sys_determine_dcache_lines_flash(    UINT32 procid );
 UINT32 sys_determine_dcache_assoc_flash(    UINT32 procid );
+UINT32 sys_determine_l2cache_linesize_flash( UINT32 procid );
+UINT32 sys_determine_l2cache_lines_flash(    UINT32 procid );
+UINT32 sys_determine_l2cache_assoc_flash(    UINT32 procid );
 
 void 
 sys_putchar( 
@@ -1008,6 +1012,25 @@ sys_cpu_k0_config(
 void
 sys_cpu_l2_enable(
     bool enable );		/* FALSE -> disable, else enable	*/
+
+
+/************************************************************************	
+ *
+ *                          sys_cpu_l2_enabled
+ *  Description :
+ *  -------------
+ *
+ *  Return status of L2 cache
+ *
+ *  Return values :
+ *  ---------------
+ *
+ *  0: L2 cache disabled
+ *  1: L2 cache enabled
+ *
+ ************************************************************************/
+UINT32
+sys_cpu_l2_enabled( void );
 
 
 /************************************************************************

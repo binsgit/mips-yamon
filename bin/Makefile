@@ -172,7 +172,7 @@ BSS_OLD = 0
 # Revision
 # ********************************************************************
 REVMAJ = 02
-REVMIN = 11
+REVMIN = 13
 
 # ********************************************************************
 # Target prefix.
@@ -367,7 +367,7 @@ endif # ifdef ENDIAN
 #   caches are still initialised (using indexed cacheops), but otherwise 
 #   no cacheops are used, and KSEG0 is configured as uncached.
 
-BUILD_DEFS = $(WORKAROUND_BONITO) $(WORKAROUND_NO_CACHE) $(KSEG0_UNCACHED)
+BUILD_DEFS = $(WORKAROUND_BONITO) $(WORKAROUND_NO_CACHE) $(KSEG0_UNCACHED) $(WORKAROUND_CORE_24K)
 
 # ********************************************************************
 # Definitions common to start, little- and big-endian images.

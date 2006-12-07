@@ -70,6 +70,7 @@
 #define MSC01_ID_SC_MGB                 0x03
 #define MSC01_ID_SC_MGBIIA36D64C0IO     0x06
 #define MSC01_ID_SC_OCP			0x08
+#define MSC01_ID_SC_ROCIT		0x09
 
 /*****************************************************************************
  * Register offset addresses
@@ -141,6 +142,9 @@
 #define MSC01_SC_ERR_RSPTYP_MSK	        0x00000001
 #define MSC01_SC_ERR_RSPTYP_BIT	        0x00000001
 
+#define MSC01_SC_CFG_CDONE_SHF		31
+#define MSC01_SC_CFG_CDONE_MSK		0x80000000
+#define MSC01_SC_CFG_CDONE_BIT		MSC01_SC_CFG_CDONE_MSK
 #define MSC01_SC_CFG_WC_SHF		16
 #define MSC01_SC_CFG_WC_MSK		0x00010000
 #define MSC01_SC_CFG_WC_BIT		MSC01_SC_CFG_WC_MSK

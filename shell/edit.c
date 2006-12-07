@@ -146,7 +146,7 @@ static MON_FUNC(edit)
 
     for (;;) 
     {
-        rc = sys_validate_range( addr, width, width, TRUE );
+        rc = sys_validate_range( addr, width, width, FALSE );
 
 	if( rc != OK )
 	    return rc;
@@ -199,6 +199,11 @@ static MON_FUNC(edit)
 
                 if( (*endp == '\0') && (errno == 0) )
 	        {
+		    rc = sys_validate_range( addr, width, width, TRUE );
+
+		    if( rc != OK )
+			return rc;
+
                     switch (width) 
                     {
                       case sizeof(UINT8)  : 

@@ -106,6 +106,9 @@ UINT32 (*flash_determine_icache_assoc)(UINT32) = sys_determine_icache_assoc_flas
 UINT32 (*flash_determine_dcache_linesize)(UINT32) = sys_determine_dcache_linesize_flash;
 UINT32 (*flash_determine_dcache_lines)(UINT32) = sys_determine_dcache_lines_flash;
 UINT32 (*flash_determine_dcache_assoc)(UINT32) = sys_determine_dcache_assoc_flash;
+UINT32 (*flash_determine_scache_linesize)(UINT32) = sys_determine_l2cache_linesize_flash;
+UINT32 (*flash_determine_scache_lines)(UINT32) = sys_determine_l2cache_lines_flash;
+UINT32 (*flash_determine_scache_assoc)(UINT32) = sys_determine_l2cache_assoc_flash;
 
 
 /* Constant used for determining endianness */
@@ -661,6 +664,57 @@ cpu_dcache_assoc_current_generic_read(
 
 
 /************************************************************************
+ *  cpu_scache_size_generic_read
+ ************************************************************************/
+static UINT32
+cpu_scache_size_generic_read(
+    void   *param,
+    void   *data,
+    UINT32 size )
+{
+    if( !sys_l2cache )
+        return ERROR_SYSCON_UNKNOWN_PARAM;
+
+    *(UINT32 *)param = sys_l2cache_linesize * sys_l2cache_lines;
+    return OK;
+}
+
+
+/************************************************************************
+ *  cpu_scache_linesize_generic_read
+ ************************************************************************/
+static UINT32
+cpu_scache_linesize_generic_read(
+    void   *param,
+    void   *data,
+    UINT32 size )
+{
+    if( !sys_l2cache )
+        return ERROR_SYSCON_UNKNOWN_PARAM;
+
+    *(UINT32 *)param = sys_l2cache_linesize;
+    return OK;
+}
+
+
+/************************************************************************
+ *  cpu_scache_assoc_generic_read
+ ************************************************************************/
+static UINT32
+cpu_scache_assoc_generic_read(
+    void   *param,
+    void   *data,
+    UINT32 size )
+{
+    if( !sys_l2cache )
+        return ERROR_SYSCON_UNKNOWN_PARAM;
+
+    *(UINT32 *)param = sys_l2cache_assoc;
+    return OK;
+}
+
+
+/************************************************************************
  *  cpu_scache_size_current_generic_read
  ************************************************************************/
 static UINT32
@@ -672,7 +726,8 @@ cpu_scache_size_current_generic_read(
     if( !sys_l2cache )
         return ERROR_SYSCON_UNKNOWN_PARAM;
 
-    *(UINT32 *)param = sys_l2cache_linesize * sys_l2cache_lines;
+    *(UINT32 *)param = (*flash_determine_scache_linesize)(sys_processor) *
+		       (*flash_determine_scache_lines)(sys_processor);
     return OK;
 }
 
@@ -689,7 +744,7 @@ cpu_scache_linesize_current_generic_read(
     if( !sys_l2cache )
         return ERROR_SYSCON_UNKNOWN_PARAM;
 
-    *(UINT32 *)param = sys_l2cache_linesize;
+    *(UINT32 *)param = (*flash_determine_scache_linesize)(sys_processor);
     return OK;
 }
 
@@ -706,7 +761,7 @@ cpu_scache_assoc_current_generic_read(
     if( !sys_l2cache )
         return ERROR_SYSCON_UNKNOWN_PARAM;
 
-    *(UINT32 *)param = sys_l2cache_assoc;
+    *(UINT32 *)param = (*flash_determine_scache_assoc)(sys_processor);
     return OK;
 }
 
@@ -1260,6 +1315,18 @@ SYSCON_init( void )
 
     syscon_register_generic( SYSCON_CPU_DCACHE_ASSOC_CURRENT_ID,
 			     cpu_dcache_assoc_current_generic_read, NULL,
+			     NULL,				    NULL );
+
+    syscon_register_generic( SYSCON_CPU_SCACHE_SIZE_ID,
+			     cpu_scache_size_generic_read, NULL,
+			     NULL,				   NULL );
+
+    syscon_register_generic( SYSCON_CPU_SCACHE_LINESIZE_ID,
+			     cpu_scache_linesize_generic_read, NULL,
+			     NULL,				       NULL );
+
+    syscon_register_generic( SYSCON_CPU_SCACHE_ASSOC_ID,
+			     cpu_scache_assoc_generic_read, NULL,
 			     NULL,				    NULL );
 
     syscon_register_generic( SYSCON_CPU_SCACHE_SIZE_CURRENT_ID,

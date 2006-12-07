@@ -1,13 +1,21 @@
 MIPS YAMON(tm) Release Notes
 ============================
 
-Revision:     02.11
-Release Date: 20060216
+Revision:     02.13
+Release Date: 20061207
 
 
 Reason for release:
 -------------------
-Bugfix for 24K/34K data cache initialisation
+
+Enhancements
+o Additional SOCit support
+o Added 24KE cache support
+
+BugFixes
+o Corrections to Galileo memory configuration
+o Avoid downloading into memory used by YAMON
+o Allow the MIPS L2 cache to be bypassed correctly
 
 Boards supported :
 ------------------
@@ -23,6 +31,7 @@ Malta with following Core boards :
     CoreLV
     CoreBonito64
     Core20K
+    Core24K
     "QED RM5261 Board" 
 
 SEAD
@@ -40,4 +49,5 @@ MIPS 5Kc, 5Kf, 5KE, 5KEf
 MIPS 20Kc, 25Kf
 MIPS 24Kc, 24Kf, 24Ke
 MIPS 34Kc, 34Kf
+MIPS 74Kc, 74Kf
 QED  RM5261, RM7061A

@@ -137,6 +137,11 @@ static t_cp0_reg regs[] =
     { "Config1",       32, SYSCON_CPU_CP0_CONFIG1_ID,	       GDB_FR_CP0_CONFIG1  ,0,0},
     { "Config2",       32, SYSCON_CPU_CP0_CONFIG2_ID,	       GDB_FR_CP0_CONFIG2  ,0,0},
     { "Config3",       32, SYSCON_CPU_CP0_CONFIG3_ID,	       GDB_FR_CP0_CONFIG3  ,0,0},
+    { "Config4",       32, SYSCON_CPU_CP0_CONFIG4_ID,	       -1		   ,0,0},
+    { "Config5",       32, SYSCON_CPU_CP0_CONFIG5_ID,	       -1		   ,0,0},
+    { "Config6",       32, SYSCON_CPU_CP0_CONFIG6_ID,	       -1		   ,0,0},
+    { "Config7",       32, SYSCON_CPU_CP0_CONFIG7_ID,	       -1		   ,0,0},
+
     { "LLAddr",	       64, SYSCON_CPU_CP0_LLADDR_ID,	       -1		   ,0,0},
     { "WatchLo",       64, SYSCON_CPU_CP0_WATCHLO_ID,	       GDB_FR_CP0_WATCHLO  ,0,0},
     { "WatchHi",       64, SYSCON_CPU_CP0_WATCHHI_ID,	       GDB_FR_CP0_WATCHHI  ,0,0},

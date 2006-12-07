@@ -108,6 +108,7 @@ static char   *name_core_sys	      = "CoreSYS";
 static char   *name_core_emul	      = "CoreEMUL";
 static char   *name_core_fpga2        = "CoreFPGA-2";
 static char   *name_core_fpga3        = "CoreFPGA-3";
+static char   *name_core_24K          = "Core24K";
 static char   *name_galileo           = "Galileo";
        char   *name_msc01             = "MIPS SOC-it 101\0       ";
 static char   version_syscntrl[32]    = "unknown version";
@@ -238,6 +239,13 @@ board_systemram_refresh_ns_msc01_read(
 {
     UINT32 count;
 
+    if(sys_sysconid == MSC01_ID_SC_ROCIT) {
+        count = MC_GET_REG_FIELD(MC_GET_REG(TREF_ADDR),
+					TREF_WIDTH, TREF_OFFSET);
+	*(UINT32 *)param = CYCLES2NS( count );
+	return OK;
+    }
+
     count = REG(MSC01_MC_REG_BASE, MSC01_MC_TREFRESH);
 
     /* adjust count to bus cycles (inverse clk ratio) */
@@ -265,6 +273,11 @@ board_systemram_refresh_ns_msc01_write(
     UINT32 size )
 {
     UINT32 refcount;
+
+    if(sys_sysconid == MSC01_ID_SC_ROCIT) {
+	/* Do nothing */
+	return OK;
+    }
 
     NS2COUNT_ROUND_DOWN( *(UINT32 *)param, refcount );
 
@@ -402,6 +415,12 @@ board_systemram_srasprchg_cycles_msc01_read(
     void   *data,
     UINT32 size )
 {
+    if(sys_sysconid == MSC01_ID_SC_ROCIT) {
+        *(UINT32 *)param = MC_GET_REG_FIELD(MC_GET_REG(TRP_ADDR),
+					TRP_WIDTH, TRP_OFFSET);
+	return OK;
+    }
+
     *(UINT32 *)param = (REG(MSC01_MC_REG_BASE, MSC01_MC_TIMPAR) &
                                                MSC01_MC_TIMPAR_TRP_MSK) >>
                                                MSC01_MC_TIMPAR_TRP_SHF;
@@ -522,6 +541,12 @@ board_systemram_sras2scas_cycles_msc01_read(
     void   *data,
     UINT32 size )
 {
+    if(sys_sysconid == MSC01_ID_SC_ROCIT) {
+        *(UINT32 *)param = MC_GET_REG_FIELD(MC_GET_REG(TRCD_INT_ADDR),
+					TRCD_INT_WIDTH, TRCD_INT_OFFSET);
+	return OK;
+    }
+
     *(UINT32 *)param = (REG(MSC01_MC_REG_BASE, MSC01_MC_TIMPAR) &
                                                MSC01_MC_TIMPAR_TRCD_MSK) >>
                                                MSC01_MC_TIMPAR_TRCD_SHF;
@@ -584,6 +609,12 @@ board_systemram_caslat_cycles_msc01_read(
     void   *data,
     UINT32 size )
 {
+    if(sys_sysconid == MSC01_ID_SC_ROCIT) {
+        *(UINT32 *)param = MC_GET_REG_FIELD(MC_GET_REG(CASLAT_LIN_ADDR),
+				CASLAT_LIN_WIDTH, CASLAT_LIN_OFFSET) / 2;
+	return OK;
+    }
+
     *(UINT32 *)param = (REG(MSC01_MC_REG_BASE, MSC01_MC_LATENCY) &
                                                MSC01_MC_LATENCY_CL_MSK) >>
                                                MSC01_MC_LATENCY_CL_SHF;
@@ -653,6 +684,9 @@ board_systemram_rw_burstlen_msc01_read(
     void   *data,
     UINT32 size )
 {
+    if(sys_sysconid == MSC01_ID_SC_ROCIT)
+	return !OK;
+
     *(UINT32 *)param = 
         ( REG(MSC01_MC_REG_BASE, MSC01_MC_HC_DDR) & MSC01_MC_HC_DDR_DDR_BIT ) ?
 	    2 : 1;
@@ -669,6 +703,11 @@ board_systemram_cslat_cycles_msc01_read(
     void   *data,
     UINT32 size )
 {
+    if(sys_sysconid == MSC01_ID_SC_ROCIT) {
+        *(UINT32 *)param = 999;
+	return OK;
+    }
+
     *(UINT32 *)param = (REG(MSC01_MC_REG_BASE, MSC01_MC_LATENCY) &
                                                MSC01_MC_LATENCY_CSL_MSK) >>
                                                MSC01_MC_LATENCY_CSL_SHF;
@@ -685,6 +724,9 @@ board_systemram_wrlat_cycles_msc01_read(
     void   *data,
     UINT32 size )
 {
+    if(sys_sysconid == MSC01_ID_SC_ROCIT)
+	return !OK;
+
     *(UINT32 *)param = (REG(MSC01_MC_REG_BASE, MSC01_MC_LATENCY) &
                                                MSC01_MC_LATENCY_WL_MSK) >>
                                                MSC01_MC_LATENCY_WL_SHF;
@@ -701,10 +743,51 @@ board_systemram_rddel_cycles_msc01_read(
     void   *data,
     UINT32 size )
 {
+    if(sys_sysconid == MSC01_ID_SC_ROCIT)
+	return (!OK);
+
     *(UINT32 *)param = (REG(MSC01_MC_REG_BASE, MSC01_MC_HC_RDDEL) &
                                                MSC01_MC_HC_RDDEL_RDDEL_MSK) >>
                                                MSC01_MC_HC_RDDEL_RDDEL_SHF;
     return OK;
+}
+
+
+/************************************************************************
+ *    board_systemram_rasmin_cycles_msc01_read
+ ************************************************************************/
+static UINT32
+board_systemram_rasmin_cycles_msc01_read(
+    void   *param,
+    void   *data,
+    UINT32 size )
+{
+    if(sys_sysconid == MSC01_ID_SC_ROCIT) {
+	*(UINT32 *)param = MC_GET_REG_FIELD(MC_GET_REG(TRAS_MIN_ADDR),
+					TRAS_MIN_WIDTH, TRAS_MIN_OFFSET);
+	return OK;
+    }
+
+    return !OK;
+}
+
+
+/************************************************************************
+ *    board_systemram_ras2ras_cycles_msc01_read
+ ************************************************************************/
+static UINT32
+board_systemram_ras2ras_cycles_msc01_read(
+    void   *param,
+    void   *data,
+    UINT32 size )
+{
+    if(sys_sysconid == MSC01_ID_SC_ROCIT) {
+	*(UINT32 *)param = MC_GET_REG_FIELD(MC_GET_REG(TRRD_ADDR),
+					TRRD_WIDTH, TRRD_OFFSET);
+	return OK;
+    }
+
+    return !OK;
 }
 
 
@@ -717,6 +800,11 @@ board_systemram_ddr_msc01_read(
     void   *data,
     UINT32 size )
 {
+    if(sys_sysconid == MSC01_ID_SC_ROCIT) {
+        *(UINT32 *)param = 999;
+	return OK;
+    }
+
     *(UINT32 *)param = (REG(MSC01_MC_REG_BASE, MSC01_MC_HC_DDR) &
                                                MSC01_MC_HC_DDR_DDR_MSK) >>
                                                MSC01_MC_HC_DDR_DDR_SHF;
@@ -733,6 +821,11 @@ board_systemram_fw_msc01_read(
     void   *data,
     UINT32 size )
 {
+    if(sys_sysconid == MSC01_ID_SC_ROCIT) {
+        *(UINT32 *)param = 2;
+	return OK;
+    }
+
     *(UINT32 *)param = (REG(MSC01_MC_REG_BASE, MSC01_MC_HC_FMDW) &
                                                MSC01_MC_HC_FMDW_FMDW_MSK) >>
                                                MSC01_MC_HC_FMDW_FMDW_SHF;
@@ -749,6 +842,11 @@ board_systemram_clkrat_msc01_read(
     void   *data,
     UINT32 size )
 {
+    if(sys_sysconid == MSC01_ID_SC_ROCIT) {
+        *(char **)param = "unknown";
+	return OK;
+    }
+
     switch (REG(MSC01_MC_REG_BASE, MSC01_MC_HC_CLKRAT))
     {
       case 1: *(char **)param = "1:1"; break;
@@ -867,6 +965,11 @@ board_systemram_parity_msc01_read(
     void   *data,
     UINT32 size )
 {
+    if(sys_sysconid == MSC01_ID_SC_ROCIT) {
+        *(UINT32 *)param = 0;
+	return OK;
+    }
+
     *(UINT32 *)param = (REG(MSC01_MC_REG_BASE, MSC01_MC_HC_PARITY) &
                                                MSC01_MC_HC_PARITY_PARITY_MSK) >>
                                                MSC01_MC_HC_PARITY_PARITY_SHF;
@@ -953,9 +1056,11 @@ syscon_arch_core_init(
     else if( sys_corecard == MIPS_REVISION_CORID_CORE_SYS ||
              sys_corecard == MIPS_REVISION_CORID_CORE_FPGA2 ||
              sys_corecard == MIPS_REVISION_CORID_CORE_FPGA3 ||
+             sys_corecard == MIPS_REVISION_CORID_CORE_24K ||
              sys_corecard == MIPS_REVISION_CORID_CORE_EMUL_SYS )
     {
 	int ix;
+	int scid;
 	ram_range_size = CORE_SYS_PCIMEM_BASE;
 
         pci_mem_start  = CORE_SYS_PCIMEM_BASE;
@@ -972,12 +1077,27 @@ syscon_arch_core_init(
 sead_msc01:
         /* System Controller type */
 	n = REG(MSC01_BIU_REG_BASE, MSC01_SC_ID);
-	switch ( (n & MSC01_SC_ID_ID_MSK) >> MSC01_SC_ID_ID_SHF )
+	scid = (n & MSC01_SC_ID_ID_MSK) >> MSC01_SC_ID_ID_SHF;
+	switch ( scid )
 	{
-	  case 1: strcat(name_msc01, " EC-32"); break;
-	  case 2: strcat(name_msc01, " EC-64"); break;
-	  case 3: strcat(name_msc01, " MGB"); break;
-	  case 8: strcat(name_msc01, " OCP"); break;
+	  case MSC01_ID_SC_EC32:
+		strcat(name_msc01, " EC-32");
+		break;
+	  case MSC01_ID_SC_EC64:
+		strcat(name_msc01, " EC-64");
+		break;
+	  case MSC01_ID_SC_MGB:
+		strcat(name_msc01, " MGB");
+		break;
+	  case MSC01_ID_SC_MGBIIA36D64C0IO:
+		strcat(name_msc01, " MGBII");
+		break;
+	  case MSC01_ID_SC_OCP:
+		strcat(name_msc01, " OCP");
+		break;
+	  case MSC01_ID_SC_ROCIT:
+		strcpy(name_msc01, "MIPS ROC-it");
+		break;
 	}
 
         /* System Controller Version String */
@@ -986,13 +1106,19 @@ sead_msc01:
 	                                            >> MSC01_SC_ID_MAR_SHF,
 	                                          (n & MSC01_SC_ID_MIR_MSK)
 	                                            >> MSC01_SC_ID_MIR_SHF);
-	n = REG(MSC01_MC_REG_BASE, MSC01_MC_HC_DDR);
-	ix += sprintf(&version_syscntrl[ix],
-                      (n & MSC01_MC_HC_DDR_DDR_BIT) ? "DDR" : "SDR");
-	n = REG(MSC01_MC_REG_BASE, MSC01_MC_HC_FMDW);
-	board_systemram_clkrat_msc01_read(&s, NULL, sizeof(s));
-	sprintf(&version_syscntrl[ix],
-                ((n & MSC01_MC_HC_FMDW_FMDW_BIT) ? "-FW-%s" : "-HW-%s"), s);
+	if ( scid != MSC01_ID_SC_ROCIT ) {
+		n = REG(MSC01_MC_REG_BASE, MSC01_MC_HC_DDR);
+		ix += sprintf(&version_syscntrl[ix],
+       	               (n & MSC01_MC_HC_DDR_DDR_BIT) ? "DDR" : "SDR");
+		n = REG(MSC01_MC_REG_BASE, MSC01_MC_HC_FMDW);
+		board_systemram_clkrat_msc01_read(&s, NULL, sizeof(s));
+		sprintf(&version_syscntrl[ix],
+		    ((n & MSC01_MC_HC_FMDW_FMDW_BIT) ? "-FW-%s" : "-HW-%s"), s);
+	}
+	else
+	{
+		ix += sprintf(&version_syscntrl[ix], "FW-1:1 (CLK_unknown)");
+	}
     }
     else
     {
@@ -1044,7 +1170,9 @@ sead_msc01:
 	         (sys_corecard == MIPS_REVISION_CORID_CORE_FPGA2) ?
 		     name_core_fpga2 :
 		 (sys_corecard == MIPS_REVISION_CORID_CORE_FPGA3) ?
-		     name_core_fpga3 : name_core_emul,
+		     name_core_fpga3 :
+		 (sys_corecard == MIPS_REVISION_CORID_CORE_24K) ?
+		     name_core_24K : name_core_emul,
 	     NULL,		 NULL,
 	     /* Bonito64 based */
 	     syscon_string_read, 
@@ -1190,6 +1318,28 @@ sead_msc01:
 	     NULL,					NULL,
 	     /* SysCtrl based */
 	     board_systemram_rddel_cycles_msc01_read,	NULL,
+	     NULL,					NULL,
+	     /* Bonito64 based */
+	     NULL,				        NULL,
+	     NULL,					NULL );
+
+    syscon_register_id_core( SYSCON_BOARD_SYSTEMRAM_RASMIN_CYCLES_CFG_ID,
+	     /* Galileo based */
+	     NULL,				        NULL,
+	     NULL,					NULL,
+	     /* SysCtrl based */
+	     board_systemram_rasmin_cycles_msc01_read,	NULL,
+	     NULL,					NULL,
+	     /* Bonito64 based */
+	     NULL,				        NULL,
+	     NULL,					NULL );
+
+    syscon_register_id_core( SYSCON_BOARD_SYSTEMRAM_RAS2RAS_CYCLES_CFG_ID,
+	     /* Galileo based */
+	     NULL,				        NULL,
+	     NULL,					NULL,
+	     /* SysCtrl based */
+	     board_systemram_ras2ras_cycles_msc01_read,	NULL,
 	     NULL,					NULL,
 	     /* Bonito64 based */
 	     NULL,				        NULL,
@@ -1402,6 +1552,7 @@ syscon_register_id_core(
       case MIPS_REVISION_CORID_CORE_SYS :
       case MIPS_REVISION_CORID_CORE_FPGA2 :
       case MIPS_REVISION_CORID_CORE_FPGA3 :
+      case MIPS_REVISION_CORID_CORE_24K :
       case MIPS_REVISION_CORID_CORE_EMUL_SYS :
       case MIPS_REVISION_CORID_SEAD_MSC01 :
         obj->read       = read_sysctl;

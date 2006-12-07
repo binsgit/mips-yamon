@@ -784,6 +784,7 @@ EXCEP_return :
 	nop
 	/* Set 'EXCEP_return_flag' */
 	la	a1, exc_handler_args
+	la	k1, exc_context
 	lw	a3, 4(a1)
 	b	exc_rerun
 	add	a3, 1	/* count up exc_return_flag argument */

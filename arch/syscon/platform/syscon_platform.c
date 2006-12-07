@@ -2067,6 +2067,15 @@ syscon_get_eeprom_data(
     mac_addr_read = NULL;
     sn_read       = NULL;
  
+#ifdef WORKAROUND_CORE_24K
+    if (sys_corecard == MIPS_REVISION_CORID_CORE_24K) {
+	/* Fake up a board serial number and read MAC address from AMD chip */
+	static t_sn_bcd fake_serialnumber = {0x99, 0x99, 0x99, 0x99, 0x99};
+	sn_read = &fake_serialnumber;
+	goto getamdmac;
+    }
+#endif
+
     /* Version */
     if( eeprom_read( minor, pos++, 1, &eeprom.version ) != OK )
         goto eeprom_error;
@@ -2150,6 +2159,9 @@ syscon_get_eeprom_data(
         goto eeprom_error;
     }	
 
+#ifdef WORKAROUND_CORE_24K
+getamdmac:
+#endif
     if( sys_platform == PRODUCT_MALTA_ID )
     {
         /* Get MAC-address from AMD-EEPROM */

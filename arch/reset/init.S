@@ -227,12 +227,12 @@ sys_platform_early_done:
 	/*  Whenever an instruction has been stored to KSEG0, we must
 	 *  make sure the instruction has been flushed to physical memory
 	 *  and invalidate the corresponding I-Cache line.
-	 *  At this point L2 caches (if available) will be disabled.
 	 *
 	 *  We bypass the cache operations if CPU is running uncached.
 	 *  (We assume Config.k0 == K_CacheAttrU is the
 	 *  only uncached mode used).
 	 */
+	
 	MFC0( t4, C0_Config )
 	li    t3, M_ConfigK0
 	and   t4, t3
@@ -241,12 +241,19 @@ sys_platform_early_done:
 	li    t3, K_CacheAttrU
 	xor   t4, t3
 
+	/*
+	 * L2 cache may also be present
+	 */
+	jal     sys_determine_l2cache_avail_flash
+	 move	a0, k1
+	or	t5, v0, v1	# L2 cache available and enabled
+
 1:	
 	lw	t3, 0(t0)
 	sw	t3, 0(t1)
 
 	beq	t4, zero, 2f	
-	add	t0, 4		
+	 add	t0, 4
 
 SET_MIPS3()
 	cache   DCACHE_ADDR_HIT_WRITEBACK, 0(t1)
@@ -254,8 +261,16 @@ SET_MIPS3()
 	ICACHE_ADDR_INVALIDATE_OP(t1,a0)
 SET_MIPS0()
 2:	
+	beqz	t5, 2f
+	 nop
+	
+SET_MIPS3()
+	cache   SCACHE_ADDR_HIT_WRITEBACK_INVALIDATE, 0(t1)
+SET_MIPS0()
+	
+2:
 	bne	t1, t2, 1b
-	add	t1, 4
+	 add	t1, 4
 
 #endif /* #ifndef _SIMULATE_ */
 
@@ -279,6 +294,30 @@ copy_data:
 	sw	t3, 0(t1)
 	bne	t1, t2, 1b
 	add	t1, 4
+
+#ifdef VERIFY_COPYTEXT
+	/* Verify the data copied OK */
+	la	t0, _etext		/* SRC  */
+	la	t1, _fdata		/* DST  */
+	la	t2, _fbss		/* STOP */
+	KSEG0A( t1 )
+	KSEG0A( t2 )
+	addiu	t2, -4	
+1:
+	lw	t3, 0(t0)
+	lw	t4, 0(t1)
+	bne	t3, t4, 2f		/* Oh dear! */
+	 add	t0, 4
+	bne	t1, t2, 1b
+	 add	t1, 4
+	b	4f
+	 nop
+2:
+	DISP_STR( msg_verify )
+3:	b	3b
+	 nop
+4:
+#endif /* VERIFY_COPYTEXT */
 
 setup_sp :
 
@@ -413,119 +452,196 @@ SLEAF(sys_memory_setup)
 
 	/*  a0 = RAM size */
 
+	/*  Test first, middle and last address by writing magic values and
+	 *  reading values back.
+	 *  Test for wraparound by writing boundary locations
+	 */
+	DISP_STR( msg_ramtest_hilo )
+
 	/* First calc start, middle and end addresses	*/
 	li	t0, KSEG1(0)	/* First	   	*/
 	add	t2, t0, a0	/* First non valid 	*/
-	move	t1, t0
-	srl	t6, a0, 1
-	add	t1, t6		/* Middle+4		*/
-
-	/*  Test first, middle and last address by writing magic values and
-	 *  reading values back. The middle value is needed to test for
-	 *  mirroring.
-	 */
-
-	DISP_STR( msg_ramtest_hilo )
 
 	/* Setup values */
-#define MAGIC_LO	0xAAAAAAAA
-#define MAGIC_MI	0xDEADBEEF
-#define MAGIC_HI	0x55555555
+#define MAGIC_LO	0xFEEDFACE
+#define MAGIC_MI	0x5A5A5A00
+#define MAGIC_HI	0xDEADBEEF
+#define BLACK_MAGIC	0x0BADF00D
 
 	li	t3, MAGIC_LO
 	li	t4, MAGIC_MI
 	li	t5, MAGIC_HI
+	li	t6, BLACK_MAGIC
 
 	/* Perform the writes */
-	sw	t3,  0(t0)	/* first */
+	sw	t3, 0(t0)	/* first */
+	sw	t3, 4(t0)	/* first+4 */
+	sw	t6, 8(t0)
+	sw	t6, 12(t0)
 
-	move	t1, t0
-	srl	t6, a0, 1
-	add	t1, t6	
+	srl	t1, a0, 1
+	addu	t1, t0
+	sw	t4, -8(t1)	/* (last/2)-8 */
+	add	t4, 1
 	sw	t4, -4(t1)	/* (last/2)-4 */
+	add	t4, 1
+	sw	t6, -16(t1)
+	sw	t6, -12(t1)
 
-	move	t1, t0
-	srl	t6, a0, 2
-	add	t1, t6	
+	srl	t1, a0, 2
+	addu	t1, t0
+	sw	t4, -8(t1)	/* (last/4)-8 */
+	add	t4, 1
 	sw	t4, -4(t1)	/* (last/4)-4 */
+	add	t4, 1
+	sw	t6, -16(t1)
+	sw	t6, -12(t1)
 
-	move	t1, t0
-	srl	t6, a0, 3
-	add	t1, t6	
+	srl	t1, a0, 3
+	addu	t1, t0
+	sw	t4, -8(t1)	/* (last/8)-8 */
+	add	t4, 1
 	sw	t4, -4(t1)	/* (last/8)-4 */
+	add	t4, 1
+	sw	t6, -16(t1)
+	sw	t6, -12(t1)
 
-	move	t1, t0
-	srl	t6, a0, 1
-	add	t1, t6	
+	srl	t1, a0, 1
 	srl	t6, a0, 2
-	add	t1, t6	
+	addu	t1, t6
+	addu	t1, t0
+	sw	t4, -8(t1)	/* (last/2) + (last/4) - 8 */
+	add	t4, 1
 	sw	t4, -4(t1)	/* (last/2) + (last/4) - 4 */
+	add	t4, 1
+	sw	t6, -16(t1)
+	sw	t6, -12(t1)
 
-	move	t1, t0
-	srl	t6, a0, 1
-	add	t1, t6	
+	srl	t1, a0, 1
 	srl	t6, a0, 2
-	add	t1, t6	
+	addu	t1, t6
 	srl	t6, a0, 3
-	add	t1, t6	
+	addu	t1, t6
+	addu	t1, t0
+	sw	t4, -8(t1)	/* (last/2) + (last/4) + (last/8) - 8 */
+	add	t4, 1
 	sw	t4, -4(t1)	/* (last/2) + (last/4) + (last/8) - 4 */
+	add	t4, 1
+	sw	t6, -16(t1)
+	sw	t6, -12(t1)
 
+	sw	t5, -8(t2)	/* last-8 */
 	sw	t5, -4(t2)	/* last-4 */
+	sw	t6, -16(t2)
+	sw	t6, -12(t2)
 
 	/* Perform the reads and compares */
-	lw	v0,  0(t0)
+	li	t4, MAGIC_MI
+	lw	v0, 0(t0)	/* first */
 	bne	v0, t3, error
-	li	v0, ERROR_RAM_LO
+	 li	v0, ERROR_RAM_LO
+	not	v0, t3		/* Ensure nothing lingering on the bus */
+	sw	v0, 8(t0)
+	lw	v0, 4(t0)	/* first+4 */
+	bne	v0, t3, error
+	 li	v0, ERROR_RAM_LO
+	not	v0, t3
+	sw	v0, 12(t0)
 
-	move	t1, t0
-	srl	t6, a0, 1
-	add	t1, t6	
+	srl	t1, a0, 1
+	addu	t1, t0
+	lw	v0, -8(t1)	/* (last/2) - 8 */
+	bne	v0, t4, error
+	 li	v0, ERROR_RAM_MI
+	add	t4, 1
+	not	v0, t4
+	sw	v0, -16(t1)
 	lw	v0, -4(t1)	/* (last/2) - 4 */
 	bne	v0, t4, error
-	li	v0, ERROR_RAM_MI
+	 li	v0, ERROR_RAM_MI
+	add	t4, 1
+	not	v0, t4
+	sw	v0, -12(t1)
 
-	move	t1, t0
-	srl	t6, a0, 2
-	add	t1, t6	
+	srl	t1, a0, 2
+	addu	t1, t0
+	lw	v0, -8(t1)	/* (last/4) - 8 */
+	bne	v0, t4, error
+	 li	v0, ERROR_RAM_MI
+	add	t4, 1
+	not	v0, t4
+	sw	v0, -16(t1)
 	lw	v0, -4(t1)	/* (last/4) - 4 */
 	bne	v0, t4, error
-	li	v0, ERROR_RAM_MI
+	 li	v0, ERROR_RAM_MI
+	add	t4, 1
+	not	v0, t4
+	sw	v0, -12(t1)
 
-	move	t1, t0
-	srl	t6, a0, 3
-	add	t1, t6	
+	srl	t1, a0, 3
+	addu	t1, t0
+	lw	v0, -8(t1)	/* (last/8) - 8 */
+	bne	v0, t4, error
+	 li	v0, ERROR_RAM_MI
+	add	t4, 1
+	not	v0, t4
+	sw	v0, -16(t1)
 	lw	v0, -4(t1)	/* (last/8) - 4 */
 	bne	v0, t4, error
-	li	v0, ERROR_RAM_MI
+	 li	v0, ERROR_RAM_MI
+	add	t4, 1
+	not	v0, t4
+	sw	v0, -12(t1)
 
-	move	t1, t0
-	srl	t6, a0, 1
-	add	t1, t6	
+	srl	t1, a0, 1
 	srl	t6, a0, 2
-	add	t1, t6	
+	addu	t1, t6
+	addu	t1, t0
+	lw	v0, -8(t1)	/* (last/2) + (last/4) - 8 */
+	bne	v0, t4, error
+	 li	v0, ERROR_RAM_MI
+	add	t4, 1
+	not	v0, t4
+	sw	v0, -16(t1)
 	lw	v0, -4(t1)	/* (last/2) + (last/4) - 4 */
 	bne	v0, t4, error
-	li	v0, ERROR_RAM_MI
+	 li	v0, ERROR_RAM_MI
+	add	t4, 1
+	not	v0, t4
+	sw	v0, -12(t1)
 
-	move	t1, t0
-	srl	t6, a0, 1
-	add	t1, t6	
+	srl	t1, a0, 1
 	srl	t6, a0, 2
-	add	t1, t6	
+	addu	t1, t6
 	srl	t6, a0, 3
-	add	t1, t6	
+	addu	t1, t6
+	addu	t1, t0
+	lw	v0, -8(t1)	/* (last/2) + (last/4) + (last/8) - 8 */
+	bne	v0, t4, error
+	 li	v0, ERROR_RAM_MI
+	add	t4, 1
+	not	v0, t4
+	sw	v0, -16(t1)
 	lw	v0, -4(t1)	/* (last/2) + (last/4) + (last/8) - 4 */
 	bne	v0, t4, error
-	li	v0, ERROR_RAM_MI
+	 li	v0, ERROR_RAM_MI
+	add	t4, 1
+	not	v0, t4
+	sw	v0, -12(t1)
 
-
+	lw	v0, -8(t2)
+	bne	v0, t5, error
+	 li	v0, ERROR_RAM_HI
+	not	v0, t5
+	sw	v0, -16(t1)
 	lw	v0, -4(t2)
 	bne	v0, t5, error
-	li	v0, ERROR_RAM_HI
+	 li	v0, ERROR_RAM_HI
+	not	v0, t5
+	sw	v0, -12(t1)
 
 	/* ok */
 	move	v0, zero
-	
 
 	/* Perform test of yamon RAM */
 
@@ -654,6 +770,9 @@ MSG( msg_sp,		"STACK" )
 MSG( msg_info,		"INFO" )
 MSG( msg_cache_info,    "CINFO" )
 MSG( msg_main,		"FIRSTC" )
+#ifdef VERIFY_COPYTEXT
+MSG( msg_verify,	"BAD_COPY" )
+#endif /* VERIFY_COPYTEXT */
 
 /* Error messages (see init.h) */
 ERROR_MESSAGES

@@ -219,6 +219,9 @@
 #define MIPS_34K			( (K_PRIdCoID_MIPS << S_PRIdCoID) | \
 					  (K_PRIdImp_34K   << S_PRIdImp) )
 
+#define MIPS_74K			( (K_PRIdCoID_MIPS << S_PRIdCoID) | \
+					  (K_PRIdImp_74K   << S_PRIdImp) )
+
 #define QED_RM52XX			( (C0_PRID_COMP_NOT_MIPS32_64 << \
 					      S_PRIdCoID) |	 \
 					  (K_PRIdImp_R5200  << S_PRIdImp) )
@@ -453,6 +456,7 @@ SET_POP();				  \
 #define MIPS20Kc_COUNT_CLK_PER_CYCLE	1
 #define MIPS24K_COUNT_CLK_PER_CYCLE     2
 #define MIPS34K_COUNT_CLK_PER_CYCLE     2
+#define MIPS74K_COUNT_CLK_PER_CYCLE     2
 #define MIPSM4K_COUNT_CLK_PER_CYCLE     2
 
 /**** MIPS 4K/5K families specific fields of CONFIG register ****/
@@ -481,45 +485,22 @@ SET_POP();				  \
 #define C0_CONFIG_MIPS20KC_TI_MSK    (MSK(1) << C0_CONFIG_MIPS20KC_TI_SHF)
 #define C0_CONFIG_MIPS20KC_TI_BIT    C0_CONFIG_MIPS20KC_TI_MSK
 
+/**** MIPS L2 cache specific fields of CONFIG2 register ****/
+#define S_Config2L2B		     12			/* L2 bypass */
+#define M_Config2L2B		     (0x1 << S_Config2L2B)
 
 /* TBD : Until these appear in ArchDefs.h */
-#define R_C0_DTagLo	        28
-#define R_C0_SelDTagLo	        2
-#define R_C0_DTagHi	        29
-#define R_C0_SelDTagHi	        2
-
-#define R_C0_TraceControl       23
-#define R_C0_SelTraceControl	1
-#define R_C0_TraceControl2	23
-#define R_C0_SelTraceControl2	2
-#define R_C0_UserTraceData	23
-#define R_C0_SelUserTraceData	3
-#define R_C0_TraceBPC		23
-#define R_C0_SelTraceBPC	4
-
 #define R_C0_DErrCtl		26
 #define R_C0_SelDErrCtl		0
 #define R_C0_IErrCtl		26
 #define R_C0_SelIErrCtl		1
 
-#define R_C0_ITagLo		28
-#define R_C0_SelITagLo		0
-#define R_C0_DTagLo		28
-#define R_C0_SelDTagLo		2
 #define R_C0_L23TagLo	        28
 #define R_C0_SelL23TagLo	4
 
-#define R_C0_IDataLo		28
-#define R_C0_SelIDataLo		1
-#define R_C0_DDataLo		28
-#define R_C0_SelDDataLo		3
 #define R_C0_L23DataLo		28
 #define R_C0_SelL23DataLo	5
 
-#define R_C0_ITagHi		29
-#define R_C0_SelITagHi		0
-#define R_C0_DTagHi		29
-#define R_C0_SelDTagHi		2
 #define R_C0_L23TagHi		29
 #define R_C0_SelL23TagHi	4
 
@@ -549,6 +530,15 @@ SET_POP();				  \
 
 #define S_ConfigMM              18     /* 24K specific, merging enable/disable */
 #define M_ConfigMM              (0x1 << S_ConfigMM)
+
+#define R_C0_Config4		16
+#define R_C0_SelConfig4		4
+#define R_C0_Config5		16
+#define R_C0_SelConfig5		5
+#define R_C0_Config6		16
+#define R_C0_SelConfig6		6
+#define R_C0_Config7		16
+#define R_C0_SelConfig7		7
 
 
 #endif /* #ifndef MIPS_H */

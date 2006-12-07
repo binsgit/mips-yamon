@@ -315,7 +315,7 @@ SLEAF(access_core)
 	nop
 
 	/* CoreEmul requires another check for presence of */
-	/* either SOC-it 101 or Bonito System Controller  */
+	/* SOC-it 101, ROC-it or Bonito System Controller   */
 	li	t8, MSC01_REGADDR_RESET + \
 		         MSC01_REGSPACE_BIU * MSC01_REGADDR_SIZE
 	lw	t8, MSC01_BIU_RBBASL_OFS(t8)
@@ -335,7 +335,8 @@ SLEAF(access_core)
 	xor	t8, PHYS(MSC01_REGADDR_BASE) >> 16  /* 0x1bc0  work value */
 	bnez	t8, 2f
 	nop
-	/* CoreEMUL with SOC-it 101 in work state */
+	/* CoreEMUL with SOC-it 101 in work state, or ROC-it in either */
+	/* reset or work state.                                        */
 	j	access_msc01
 	nop
 2:
@@ -350,6 +351,12 @@ SLEAF(access_core)
 	nop
 1:	
 	li	t8, MIPS_REVISION_CORID_CORE_FPGA3
+	bne	t7, t8, 1f
+	nop
+	j	access_msc01
+	nop
+1:
+	li	t8, MIPS_REVISION_CORID_CORE_24K
 	bne	t7, t8, 1f
 	nop
 	j	access_msc01

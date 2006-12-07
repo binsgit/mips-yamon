@@ -583,10 +583,31 @@ typedef enum syscon_ids
     SYSCON_CPU_REGINFO_ID = 275,		     /* t_syscon_reginfo */
 
     /**********************************************************************
+     * Below IDs are available in YAMON revision 02.12 and later revisions
+     **********************************************************************/
+
+    SYSCON_CPU_CP0_CONFIG4_ID = 276,		     /* UINT32	      */
+    SYSCON_CPU_CP0_CONFIG5_ID = 277,		     /* UINT32	      */
+    SYSCON_CPU_CP0_CONFIG6_ID = 278,		     /* UINT32	      */
+    SYSCON_CPU_CP0_CONFIG7_ID = 279,		     /* UINT32	      */
+
+    /**********************************************************************
+     * Below IDs are available in YAMON revision 02.13 and later revisions
+     **********************************************************************/
+
+    /* Secondary cache */
+    SYSCON_CPU_SCACHE_SIZE_ID = 280,		     /* UINT32        */
+    SYSCON_CPU_SCACHE_LINESIZE_ID = 281,	     /* UINT32        */
+    SYSCON_CPU_SCACHE_ASSOC_ID = 282,		     /* UINT32        */
+
+    SYSCON_BOARD_SYSTEMRAM_RASMIN_CYCLES_CFG_ID = 283,   /* UINT32    */
+    SYSCON_BOARD_SYSTEMRAM_RAS2RAS_CYCLES_CFG_ID = 284,  /* UINT32    */
+
+    /**********************************************************************
      * Insert new IDs below. Remember to update SYSCON_OBJ_COUNT !!!
      **********************************************************************/
 
-    SYSCON_OBJ_COUNT = 276
+    SYSCON_OBJ_COUNT = 285
 }
 t_syscon_ids;
 

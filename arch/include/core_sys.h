@@ -2,7 +2,8 @@
  *
  *  core_sys.h
  *
- *  Definitions for Malta core card with MIPS SOC-it 101 system controller
+ *  Definitions for Malta core card with MIPS SOC-it 101 or ROC-it
+ *  system controller
  *
  * ######################################################################
  *
@@ -79,6 +80,9 @@
 #include <msc01_pci.h>
 #include <msc01_pbc.h>
 #include <msc01_mc.h>
+
+#include <mc_reginit.h>
+#include <mc_dendefine.h>
 
 /************************************************************************
  *  Definitions

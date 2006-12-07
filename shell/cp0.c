@@ -230,6 +230,9 @@ static MON_FUNC(cp0)
 		else {
 		    sys_cp0_write64(reg_number, sel_number, value );
 		}
+		/* The write may have changed the L2 cache setup */
+		if (sys_l2cache)
+		    sys_l2cache_enabled = sys_cpu_l2_enabled();
 	    }
 	}
     }

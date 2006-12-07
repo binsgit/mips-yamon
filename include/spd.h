@@ -92,13 +92,16 @@
 #define SPD_CASLAT			18
 #define SPD_CSLAT			19
 #define SPD_WRLAT			20
+#define SPD_MODATTR			21
 #define SPD_MRPT			27
 #define SPD_TRP				27
+#define SPD_TRRD			28
 #define SPD_RCDM			29
 #define SPD_TRCD			29
 #define SPD_MRPW			30
 #define SPD_TRAS			30
 #define SPD_ROW_DENSITY			31
+#define SPD_TRC				41
 
 /************************************************************************
  *  Register encodings
@@ -158,6 +161,10 @@
 #define SPD_CSLAT_1_SHF			1
 #define SPD_CSLAT_1_MSK			(MSK(1) << SPD_CASLAT_2_SHF)
 #define SPD_CSLAT_1_BIT			SPD_CSLAT_1_MSK
+
+#define SPD_MODATTR_REG_SHF		1
+#define SPD_MODATTR_REG_MSK		(MSK(1) << SPD_MODATTR_REG_SHF)
+#define SPD_MODATTR_REG_BIT		SPD_MODATTR_REG_MSK
 
 #define SPD_WRLAT_0_SHF			0
 #define SPD_WRLAT_0_MSK			(MSK(1) << SPD_CASLAT_1_SHF)

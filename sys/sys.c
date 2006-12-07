@@ -107,7 +107,9 @@ determine_dev(
 static UINT32
 sys_validate_ram_range(
     UINT32 start,		/* Start address (physical)		*/
-    UINT32 last );		/* Last address (physical)		*/
+    UINT32 last,		/* Last address (physical)		*/
+    bool   write );		/* Write access 			*/
+
 
 /************************************************************************
  *  Implementation : Public functions
@@ -477,19 +479,20 @@ sys_validate_range(
 		    last += 0x40000000;
 		}
 
-   	        return sys_validate_ram_range( addr, last );
+   	        return sys_validate_ram_range( addr, last, write);
 	    }
 	    else if( addr >= KSSEGBASE )
 	    {
 	        /* Range contained within KSSEG,KSEG3 */
-   	        return sys_validate_ram_range( addr, last );
+   	        return sys_validate_ram_range( addr, last, write );
 	    }
 	    else
 	    {
                 /* Range overflows KUSEG */
 	        rc = sys_validate_ram_range( 
 		         erl ? addr : addr + 0x40000000, 
-			 erl ? KSEG0BASE- size : KSEG0BASE - size + 0x40000000 );
+			 erl ? KSEG0BASE- size : KSEG0BASE - size + 0x40000000,
+		         write );
 	      
 	        return ( rc != OK ) ?
 	            rc :
@@ -515,7 +518,8 @@ sys_validate_range(
 		/* Fallthrough !! */   
 	      case SYS_TLB_OK :
 		rc = sys_validate_ram_range( phys, 
-					     phys + pagesize - size );
+					     phys + pagesize - size,
+					     write );
 
 		if( rc != OK )
 		   return rc;
@@ -542,12 +546,12 @@ sys_validate_range(
         if( KSEG0( last ) == last )
 	{
             /* Range contained within KSEG0 */
-   	    return sys_validate_ram_range( PHYS(addr), PHYS(last) );
+   	    return sys_validate_ram_range( PHYS(addr), PHYS(last), write );
         }
 	else
 	{
             /* Range overflows KSEG0 */
-	    rc = sys_validate_ram_range( PHYS(addr), PHYS(KSEG1BASE-size) );
+	    rc = sys_validate_ram_range( PHYS(addr), PHYS(KSEG1BASE-size), write );
 
 	    return ( rc != OK ) ?
 	        rc :
@@ -562,12 +566,12 @@ sys_validate_range(
         if( KSEG1( last ) == last )
 	{
             /* Range contained within KSEG1 */
-   	    return sys_validate_ram_range( PHYS(addr), PHYS(last) );
+   	    return sys_validate_ram_range( PHYS(addr), PHYS(last), write );
         }
 	else
 	{
             /* Range overflows KSEG1 */
-	    rc = sys_validate_ram_range( PHYS(addr), PHYS(KSSEGBASE-size) );
+	    rc = sys_validate_ram_range( PHYS(addr), PHYS(KSSEGBASE-size), write );
 
 	    return ( rc != OK ) ?
 	        rc :
@@ -773,12 +777,14 @@ determine_dev(
 static UINT32
 sys_validate_ram_range(
     UINT32 start,		/* Start address (physical)		*/
-    UINT32 last )		/* Last address (physical)		*/
+    UINT32 last,		/* Last address (physical)		*/
+    bool   write )		/* Write access				*/
 {
     static void    *ram_base;
     static UINT32  ram_actual_size, ram_size;
     static UINT32  ram_range_unused_start;
     static UINT32  ram_range_unused_last;
+    static UINT32  ram_free;
     static bool    first = TRUE;
     
     if( first )
@@ -799,8 +805,23 @@ sys_validate_ram_range(
 		     (void *)&ram_size,
 		     sizeof(UINT32) );
 
+	SYSCON_read( SYSCON_BOARD_FREE_MEM_ID,
+		     (void *)&ram_free,
+		     sizeof(UINT32) );
+	ram_free = PHYS(ram_free);
+
         ram_range_unused_start = (UINT32)ram_base + ram_actual_size;
         ram_range_unused_last  = (UINT32)ram_base + ram_size - 1;
+    }
+
+    if (write) {
+	/* Don't allow us to overwrite YAMON */
+	if (start < ram_free) {
+            sprintf( msg, "Address = 0x%08x", start );
+	    shell_error_data = msg;
+
+	    return SHELL_ERROR_RAM_RANGE;
+	}
     }
 
     if( ram_actual_size == ram_size )

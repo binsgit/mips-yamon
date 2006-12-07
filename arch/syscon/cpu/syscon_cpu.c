@@ -217,8 +217,12 @@ static t_syscon_obj       *syscon_objects;
 #define SYSCON_SRSCONF3		    90
 #define SYSCON_SRSCONF4		    91
 
-#define SYSCON_CP0_REG_COUNT	    (SYSCON_SRSCONF4+1)
+#define SYSCON_CONFIG4		    92
+#define SYSCON_CONFIG5		    93
+#define SYSCON_CONFIG6		    94
+#define SYSCON_CONFIG7		    95
 
+#define SYSCON_CP0_REG_COUNT	    (SYSCON_CONFIG7+1)
 
 static t_syscon_cp0_reg cp0_reg[SYSCON_CP0_REG_COUNT] =
 {
@@ -320,8 +324,12 @@ static t_syscon_cp0_reg cp0_reg[SYSCON_CP0_REG_COUNT] =
     { SYSCON_CPU_CP0_SRSCONF1_ID,	  R_C0_SRSConf1,      R_C0_SelSRSConf1,      FALSE, 4 },
     { SYSCON_CPU_CP0_SRSCONF2_ID,	  R_C0_SRSConf2,      R_C0_SelSRSConf2,      FALSE, 4 },
     { SYSCON_CPU_CP0_SRSCONF3_ID,	  R_C0_SRSConf3,      R_C0_SelSRSConf3,      FALSE, 4 },
-    { SYSCON_CPU_CP0_SRSCONF4_ID,	  R_C0_SRSConf4,      R_C0_SelSRSConf4,      FALSE, 4 }
+    { SYSCON_CPU_CP0_SRSCONF4_ID,	  R_C0_SRSConf4,      R_C0_SelSRSConf4,      FALSE, 4 },
 
+    { SYSCON_CPU_CP0_CONFIG4_ID,	  R_C0_Config4,	      R_C0_SelConfig4,	     FALSE, 4 },
+    { SYSCON_CPU_CP0_CONFIG5_ID,	  R_C0_Config5,	      R_C0_SelConfig5,	     FALSE, 4 },
+    { SYSCON_CPU_CP0_CONFIG6_ID,	  R_C0_Config6,	      R_C0_SelConfig6,	     FALSE, 4 },
+    { SYSCON_CPU_CP0_CONFIG7_ID,	  R_C0_Config7,	      R_C0_SelConfig7,	     FALSE, 4 },
 };
 
 /************************************************************************
@@ -562,11 +570,20 @@ syscon_arch_cpu_init(
 
 	goto common;
 
+      case MIPS_74K:
+	cp0_reg[SYSCON_ITAGHI].valid   = TRUE;
+	cp0_reg[SYSCON_DTAGHI].valid   = TRUE;
+	/* cp0_reg[SYSCON_L23TAGHI].valid = TRUE; */
+
+	cp0_reg[SYSCON_CONFIG6].valid = TRUE;
+	/* Fallthrough !! */
+
       case MIPS_34K:
-	  /* Fallthrough !! */
+        /* Fallthrough !! */
 
       case MIPS_24K :
       case MIPS_24KE :
+	cp0_reg[SYSCON_CONFIG7].valid = TRUE;
 
 	cp0_reg[SYSCON_ITAGLO].valid   = TRUE;
 	cp0_reg[SYSCON_DTAGLO].valid   = TRUE;
@@ -631,12 +648,14 @@ common:
 
 	/* LLAddr */
 	lladdr = 
-	  ( sys_processor != MIPS_M4K ) &&
-	  ( sys_processor != MIPS_5K  ) &&
-	  ( sys_processor != MIPS_5KE ) &&
-	  ( sys_processor != MIPS_24K ) &&
-	  ( sys_processor != MIPS_24KE) &&
-	  ( sys_processor != MIPS_34K );
+	    sys_mt ||
+		(( sys_processor != MIPS_M4K ) &&
+		 ( sys_processor != MIPS_5K  ) &&
+		 ( sys_processor != MIPS_5KE ) &&
+		 ( sys_processor != MIPS_24K ) &&
+		 ( sys_processor != MIPS_24KE) &&
+		 ( sys_processor != MIPS_34K ) &&
+		 ( sys_processor != MIPS_74K ));
 
 	/* CacheErr */
 	cacheerr =
@@ -661,7 +680,8 @@ common:
 	{
             cp0_reg[SYSCON_PAGEGRAIN].valid = ( sys_processor != MIPS_24K &&
 						sys_processor != MIPS_24KE &&
-						sys_processor != MIPS_34K) ?
+						sys_processor != MIPS_34K &&
+						sys_processor != MIPS_74K) ?
 		TRUE : FALSE;
             cp0_reg[SYSCON_HWRENA   ].valid = TRUE;
             cp0_reg[SYSCON_EBASE    ].valid = TRUE;
@@ -768,7 +788,10 @@ common:
 
     if( watch )
     {
-        if ( sys_processor == MIPS_24K || sys_processor == MIPS_34K )
+        if ( sys_processor == MIPS_24K ||
+             sys_processor == MIPS_24KE||
+	     sys_processor == MIPS_34K ||
+	     sys_processor == MIPS_74K )
 	{
             cp0_reg[SYSCON_IWATCHLO0].valid = TRUE;
             cp0_reg[SYSCON_IWATCHHI0].valid = TRUE;
@@ -815,18 +838,18 @@ common:
 
 	cp0_reg[SYSCON_SRSCONF0].valid = TRUE;
 	srsconf = sys_cp0_read32( R_C0_SRSConf0, R_C0_SelSRSConf0 );
-	cp0_reg[SYSCON_SRSCONF1].valid = (srsconf & M_SRSConf1M) ? TRUE : FALSE;
+	cp0_reg[SYSCON_SRSCONF1].valid = (srsconf & M_SRSConf0M) ? TRUE : FALSE;
 	if (cp0_reg[SYSCON_SRSCONF1].valid) {
 	    srsconf = sys_cp0_read32( R_C0_SRSConf1, R_C0_SelSRSConf1 );
-	    cp0_reg[SYSCON_SRSCONF2].valid = (srsconf & M_SRSConf2M) ? TRUE : FALSE;
+	    cp0_reg[SYSCON_SRSCONF2].valid = (srsconf & M_SRSConf1M) ? TRUE : FALSE;
 	}
 	if (cp0_reg[SYSCON_SRSCONF2].valid) {
 	    srsconf = sys_cp0_read32( R_C0_SRSConf2, R_C0_SelSRSConf2 );
-	    cp0_reg[SYSCON_SRSCONF3].valid = (srsconf & M_SRSConf3M) ? TRUE : FALSE;
+	    cp0_reg[SYSCON_SRSCONF3].valid = (srsconf & M_SRSConf2M) ? TRUE : FALSE;
 	}
 	if (cp0_reg[SYSCON_SRSCONF3].valid) {
 	    srsconf = sys_cp0_read32( R_C0_SRSConf3, R_C0_SelSRSConf3 );
-	    cp0_reg[SYSCON_SRSCONF4].valid = (srsconf & M_SRSConf4M) ? TRUE : FALSE;
+	    cp0_reg[SYSCON_SRSCONF4].valid = (srsconf & M_SRSConf3M) ? TRUE : FALSE;
 	}
     }
 
@@ -965,6 +988,9 @@ common:
 	break;
       case MIPS_34K   :
         cycle_per_count = MIPS34K_COUNT_CLK_PER_CYCLE;
+	break;
+      case MIPS_74K   :
+        cycle_per_count = MIPS74K_COUNT_CLK_PER_CYCLE;
 	break;
       case MIPS_M4K :
         cycle_per_count = MIPSM4K_COUNT_CLK_PER_CYCLE;

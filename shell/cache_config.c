@@ -168,7 +168,7 @@ static MON_FUNC(cache)
 	    }
 
 	    if( sys_l2cache )
-	        strcat( msg, sys_l2cache_enabled ? 
+	        strcat( msg, sys_cpu_l2_enabled() ? 
 			        ", L2 enabled" :
 			        ", L2 disabled" );
 

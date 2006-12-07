@@ -132,6 +132,7 @@ arch_core_estimate_busfreq( void )
       case MIPS_REVISION_CORID_CORE_FPGA2 :
       case MIPS_REVISION_CORID_CORE_EMUL_SYS :
       case MIPS_REVISION_CORID_CORE_FPGA3 :
+      case MIPS_REVISION_CORID_CORE_24K :
 	#define STARTVALUE 0xfffff
 
         /*  Use timer in System Controller in conjunction with cp0

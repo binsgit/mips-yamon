@@ -193,13 +193,35 @@ early_atlas_malta:
 	beq	k1,zero, 33f
 	 xor	k1, MIPS_REVISION_CORID_CORE_EMUL
 	xor	k1, MIPS_REVISION_CORID_CORE_FPGA3
-	bne	k1, zero, 1f
+	beq	k1, zero, 33f
 	 xor	k1, MIPS_REVISION_CORID_CORE_FPGA3
+	xor	k1, MIPS_REVISION_CORID_CORE_24K
+	bne	k1, zero, 1f
+	 xor	k1, MIPS_REVISION_CORID_CORE_24K
 	
 33:
+	/* If ROC-it System controller, check SC_CFG.CDONE to determine */
+	/* whether initialised (at reset, NMISTATUS is not accessible) */
+	li	k1, MSC01_BIU_REG_BASE
+	lw	k1, MSC01_SC_ID_OFS(k1)
+	srl	k1, MSC01_SC_ID_ID_SHF
+	and	k1, MSC01_SC_ID_ID_MSK >> MSC01_SC_ID_ID_SHF
+	xor	k1, MSC01_ID_SC_ROCIT
+	bne	k1, zero, 34f			/* not ROC-it, try SOC-it */
+	 nop
+
+	li	k1, MSC01_BIU_REG_BASE
+	lw	k1, MSC01_SC_CFG_OFS(k1)
+	srl	k1, MSC01_SC_CFG_CDONE_SHF
+	xor	k1, MSC01_SC_CFG_CDONE_BIT >> MSC01_SC_CFG_CDONE_SHF
+	beq	k1, zero, 1f		/* initialised: go check for NMI */
+	 nop
+	b	early_core
+	 nop
+
+34:
 	/* SOC-it 101 System controller: check register block position */
 	/*                     (at reset, NMISTATUS is not accessible) */
-	/* CoreEMUL with Bonito System Controller will fall through !  */
 	li	k1, MSC01_REGADDR_RESET + \
 		         MSC01_REGSPACE_BIU * MSC01_REGADDR_SIZE
 	lw	k1, MSC01_BIU_RBBASL_OFS(k1)
@@ -208,6 +230,7 @@ early_atlas_malta:
 	beq	k1, zero, early_core
 	nop
 
+	/* CoreEMUL with Bonito System Controller will fall through !  */
 1:
 	/* Detect NMI (MIPS32/64) */
 	MFC0(   k1, C0_Status )

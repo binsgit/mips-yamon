@@ -588,7 +588,7 @@ arch_eic_init(void)
  *
  *  None
  *
- *  The only EIC currently supported is in SOCit
+ *  The only EIC currently supported is in SOCit and ROCit
  *
  ************************************************************************/
 void
@@ -624,7 +624,7 @@ arch_eic_enable_int(
  *
  *  None
  *
- *  The only EIC currently supported is in SOCit
+ *  The only EIC currently supported is in SOCit and ROCit
  *
  ************************************************************************/
 void

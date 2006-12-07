@@ -150,9 +150,9 @@ LEAF(sys_init_cache)
 	DISP_STR( msg_init_l2cache )
 	move	a0, l2cache_size
 	move	a1, l2cache_linesize
-	move	a2, k1
 	bal	sys_init_l2cache_flash
-	nop
+	 move	a2, k1
+	
 1:
 	/* L1 cache */
 	
@@ -184,14 +184,14 @@ LEAF(sys_init_cache)
 	move	a0, icache_size
 	move	a1, icache_linesize
 	bal	sys_init_icache
-	nop
+	 move	a2, k1
 	
 	/* Initialise data cache */
 	DISP_STR( msg_init_dcache )
 	move	a0, dcache_size
 	move	a1, dcache_linesize
 	bal	sys_init_dcache
-	move	a2, k1
+	 move	a2, k1
 
 	/* Done */
 	jr	RA
@@ -228,41 +228,48 @@ END(sys_init_cache)
  ************************************************************************/
 LEAF(sys_determine_l2cache_linesize_flash)	
 
-	move	v0, zero
+	/* RM70xx? */
+	and     t9, a0, M_PRIdCoID|M_PRIdImp
+	beq	t9, QED_RM70XX, l2cache_linesize_qed_rm7061a
+	 nop
 
-	li	t9, QED_RM70XX
-	beq	a0, t9, l2cache_linesize_qed_rm7061a
-	nop
-	li	t9, MIPS_25Kf
-	beq	a0, t9, l2cache_linesize_25kf
-	nop
+	/* Check if it is a MIPS32/64 processor */	
+	and     t9, a0, M_PRIdCoID
+	bne	t9, (C0_PRID_COMP_NOT_MIPS32_64<<S_PRIdCoID), l2cache_linesize_mips
+	 nop
+	
+		
+l2cache_linesize_none:
+	
 	jr	ra
-	nop
-
+	 move	v0, zero
+	
 l2cache_linesize_qed_rm7061a:
 
 	li	v0, QED_RM7061A_L2_CACHE_LSIZE
 	jr	ra
-	nop
+	 nop
 
-l2cache_linesize_25kf:
+l2cache_linesize_mips:
 
+	/* Read CONFIG1 register to check that CONFIG2 register is available */
+	MFC0_SEL_OPCODE( R_t9, R_C0_Config1, R_C0_SelConfig1 )
+	and	t9, M_Config1M
+	beqz	t9, l2cache_linesize_none
+	 nop
+	
 	/* Read CONFIG2 register, which holds implementation data */
 	MFC0_SEL_OPCODE( R_t9, R_C0_Config2, R_C0_SelConfig2 )
 
 	/* L2 cache line size */
-	li	t8, M_Config2SL
-	and	t9, t8
-	beq	t9, zero, 1f
-	nop
+	and	t9, M_Config2SL
+	beqz	t9, l2cache_linesize_none
+	 nop
 
-	li	t8, S_Config2SL
-	srl	t9, t8
-	li	t8, 0x2
-	sll	v0, t8, t9
-1:
+	srl	t9, S_Config2SL
+	li	v0, 0x2
 	jr	ra
-	nop
+	 sll	v0, t9
 
 END(sys_determine_l2cache_linesize_flash)	
 
@@ -284,45 +291,54 @@ END(sys_determine_l2cache_linesize_flash)
  ************************************************************************/
 LEAF(sys_determine_l2cache_lines_flash)	
 
-	li	t9, QED_RM70XX
-	beq	a0, t9, l2cache_lines_qed_rm7061a
-	nop
-	li	t9, MIPS_25Kf
-	beq	a0, t9, l2cache_lines_25kf
-	nop
+	/* RM70xx? */
+	and     t9, a0, M_PRIdCoID|M_PRIdImp
+	beq	t9, QED_RM70XX, l2cache_lines_qed_rm7061a
+	 nop
+	
+	/* Check if it is a MIPS32/64 processor */	
+	and     t9, a0, M_PRIdCoID
+	bne	t9, (C0_PRID_COMP_NOT_MIPS32_64<<S_PRIdCoID), l2cache_lines_mips
+	 nop
+
+l2cache_lines_none:
+
 	jr	ra
-	move	v0, zero
+	 move	v0, zero
 
 l2cache_lines_qed_rm7061a:
 
 	li	v0, (QED_RM7061A_L2_CACHE_SIZE/QED_RM7061A_L2_CACHE_LSIZE)
 	jr	ra
-	nop
+	 nop
 
-l2cache_lines_25kf:
+l2cache_lines_mips:
 
+	/* Read CONFIG1 register to check that CONFIG2 register is available */
+	MFC0_SEL_OPCODE( R_t9, R_C0_Config1, R_C0_SelConfig1 )
+	and	t9, M_Config1M
+	beqz	t9, l2cache_lines_none
+	 nop
+	
 	/* Read CONFIG2 register, which holds implementation data */
 	MFC0_SEL_OPCODE( R_t9, R_C0_Config2, R_C0_SelConfig2 )
 
 	/* S-cache lines
 	 * Calculated as associativity * sets per way
 	 */
-	li	t8, M_Config2SA
-	and	t8, t9
+	and	t8, t9, M_Config2SA
 	srl	t8, S_Config2SA
 	addiu	t8, 1				/* t8 = associativity	*/
 
-	li	t7, M_Config2SS
-	and	t7, t9
-	srl	t7, S_Config2SS
-	li	t9, 0x40
-	sll	t7, t9, t7			/* t7 = sets per way	*/
+	and	t9, M_Config2SS
+	srl	t9, S_Config2SS
+	li	t7, 0x40
+	sll	t7, t9				/* t7 = sets per way	*/
 
 	multu	t8, t7
-	mflo    v0
 
 	jr	ra
-	nop
+	 mflo    v0
 
 END(sys_determine_l2cache_lines_flash)
 
@@ -344,32 +360,43 @@ END(sys_determine_l2cache_lines_flash)
  ************************************************************************/
 LEAF(sys_determine_l2cache_assoc_flash)	
 
-	li	t9, QED_RM70XX
-	beq	a0, t9, l2cache_assoc_qed_rm7061a
-	nop
-	li	t9, MIPS_25Kf
-	beq	a0, t9, l2cache_assoc_25kf
-	nop
+	/* RM70xx? */
+	and     t9, a0, M_PRIdCoID|M_PRIdImp
+	beq	t9, QED_RM70XX, l2cache_assoc_qed_rm7061a
+	 nop
+
+	/* Check if it is a MIPS32/64 processor */	
+	and     t9, a0, M_PRIdCoID
+	bne	t9, (C0_PRID_COMP_NOT_MIPS32_64<<S_PRIdCoID), l2cache_assoc_mips
+	 nop
+	
+l2cache_assoc_none:
+	
 	jr	ra
-	move	v0, zero
+	 move	v0, zero
 
 l2cache_assoc_qed_rm7061a:
-
+	
 	li	v0, QED_RM7061A_L2_CACHE_ASSOC
 	jr	ra
-	nop
+	 nop
 
-l2cache_assoc_25kf:
+l2cache_assoc_mips:
+
+	/* Read CONFIG1 register to check that CONFIG2 register is available */
+	MFC0_SEL_OPCODE( R_t9, R_C0_Config1, R_C0_SelConfig1 )
+	and	t9, M_Config1M
+	beqz	t9, l2cache_assoc_none
+	 nop
 
 	/* Read CONFIG2 register, which holds implementation data */
 	MFC0_SEL_OPCODE( R_t9, R_C0_Config2, R_C0_SelConfig2 )
 
 	/* L2-cache associativity */
-	li	t8, M_Config2SA
-	and	t9, t8
-	srl	v0, t9, S_Config2SA
+	and	v0, t9, M_Config2SA
+	srl	v0, S_Config2SA
 	jr	ra
-	addiu	v0, 1
+	 addiu	v0, 1
 
 END(sys_determine_l2cache_assoc_flash)
 
@@ -392,38 +419,47 @@ END(sys_determine_l2cache_assoc_flash)
  ************************************************************************/
 LEAF(sys_determine_l2cache_avail_flash)	
 
-	li	t9, QED_RM70XX
-	beq	a0, t9, l2cache_avail_qed_rm7061a
-	nop
-	li	t9, MIPS_25Kf
-	beq	a0, t9, l2cache_avail_25kf
-	nop
+	/* RM70xx? */
+	and     t9, a0, M_PRIdCoID|M_PRIdImp
+	beq	t9, QED_RM70XX, l2cache_avail_qed_rm7061a
+	 nop
 
+	/* Check if it is a MIPS32/64 processor */	
+	and     t9, a0, M_PRIdCoID
+	bne	t9, (C0_PRID_COMP_NOT_MIPS32_64<<S_PRIdCoID), l2cache_avail_mips
+	 nop
+	
+l2cache_avail_none:
+	
 	move	v0, zero
 	jr	ra
-	move	v1, zero
+	 move	v1, zero
 
 l2cache_avail_qed_rm7061a:
 
-	li	v0, 1 /* L2 available        */
-	li	v1, 0 /* Disabled by default */
+	li	v0, 1		/* L2 available        */
 	jr	ra
-	nop
+	 move	v1, zero	/* Disabled by default */
 
-l2cache_avail_25kf:
+l2cache_avail_mips:
+
+	/* Read CONFIG1 register to check that CONFIG2 register is available */
+	MFC0_SEL_OPCODE( R_t9, R_C0_Config1, R_C0_SelConfig1 )
+	and	t9, M_Config1M
+	beqz	t9, l2cache_avail_none
+	 nop
 
 	/* Read CONFIG2 register, which holds implementation data */
 	MFC0_SEL_OPCODE( R_t9, R_C0_Config2, R_C0_SelConfig2 )
 
 	/* L2 cache line size */
-	li	t8, M_Config2SL
-	and	t9, t8
-	beq	t9, zero, 1f
-	move	v0, zero
+	and	t9, M_Config2SL
+	beqz	t9, 1f
+	 move	v0, zero
 	li	v0, 1
 1:	
 	jr	ra
-	move	v1, v0 /* L2 can't be disabled */
+	 move	v1, v0		/* L2 can't be disabled */
 
 END(sys_determine_l2cache_avail_flash)	
 
@@ -449,52 +485,48 @@ END(sys_determine_l2cache_avail_flash)
  ************************************************************************/
 LEAF(sys_determine_icache_linesize_flash)	
 
+	/* RM52xx?? */
+	and     t9, a0, (M_PRIdCoID|M_PRIdImp)
+	beq	t9, QED_RM52XX, icache_linesize_qed_rm5261
+	 nop
+	/* RM70xx? */
+	beq	t9, QED_RM70XX, icache_linesize_qed_rm7061a
+	 nop
+	
 	/* Check if it is a MIPS32/64 processor */	
-	srl	t9, a0, S_PRIdCoID
-	and     t9, M_PRIdCoID >> S_PRIdCoID
-	li	t8, C0_PRID_COMP_NOT_MIPS32_64
-	bne	t9, t8, icache_linesize_mips32
-	nop
-	/* Not a MIPS32/64 processor */
-	li	t9, QED_RM52XX
-	beq	a0, t9, icache_linesize_qed_rm5261
-	nop
-	li	t9, QED_RM70XX
-	beq	a0, t9, icache_linesize_qed_rm7061a
-	nop
+	and     t9, a0, M_PRIdCoID
+	bne	t9, (C0_PRID_COMP_NOT_MIPS32_64<<S_PRIdCoID), icache_linesize_mips
+	 nop
+	
 	/* Unknown CPU */
 icache_linesize_zero:
 	jr	ra
-	move	v0, zero
+	 move	v0, zero
 
-icache_linesize_mips32:
+icache_linesize_mips:
 	
 	/* Read CONFIG1 register, which holds implementation data */
 	MFC0_SEL_OPCODE( R_t9, R_C0_Config1, R_C0_SelConfig1 )
 
-#define config1	t9
-
 	/* I-cache line size */
-	li	t8, M_Config1IL
-	and	t8, config1
-	beq	t8, zero, icache_linesize_zero
-	li	t7, S_Config1IL
-	srl	t8, t7
-	li	t7, 0x2
-	sll	v0, t7, t8
+	and	t9, M_Config1IL
+	beqz	t9, icache_linesize_zero
+	 nop
 
+	srl	t9, S_Config1IL
+	li	v0, 0x2
 	jr	ra
-	nop
+	 sll	v0, t9
 
 icache_linesize_qed_rm5261:
 	li	v0, QED_RM5261_ICACHE_LSIZE
 	jr	ra
-	nop
+	 nop
 
 icache_linesize_qed_rm7061a:
 	li	v0, QED_RM7061A_ICACHE_LSIZE
 	jr	ra
-	nop
+	 nop
 
 END(sys_determine_icache_linesize_flash)	
 	
@@ -521,62 +553,55 @@ END(sys_determine_icache_linesize_flash)
  ************************************************************************/
 LEAF(sys_determine_icache_lines_flash)	
 
+	/* RM52xx? */
+	and     t9, a0, (M_PRIdCoID|M_PRIdImp)
+	beq	t9, QED_RM52XX, icache_lines_qed_rm5261
+	 nop
+	/* RM70xx? */
+	beq	t9, QED_RM70XX, icache_lines_qed_rm7061a
+	 nop
+	
 	/* Check if it is a MIPS32/64 processor */	
-	srl	t9, a0, S_PRIdCoID
-	and     t9, M_PRIdCoID >> S_PRIdCoID
-	li	t8, C0_PRID_COMP_NOT_MIPS32_64
-	bne	t9, t8, icache_lines_mips32
-	nop
-	/* Not a MIPS32/64 processor */
-	li	t9, QED_RM52XX
-	beq	a0, t9, icache_lines_qed_rm5261
-	nop
-	li	t9, QED_RM70XX
-	beq	a0, t9, icache_lines_qed_rm7061a
-	nop
+	and     t9, a0, M_PRIdCoID
+	bne	t9, (C0_PRID_COMP_NOT_MIPS32_64<<S_PRIdCoID), icache_lines_mips
+	 nop
+	
 	/* Unknown CPU */
 icache_lines_zero:
 	jr	ra
-	move	v0, zero
+	 move	v0, zero
 
-icache_lines_mips32:
+icache_lines_mips:
 	
 	/* Read CONFIG1 register, which holds implementation data */
 	MFC0_SEL_OPCODE( R_t9, R_C0_Config1, R_C0_SelConfig1 )
 
-#define config1	t9
-
 	/* I-cache lines
 	 * Calculated as associativity * sets per way
 	 */
-	li	t8, M_Config1IA
-	and	t8, config1
-	li	t7, S_Config1IA
-	srl	t8, t7
-	addiu	t8,1				/* t8 = associativity	*/
+	and	t8, t9, M_Config1IA
+	srl	t8, S_Config1IA
+	addiu	t8, 1				/* t8 = associativity	*/
 
-	li	t7, M_Config1IS
-	and	t7, config1
-	li	t9, S_Config1IS
-	srl	t7, t9
-	li	t9, 0x40
-	sll	t7, t9, t7			/* t7 = sets per way	*/
+	and	t9, M_Config1IS
+	srl	t9, S_Config1IS
+	li	t7, 0x40
+	sll	t7, t9				/* t7 = sets per way	*/
 
 	multu	t8, t7
-	mflo    v0
 
 	jr	ra
-	nop
+	 mflo    v0
 
 icache_lines_qed_rm5261:
 	li	v0, (QED_RM5261_ICACHE_SIZE / QED_RM5261_ICACHE_LSIZE)
 	jr	ra
-	nop
+	 nop
 
 icache_lines_qed_rm7061a:
 	li	v0, (QED_RM7061A_ICACHE_SIZE / QED_RM7061A_ICACHE_LSIZE)
 	jr	ra
-	nop
+	 nop
 
 END(sys_determine_icache_lines_flash)
 
@@ -602,39 +627,34 @@ END(sys_determine_icache_lines_flash)
  ************************************************************************/
 LEAF(sys_determine_icache_assoc_flash)	
 
+	/* RM50xx? */
+	and     t9, a0, M_PRIdCoID|M_PRIdImp
+	beq	t9, QED_RM52XX, icache_assoc_qed_rm5261
+	 nop
+	/* RM70xx? */
+	beq	t9, QED_RM70XX, icache_assoc_qed_rm7061a
+	 nop
+	
 	/* Check if it is a MIPS32/64 processor */	
-	srl	t9, a0, S_PRIdCoID
-	and     t9, M_PRIdCoID >> S_PRIdCoID
-	li	t8, C0_PRID_COMP_NOT_MIPS32_64
-	bne	t9, t8, icache_assoc_mips32
-	nop
-	/* Not a MIPS32/64 processor */
-	li	t9, QED_RM52XX
-	beq	a0, t9, icache_assoc_qed_rm5261
-	nop
-	li	t9, QED_RM70XX
-	beq	a0, t9, icache_assoc_qed_rm7061a
-	nop
+	and     t9, a0, M_PRIdCoID
+	bne	t9, (C0_PRID_COMP_NOT_MIPS32_64<<S_PRIdCoID), icache_assoc_mips
+	 nop
+	
 	/* Unknown CPU */
 icache_assoc_zero:
 	jr	ra
-	move	v0, zero
+	 move	v0, zero
 
-icache_assoc_mips32:
+icache_assoc_mips:
 	
 	/* Read CONFIG1 register, which holds implementation data */
 	MFC0_SEL_OPCODE( R_t9, R_C0_Config1, R_C0_SelConfig1 )
 
-#define config1	t9
-
 	/* I-cache associativity */
-	li	t8, M_Config1IA
-	and	t8, config1
-	li	t7, S_Config1IA
-	srl	t8, t7
-	addiu	v0,t8,1				/* t8 = associativity	*/
+	and	v0, t9, M_Config1IA
+	srl	v0, S_Config1IA
 	jr	ra
-	nop
+	 addiu	v0, 1
 
 icache_assoc_qed_rm5261:
 	li	v0, QED_RM5261_ICACHE_ASSOC
@@ -670,52 +690,48 @@ END(sys_determine_icache_assoc_flash)
  ************************************************************************/
 LEAF(sys_determine_dcache_linesize_flash)	
 
-	/* Check if it is a MIPS32/64 processor */	
-	srl	t9, a0, S_PRIdCoID
-	and     t9, M_PRIdCoID >> S_PRIdCoID
-	li	t8, C0_PRID_COMP_NOT_MIPS32_64
-	bne	t9, t8, dcache_linesize_mips32
-	nop
-	/* Not a MIPS32/64 processor */
-	li	t9, QED_RM52XX
-	beq	a0, t9, dcache_linesize_qed_rm5261
-	nop
-	li	t9, QED_RM70XX
-	beq	a0, t9, dcache_linesize_qed_rm7061a
-	nop
+	/* RM52xx?? */
+	and     t9, a0, (M_PRIdCoID|M_PRIdImp)
+	beq	t9, QED_RM52XX, dcache_linesize_qed_rm5261
+	 nop
+	/* RM70xx? */
+	beq	t9, QED_RM70XX, dcache_linesize_qed_rm7061a
+	 nop
+
+	/* Check if it is a MIPS32/64 processor */
+	and     t9, a0, M_PRIdCoID
+	bne	t9, (C0_PRID_COMP_NOT_MIPS32_64<<S_PRIdCoID), dcache_linesize_mips
+	 nop
+	
 	/* Unknown CPU */
 dcache_linesize_zero:
 	jr	ra
-	move	v0, zero
+	 move	v0, zero
 
-dcache_linesize_mips32:
+dcache_linesize_mips:
 	
 	/* Read CONFIG1 register, which holds implementation data */
 	MFC0_SEL_OPCODE( R_t9, R_C0_Config1, R_C0_SelConfig1 )
 
-#define config1	t9
-
 	/* D-cache line size */
-	li	t8, M_Config1DL
-	and	t8, config1
-	beq	t8, zero, dcache_linesize_zero
-	li	t7, S_Config1DL
-	srl	t8, t7
-	li	t7, 0x2
-	sll	v0, t7, t8
+	and	t9, M_Config1DL
+	beqz	t9, dcache_linesize_zero
+	 nop
 
+	srl	t9, S_Config1DL
+	li	v0, 0x2
 	jr	ra
-	nop
+	 sll	v0, t9
 
 dcache_linesize_qed_rm5261:
 	li	v0, QED_RM5261_DCACHE_LSIZE
 	jr	ra
-	nop
+	 nop
 
 dcache_linesize_qed_rm7061a:
 	li	v0, QED_RM7061A_DCACHE_LSIZE
 	jr	ra
-	nop
+	 nop
 
 END(sys_determine_dcache_linesize_flash)	
 
@@ -741,62 +757,55 @@ END(sys_determine_dcache_linesize_flash)
  ************************************************************************/
 LEAF(sys_determine_dcache_lines_flash)	
 
+	/* RM52xx?? */
+	and     t9, a0, (M_PRIdCoID|M_PRIdImp)
+	beq	t9, QED_RM52XX, dcache_lines_qed_rm5261
+	 nop
+	/* RM70xx? */
+	beq	t9, QED_RM70XX, dcache_lines_qed_rm7061a
+	 nop
+	
 	/* Check if it is a MIPS32/64 processor */	
-	srl	t9, a0, S_PRIdCoID
-	and     t9, M_PRIdCoID >> S_PRIdCoID
-	li	t8, C0_PRID_COMP_NOT_MIPS32_64
-	bne	t9, t8, dcache_lines_mips32
-	nop
-	/* Not a MIPS32/64 processor */
-	li	t9, QED_RM52XX
-	beq	a0, t9, dcache_lines_qed_rm5261
-	nop
-	li	t9, QED_RM70XX
-	beq	a0, t9, dcache_lines_qed_rm7061a
-	nop
+	and     t9, a0, M_PRIdCoID
+	bne	t9, (C0_PRID_COMP_NOT_MIPS32_64<<S_PRIdCoID), dcache_lines_mips
+	 nop
+	
 	/* Unknown CPU */
 dcache_lines_zero:
 	jr	ra
-	move	v0, zero
+	 move	v0, zero
 
-dcache_lines_mips32:
+dcache_lines_mips:
 	
 	/* Read CONFIG1 register, which holds implementation data */
 	MFC0_SEL_OPCODE( R_t9, R_C0_Config1, R_C0_SelConfig1 )
 
-#define config1	t9
-
 	/* D-cache lines
 	 * Calculated as associativity * sets per way
 	 */
-	li	t8, M_Config1DA
-	and	t8, config1
-	li	t7, S_Config1DA
-	srl	t8, t7
-	addiu	t8,1				/* t8 = associativity	*/
+	and	t8, t9, M_Config1DA
+	srl	t8, S_Config1DA
+	addiu	t8, 1				/* t8 = associativity	*/
 
-	li	t7, M_Config1DS
-	and	t7, config1
-	li	t9, S_Config1DS
-	srl	t7, t9
-	li	t9, 0x40
-	sll	t7, t9, t7			/* t7 = sets per way	*/
+	and	t9, M_Config1DS
+	srl	t9, S_Config1DS
+	li	t7, 0x40
+	sll	t7, t9				/* t7 = sets per way	*/
 
 	multu	t8, t7
-	mflo    v0
 
 	jr	ra
-	nop
+	 mflo    v0
 
 dcache_lines_qed_rm5261:
 	li	v0, (QED_RM5261_DCACHE_SIZE / QED_RM5261_DCACHE_LSIZE)
 	jr	ra
-	nop
+	 nop
 
 dcache_lines_qed_rm7061a:
 	li	v0, (QED_RM7061A_DCACHE_SIZE / QED_RM7061A_DCACHE_LSIZE)
 	jr	ra
-	nop
+	 nop
 
 END(sys_determine_dcache_lines_flash)
 
@@ -823,53 +832,61 @@ END(sys_determine_dcache_lines_flash)
  ************************************************************************/
 LEAF(sys_determine_dcache_assoc_flash)	
 
+	/* RM52xx?? */
+	and     t9, a0, (M_PRIdCoID|M_PRIdImp)
+	beq	t9, QED_RM52XX, dcache_assoc_qed_rm5261
+	 nop
+	/* RM70xx? */
+	beq	t9, QED_RM70XX, dcache_assoc_qed_rm7061a
+	 nop
+	
 	/* Check if it is a MIPS32/64 processor */	
-	srl	t9, a0, S_PRIdCoID
-	and     t9, M_PRIdCoID >> S_PRIdCoID
-	li	t8, C0_PRID_COMP_NOT_MIPS32_64
-	bne	t9, t8, dcache_assoc_mips32
-	nop
-	/* Not a MIPS32/64 processor */
-	li	t9, QED_RM52XX
-	beq	a0, t9, dcache_assoc_qed_rm5261
-	nop
-	li	t9, QED_RM70XX
-	beq	a0, t9, dcache_assoc_qed_rm7061a
-	nop
+	and     t9, a0, M_PRIdCoID
+	bne	t9, (C0_PRID_COMP_NOT_MIPS32_64<<S_PRIdCoID), dcache_assoc_mips
+	 nop
+	
 	/* Unknown CPU */
 dcache_assoc_zero:
 	jr	ra
-	move	v0, zero
+	 move	v0, zero
 
-dcache_assoc_mips32:
+dcache_assoc_mips:
 	
 	/* Read CONFIG1 register, which holds implementation data */
 	MFC0_SEL_OPCODE( R_t9, R_C0_Config1, R_C0_SelConfig1 )
 
-#define config1	t9
-
-	/* I-cache associativity */
-	li	t8, M_Config1DA
-	and	t8, config1
-	li	t7, S_Config1DA
-	srl	t8, t7
-	addiu	v0,t8,1				/* t8 = associativity	*/
+	/* D-cache associativity */
+	and	v0, t9, M_Config1DA
+	srl	v0, S_Config1DA
 	jr	ra
-	nop
+	 addiu	v0, 1
 
 dcache_assoc_qed_rm5261:
 	li	v0, QED_RM5261_DCACHE_ASSOC
 	jr	ra
-	nop
+	 nop
 
 dcache_assoc_qed_rm7061a:
 	li	v0, QED_RM7061A_DCACHE_ASSOC
 	jr	ra
-	nop
+	 nop
 
 END(sys_determine_dcache_assoc_flash)
 
-
+/*
+ * Tag register usage for MIPS32/64 processors
+ *
+ * Proc		Dcache			Icache			L2cache
+ * 4K*		taglo(28/0)		taglo(28/0)		-
+ * 5K		taglo/hi(28/0)		taglo/hi(29/0)		-
+ * 20K		dtaglo/hi(28/2,29/2)	itaglo/hi(28/0,29/0)	-
+ * 24K		dtaglo(28/2)		itaglo(28/0)		l23taglo(28/4)
+ * 24KE		dtaglo(28/2)		itaglo(28/0)		l23taglo(28/4)
+ * 25K		dtaglo/hi(28/2,29/2)	itaglo/hi(28/0,29/0)	l23taglo/hi(28/4,29/4)
+ * 34K		dtaglo(28/2)		itaglo(28/0)		l23taglo(28/4)
+ * 74K		dtaglo/hi(28/2,29/2)	itaglo/hi(28/0,29/0)	l23taglo(28/4)
+ */
+	
 /************************************************************************
  *
  *                          sys_init_l2cache_flash
@@ -892,38 +909,55 @@ LEAF( sys_init_l2cache_flash )
 	beq   a0, zero, 9f		 /* just in case cache size = 0 */
 	 nop
 
-	li	a3, MIPS_20Kc
-	beq	a3, a2, 1f
-	 nop
-	li	 a3, MIPS_25Kf
-	beq	a3, a2, 1f
-	 nop
-	li	 a3, MIPS_24K
-	beq	a3, a2, 2f
-	 nop
-	li	 a3, MIPS_24KE
-	beq	a3, a2, 2f
-	 nop
-	li	 a3, MIPS_34K
-	beq	a3, a2, 2f
-	 nop
-
+	/*
+	 * Mask and shift the processor id so that we can
+	 * use xori in the tests
+	 */
+	and	a2, M_PRIdCoID|M_PRIdImp
+	srl	a2, S_PRIdImp
 	
-	/* default: Clear TagLo/TagHi */
-	MTC0(   zero, C0_TagLo )
+	/*
+	 * L2 cache support is not defined for all of these processors
+	 * so the register selection is base on the registers used for the
+	 * primary cache
+	 * Hopefully we will never get here unless an L2 cache is present
+	 */
+#define X(this, last, type) \
+	xori	a2, ((MIPS_##last)>>S_PRIdImp)^((MIPS_##this)>>S_PRIdImp); \
+	beqz	a2, init_l2cache_##type
+#define MIPS_0	0
+	X(4Kc,		0,		taglo)
+	X(4Kmp,		4Kc,		taglo)
+	X(4KEc,		4Kmp,		taglo)
+	X(4KEc_R2,	4KEc,		taglo)
+	X(4KEmp,	4KEc_R2,	taglo)
+	X(4KEmp_R2,	4KEmp,		taglo)
+	X(4KSc,		4KEmp_R2,	taglo)
+	X(4KSd,		4KSc,		taglo)
+	X(5K,		4KSd,		taghilo)
+	X(20Kc,		5K,		l23taghilo)
+	X(M4K,		20Kc,		taglo)
+	X(25Kf,		M4K,		l23taghilo)
+	X(5KE,		25Kf,		taghilo)
+	X(24K,		5KE,		l23taglo)
+	X(24KE,		24K,		l23taglo)
+	X(34K,		24KE,		l23taglo)
+	X(74K,		34K,		l23taglo)
+	 nop
+#undef MIPS_0
+#undef X
+
+	/* default: Clear TagHI/TagLo */
+init_l2cache_taghilo:
 	MTC0(   zero, C0_TagHi )
+init_l2cache_taglo:	
+	MTC0(   zero, C0_TagLo )
 	b	0f
 	 nop
 
-1:
-	/* 20Kc/25Kf : Clear L23TagLo/L23TagHi */
-	MTC0_SEL_OPCODE( R_zero, R_C0_L23TagLo, R_C0_SelL23TagLo )
+init_l2cache_l23taghilo:
 	MTC0_SEL_OPCODE( R_zero, R_C0_L23TagHi, R_C0_SelL23TagHi )
-	b	0f
-	 nop
-	
-2:
-	/* 24K/24KE/34K : Clear L23TagLo */
+init_l2cache_l23taglo:
 	MTC0_SEL_OPCODE( R_zero, R_C0_L23TagLo, R_C0_SelL23TagLo )
 
 0:
@@ -939,7 +973,6 @@ SET_MIPS3()
 SET_MIPS0()
 	bne	t0, t1, 1b
 	 addu	t0, a1
-	
 9:		
 	jr	ra
 	 nop
@@ -979,35 +1012,47 @@ LEAF( sys_init_icache )
 	beq   a0, zero, 9f		 /* just in case cache size = 0 */
 	 nop
 
-	li	a3, MIPS_20Kc
-	beq	a3, a2, 1f
-	 nop
-	li	 a3, MIPS_25Kf
-	beq	a3, a2, 1f
-	 nop
-	li	 a3, MIPS_24K
-	beq	a3, a2, 2f
-	 nop
-	li	 a3, MIPS_24KE
-	beq	a3, a2, 2f
-	 nop
-	li	 a3, MIPS_34K
-	beq	a3, a2, 2f
-	 nop
+	/*
+	 * Mask and shift the processor id so that we can
+	 * use xori in the tests
+	 */
+	and	a2, M_PRIdCoID|M_PRIdImp
+	srl	a2, S_PRIdImp
 	
-1:
-	/* 20Kc/25Kf : Clear ITagLo/ITagHi */
-	/* Note: Use the default case because ITagLo==TagLo and ITagHI=TagHi */
-	
-	/* default: Clear TagLo/TagHi */
-	MTC0( zero, C0_TagLo )
-	MTC0( zero, C0_TagHi )
-	b	0f
+#define X(this, last, type) \
+	xori	a2, ((MIPS_##last)>>S_PRIdImp)^((MIPS_##this)>>S_PRIdImp); \
+	beqz	a2, init_icache_##type
+#define MIPS_0	0
+	X(4Kc,		0,		taglo)
+	X(4Kmp,		4Kc,		taglo)
+	X(4KEc,		4Kmp,		taglo)
+	X(4KEc_R2,	4KEc,		taglo)
+	X(4KEmp,	4KEc_R2,	taglo)
+	X(4KEmp_R2,	4KEmp,		taglo)
+	X(4KSc,		4KEmp_R2,	taglo)
+	X(4KSd,		4KSc,		taglo)
+	X(5K,		4KSd,		taghilo)
+	X(20Kc,		5K,		itaghilo)
+	X(M4K,		20Kc,		taglo)
+	X(25Kf,		M4K,		itaghilo)
+	X(5KE,		25Kf,		taghilo)
+	X(24K,		5KE,		itaglo)
+	X(24KE,		24K,		itaglo)
+	X(34K,		24KE,		itaglo)
+	X(74K,		34K,		itaghilo)
 	 nop
+#undef MIPS_0
+#undef X
+	
+	/* default: Clear TagHi/TagLo */
 
-2:
-	/* 24K/24KE/34K : Clear ITagLo */
-	MTC0_SEL_OPCODE( R_zero, R_C0_ITagLo, R_C0_SelITagLo )
+	/* Note: ITagHi/Lo == TagHi/Lo, so we can use common code */
+init_icache_itaghilo:
+init_icache_taghilo:
+	MTC0( zero, C0_TagHi )
+init_icache_itaglo:
+init_icache_taglo:
+	MTC0( zero, C0_TagLo )
 
 0:
 	/* Calc an address that will correspond to the first cache line */
@@ -1064,39 +1109,49 @@ LEAF( sys_init_dcache )
 
 #else
 		
-	beq   a0, zero, 9f		 /* just in case cache size = 0 */
-	 nop
+	/*
+	 * Mask and shift the processor id so that we can
+	 * use xori in the tests
+	 */
+	and	a2, M_PRIdCoID|M_PRIdImp
+	srl	a2, S_PRIdImp
 	
-	li	a3, MIPS_20Kc
-	beq	a3, a2, 1f
-  	 nop
-	li	 a3, MIPS_25Kf
-	beq	a3, a2, 1f
+#define X(this, last, type) \
+	xori	a2, ((MIPS_##last)>>S_PRIdImp)^((MIPS_##this)>>S_PRIdImp); \
+	beqz	a2, init_dcache_##type
+#define MIPS_0	0
+	X(4Kc,		0,		taglo)
+	X(4Kmp,		4Kc,		taglo)
+	X(4KEc,		4Kmp,		taglo)
+	X(4KEc_R2,	4KEc,		taglo)
+	X(4KEmp,	4KEc_R2,	taglo)
+	X(4KEmp_R2,	4KEmp,		taglo)
+	X(4KSc,		4KEmp_R2,	taglo)
+	X(4KSd,		4KSc,		taglo)
+	X(5K,		4KSd,		taghilo)
+	X(20Kc,		5K,		dtaghilo)
+	X(M4K,		20Kc,		taglo)
+	X(25Kf,		M4K,		dtaghilo)
+	X(5KE,		25Kf,		taghilo)
+	X(24K,		5KE,		dtaglo)
+	X(24KE,		24K,		dtaglo)
+	X(34K,		24KE,		dtaglo)
+	X(74K,		34K,		dtaghilo)
 	 nop
-	li	 a3, MIPS_24K
-	beq	a3, a2, 2f
-	 nop
-	li	 a3, MIPS_24KE
-	beq	a3, a2, 2f
-	 nop
-	li	 a3, MIPS_34K
-	beq	a3, a2, 2f
-	 nop
+#undef MIPS_0
+#undef X
 	
-	/* default: Clear TagLo/TagHi */
-	MTC0( zero, C0_TagLo )
+	/* default: Clear TagHi/TagLo */
+init_dcache_taghilo:
 	MTC0( zero, C0_TagHi )
+init_dcache_taglo:
+	MTC0( zero, C0_TagLo )
 	b	0f
 	 nop
 	
-1:	
-	/* 20Kc/25Kf : Clear DTagLo and DTagHi */
-	MTC0_SEL_OPCODE( R_zero, R_C0_DTagLo, R_C0_SelDTagLo )
+init_dcache_dtaghilo:
 	MTC0_SEL_OPCODE( R_zero, R_C0_DTagHi, R_C0_SelDTagHi )
-	b	0f
-	 nop	
-2:	
-	/* 24K/24KE/34K : Clear DTagLo */
+init_dcache_dtaglo:
 	MTC0_SEL_OPCODE( R_zero, R_C0_DTagLo, R_C0_SelDTagLo )
 
 0:	
