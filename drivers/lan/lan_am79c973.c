@@ -18,7 +18,7 @@
  *
  * mips_start_of_legal_notice
  * 
- * Copyright (c) 2006 MIPS Technologies, Inc. All rights reserved.
+ * Copyright (c) 2008 MIPS Technologies, Inc. All rights reserved.
  *
  *
  * Unpublished rights (if any) reserved under the copyright laws of the
@@ -42,12 +42,9 @@
  * this code does not give recipient any license to any intellectual
  * property rights, including any patent rights, that cover this code.
  *
- * This code shall not be exported, reexported, transferred, or released,
- * directly or indirectly, in violation of the law of any country or
- * international law, regulation, treaty, Executive Order, statute,
- * amendments or supplements thereto. Should a conflict arise regarding the
- * export, reexport, transfer, or release of this code, the laws of the
- * United States of America shall be the governing law.
+ * This code shall not be exported or transferred for the purpose of
+ * reexporting in violation of any U.S. or non-U.S. regulation, treaty,
+ * Executive Order, law, statute, amendment or supplement thereto.
  *
  * This code constitutes one or more of the following: commercial computer
  * software, commercial computer software documentation or other commercial
@@ -63,8 +60,6 @@
  * the terms of the license agreement(s) and/or applicable contract terms
  * and conditions covering this code from MIPS Technologies or an authorized
  * third party.
- *
- *
  *
  * 
  * mips_end_of_legal_notice
@@ -101,7 +96,7 @@
 
 
 /* Maximum cache line size */
-#define CACHE_LINE_SIZE 0x20
+#define CACHE_LINE_SIZE 64	/* L2 8 beat burst */
 
 typedef enum
 {
@@ -1221,6 +1216,7 @@ INT32 LAN_AM79C973_allocate_memory( t_LAN_AM79C973_device *pdevice )
     t_sys_malloc  mem ;
     UINT32        ptmp ;
     int           i ;
+    extern bool	  io_coherent;
 
     if (first_time_init == 0)
     {
@@ -1228,7 +1224,7 @@ INT32 LAN_AM79C973_allocate_memory( t_LAN_AM79C973_device *pdevice )
 
         /* 1: allocate initialization block */
         mem.size     = LAN_AM79C973_INITBLOCK_SIZE ;
-        mem.boundary = sizeof(UINT32) ;
+        mem.boundary = CACHE_LINE_SIZE ;
         mem.memory   = (void*)&ptmp ;
         rcode = SYSCON_read( SYSCON_BOARD_MALLOC_ID,
                              &mem,
@@ -1237,7 +1233,10 @@ INT32 LAN_AM79C973_allocate_memory( t_LAN_AM79C973_device *pdevice )
         {
             return( rcode ) ;
         }
-        pdevice->pInitBlock = (void*) KSEG1( ptmp ) ;
+	if (!io_coherent)
+	    ptmp = KSEG1( ptmp ) ;
+
+        pdevice->pInitBlock = (void*) ptmp;
 
         /* 2: allocate TX Descriptor Ring */
         mem.size     = LAN_AM79C973_TDRE_COUNT * LAN_AM79C973_TDRE_SIZE ;
@@ -1250,7 +1249,9 @@ INT32 LAN_AM79C973_allocate_memory( t_LAN_AM79C973_device *pdevice )
         {
             return( rcode ) ;
         }
-        ptmp = KSEG1( ptmp ) ;
+	if (!io_coherent)
+	    ptmp = KSEG1( ptmp ) ;
+
         for (i=0; i<LAN_AM79C973_TDRE_COUNT; i++)
         {
             pdevice->TXDRE[i] = ptmp ;
@@ -1268,7 +1269,9 @@ INT32 LAN_AM79C973_allocate_memory( t_LAN_AM79C973_device *pdevice )
         {
             return( rcode ) ;
         }
-        ptmp = KSEG1( ptmp ) ;
+	if (!io_coherent)
+	    ptmp = KSEG1( ptmp ) ;
+
         for (i=0; i<LAN_AM79C973_RDRE_COUNT; i++)
         {
             pdevice->RXDRE[i] = ptmp ;
@@ -1286,7 +1289,9 @@ INT32 LAN_AM79C973_allocate_memory( t_LAN_AM79C973_device *pdevice )
         {
             return( rcode ) ;
         }
-        ptmp = KSEG1( ptmp ) ;
+	if (!io_coherent)
+	    ptmp = KSEG1( ptmp ) ;
+
         for (i=0; i<LAN_AM79C973_TX_BUFFERS; i++)
         {
             pdevice->TxBuffer[i] = ptmp ;
@@ -1304,7 +1309,9 @@ INT32 LAN_AM79C973_allocate_memory( t_LAN_AM79C973_device *pdevice )
         {
             return( rcode ) ;
         }
-        ptmp = KSEG1( ptmp ) ;
+	if (!io_coherent)
+	  ptmp = KSEG1( ptmp ) ;
+
         for (i=0; i<LAN_AM79C973_RX_BUFFERS; i++)
         {
             pdevice->RxBuffer[i] = ptmp ;
@@ -1383,7 +1390,7 @@ INT32 LAN_AM79C973_init_initblock( t_LAN_AM79C973_device *pdevice )
                          (                          0<<INIT_WORD0_DRX_SHF)  |
                          (                          3<<INIT_WORD0_PORTSEL_SHF));
 
-    /* Initialize Init Block word 1&2: MAC-addres */
+    /* Initialize Init Block word 1&2: MAC-address */
     amd_base = (UINT32 *) pdevice->p79C973Regs ;
     tmp    =  REG( amd_base, WORD0 ) ;
     pib[1] =  LE32_TO_CPU( tmp );
@@ -1391,8 +1398,8 @@ INT32 LAN_AM79C973_init_initblock( t_LAN_AM79C973_device *pdevice )
     pib[2] =  LE32_TO_CPU( tmp );
 
     /* Initialize Init Block word 3&4: Logical filter-addres */
-    pib[3] =  0;
-    pib[4] =  0;
+    pib[3] =  LE32_TO_CPU(0);
+    pib[4] =  LE32_TO_CPU(0);
 
     /* Initialize Init Block word 5: Start of RX Descriptor Ring */
     tmp    =  PHYS( pdevice->RXDRE[0] );

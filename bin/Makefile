@@ -35,7 +35,7 @@
 #
 # mips_start_of_legal_notice
 # 
-# Copyright (c) 2006 MIPS Technologies, Inc. All rights reserved.
+# Copyright (c) 2008 MIPS Technologies, Inc. All rights reserved.
 #
 #
 # Unpublished rights (if any) reserved under the copyright laws of the
@@ -59,12 +59,9 @@
 # this code does not give recipient any license to any intellectual property
 # rights, including any patent rights, that cover this code.
 #
-# This code shall not be exported, reexported, transferred, or released,
-# directly or indirectly, in violation of the law of any country or
-# international law, regulation, treaty, Executive Order, statute,
-# amendments or supplements thereto. Should a conflict arise regarding the
-# export, reexport, transfer, or release of this code, the laws of the
-# United States of America shall be the governing law.
+# This code shall not be exported or transferred for the purpose of
+# reexporting in violation of any U.S. or non-U.S. regulation, treaty,
+# Executive Order, law, statute, amendment or supplement thereto.
 #
 # This code constitutes one or more of the following: commercial computer
 # software, commercial computer software documentation or other commercial
@@ -79,8 +76,6 @@
 # restricted in accordance with the terms of the license agreement(s) and/or
 # applicable contract terms and conditions covering this code from MIPS
 # Technologies or an authorized third party.
-#
-#
 #
 # 
 # mips_end_of_legal_notice
@@ -106,6 +101,7 @@ TOOLCHAIN = sde
 # in use automatically
 #GCC_VERSION=2
 #GCC_VERSION=3
+#GCC_VERSION=4
 
 ifeq ($(TOOLCHAIN),cygnus)
 # version 2.96
@@ -119,6 +115,7 @@ ifeq ($(TOOLCHAIN),sde)
 # sde version 4.1sb (gcc version 2.96)
 # sde version 5.03.06 (gcc version 2.96)
 # sde version 6.01 (gcc version 3.4)
+# sde version 7.01.00-exp (gcc version 4.2.3)
 CC        = sde-gcc
 LD        = sde-ld
 OBJCOPY   = sde-objcopy
@@ -132,13 +129,8 @@ OBJCOPY   = mipsel-linux-objcopy
 OBJDUMP   = mipsel-linux-objdump
 endif
 
-ifndef (GCC_VERSION)
-GCC_VERSION = $(shell \
-	if $(CC) -v 2>&1 | fgrep 'gcc version 3.' >/dev/null; then \
-	  echo "3"; \
-	else \
-	  echo "2"; \
-	fi)
+ifndef GCC_VERSION
+GCC_VERSION = $(shell $(CC) -v 2>&1 | sed -n -e 's/^gcc version \([0-9]\).*/\1/p')
 endif
 
 # Perl interpreter
@@ -153,6 +145,7 @@ CAT       = cat
 
 # tags command
 TAGS      = etags
+ETAGS	  = --regex='{asm}/[ \t]*\(NESTED\|LEAF\|SLEAF\)([ \t]*\([^) \t]+\)[ \t]*)/\2/'
 
 # ********************************************************************
 # Different assemblers have different requirements for how to
@@ -172,7 +165,7 @@ BSS_OLD = 0
 # Revision
 # ********************************************************************
 REVMAJ = 02
-REVMIN = 13
+REVMIN = 16
 
 # ********************************************************************
 # Target prefix.
@@ -367,7 +360,7 @@ endif # ifdef ENDIAN
 #   caches are still initialised (using indexed cacheops), but otherwise 
 #   no cacheops are used, and KSEG0 is configured as uncached.
 
-BUILD_DEFS = $(WORKAROUND_BONITO) $(WORKAROUND_NO_CACHE) $(KSEG0_UNCACHED) $(WORKAROUND_CORE_24K)
+BUILD_DEFS = $(WORKAROUND_BONITO) $(WORKAROUND_NO_CACHE) $(KSEG0_UNCACHED) $(WORKAROUND_CORE_24K) -DSOCITSC_BRINGUP -DMIPSCMP_BRINGUP
 
 # ********************************************************************
 # Definitions common to start, little- and big-endian images.
@@ -410,14 +403,22 @@ W_OPTS    = -Wimplicit -Wformat
 REV_OPTS  = '-D_REVMAJ_="$(REVMAJ)"' '-D_REVMIN_="$(REVMIN)"'
 
 ifndef CPUTUNE
- ifneq (,$(strip $(filter 2,$(GCC_VERSION))))
-  CPUTUNE	=-mcpu=r4600
+ ifeq (4,$(strip $(filter 4,$(GCC_VERSION))))
+  CPUTUNE	=-mtune=r4600 -march=r4600 -mabi=32 -mips3
  else
-  CPUTUNE	=-mtune=r4600
+  ifeq (3,$(strip $(filter 3,$(GCC_VERSION))))
+    CPUTUNE	=-mtune=r4600 -mips2
+   else
+    CPUTUNE	=-mcpu=r4600 -mips2
+  endif
  endif
 endif
 
-CC_OPTS   = -mips2 $(CPUTUNE) -g -D_32_ -O2 -G0 -fno-builtin $(W_OPTS) $(REV_OPTS) $(INCLUDE) $(DEBUG) $(SIMULATE) $(BUILD_DEFS) -$(ENDIAN) -D$(ENDIAN)
+CC_OPTS   = $(CPUTUNE) -g -D_32_ -O2 -G0 -fno-builtin $(W_OPTS) $(REV_OPTS) $(INCLUDE) $(DEBUG) $(SIMULATE) $(BUILD_DEFS) -$(ENDIAN) -D$(ENDIAN)
+
+ifeq ($(shell if [ -d $(ROOT)/fpuemul/math ]; then echo exists; fi),exists)
+CC_OPTS += -DENABLE_SOFT_FPU
+endif
 
 ifeq ($(TOOLCHAIN),linux)
 CC_OPTS   += -mno-abicalls -fno-pic
@@ -449,7 +450,7 @@ else
 endif
 
 # Options to objdump
-OBJDUMP_OPTS = -S --disassemble-all
+OBJDUMP_OPTS = --disassemble-all -mmips:isa32r2
 
 # Search path for source files.
 VPATH  = $(SRCDIR)
@@ -464,6 +465,7 @@ SRC    = $(SRC_C) $(SRC_S)
 OBJ_C  = $(notdir $(patsubst %.c, %.o, $(SRC_C)))
 OBJ_S  = $(notdir $(patsubst %.S, %.o, $(SRC_S)))
 OBJ    = $(OBJ_C) $(OBJ_S) $(FPUEMUL)
+
 
 # ********************************************************************
 # Targets
@@ -482,7 +484,7 @@ test_install :
 	@$(PERL) $(TOOLDIR)/test_install.pl
 
 fpuemul :
-	$(CD) $(ROOT)/fpuemul; $(MAKE) TOOLCHAIN=$(TOOLCHAIN) CC=$(CC) LD=$(LD) CPUTUNE=$(CPUTUNE) GCC_VERSION=$(GCC_VERSION) BFDPREF=$(BFDPREF)
+	$(CD) $(ROOT)/fpuemul; $(MAKE) TOOLCHAIN=$(TOOLCHAIN) CC=$(CC) LD=$(LD) CPUTUNE="$(CPUTUNE)" GCC_VERSION=$(GCC_VERSION) BFDPREF=$(BFDPREF)
 
 test_size :
 	@echo Checking size...
@@ -578,7 +580,7 @@ depend: test_install dep
 	$(CD) $(ROOT)/fpuemul; $(MAKE) TOOLCHAIN=$(TOOLCHAIN) CC=$(CC) depend
 
 TAGS:
-	(cd ..; rm -f TAGS; find . -name "*.[chS]" | xargs $(TAGS) --append -t )
+	(cd ..; rm -f TAGS; find . -name "*.[chS]" | xargs $(TAGS) --append -t $(ETAGS))
 
 dep:
 	$(CC) $(INCLUDE) -M $(SRC) > ./depend.mk

@@ -9,7 +9,7 @@
  *
  * mips_start_of_legal_notice
  * 
- * Copyright (c) 2006 MIPS Technologies, Inc. All rights reserved.
+ * Copyright (c) 2008 MIPS Technologies, Inc. All rights reserved.
  *
  *
  * Unpublished rights (if any) reserved under the copyright laws of the
@@ -33,12 +33,9 @@
  * this code does not give recipient any license to any intellectual
  * property rights, including any patent rights, that cover this code.
  *
- * This code shall not be exported, reexported, transferred, or released,
- * directly or indirectly, in violation of the law of any country or
- * international law, regulation, treaty, Executive Order, statute,
- * amendments or supplements thereto. Should a conflict arise regarding the
- * export, reexport, transfer, or release of this code, the laws of the
- * United States of America shall be the governing law.
+ * This code shall not be exported or transferred for the purpose of
+ * reexporting in violation of any U.S. or non-U.S. regulation, treaty,
+ * Executive Order, law, statute, amendment or supplement thereto.
  *
  * This code constitutes one or more of the following: commercial computer
  * software, commercial computer software documentation or other commercial
@@ -54,8 +51,6 @@
  * the terms of the license agreement(s) and/or applicable contract terms
  * and conditions covering this code from MIPS Technologies or an authorized
  * third party.
- *
- *
  *
  * 
  * mips_end_of_legal_notice
@@ -82,13 +77,14 @@
 #define PIIX4_PCI_PIRQRC	0x60
 /* Function 0 (8 bit registers)  */
 #define PIIX4_PCI_SERIRQC	0x64
+#define PIIX4_PCI_TOM		0x69
+#define PIIX4_PCI_DLC		0x82
 
 /* Function 1 (16 bit registers) */
 #define PIIX4_PCI_IDETIM_PRIM	0x40
 #define PIIX4_PCI_IDETIM_SEC	0x42
 
 /* Function 3 (8 bit registers) */
-#define PIIX4_PCI_TOM		0x69
 #define PIIX4_PCI_PMREGMISC	0x80
 #define PIIX4_PCI_SMBHCFG	0xd2
 
@@ -168,7 +164,14 @@
 #define PIIX4_TOM_TOM_15MB		14
 #define PIIX4_TOM_TOM_16MB		15
 
-
+#define PIIX4_PCI_DLC_SERR_SHF		3
+#define PIIX4_PCI_DLC_SERR_MSK		(MSK(1) << PIIX4_PCI_DLC_SERR_SHF)
+#define PIIX4_PCI_DLC_USBPR_SHF		2
+#define PIIX4_PCI_DLC_USBPR_MSK		(MSK(1) << PIIX4_PCI_DLC_USBPR_SHF)
+#define PIIX4_PCI_DLC_PRE_SHF		1
+#define PIIX4_PCI_DLC_PRE_MSK		(MSK(1) << PIIX4_PCI_DLC_PRE_SHF)
+#define PIIX4_PCI_DLC_DTE_SHF		0
+#define PIIX4_PCI_DLC_DTE_MSK		(MSK(1) << PIIX4_PCI_DLC_DTE_SHF)
 
 #define PIIX4_SERIRQC_ENABLE_SHF	7
 #define PIIX4_SERIRQC_ENABLE_MSK	(MSK(1) << PIIX4_SERIRQC_ENABLE_SHF)
@@ -401,7 +404,7 @@
 #define PIIX4_ELCR2_IRQ9LEVEL_BIT	PIIX4_ELCR2_IRQ9LEVEL_MSK
 
 
-/* Timer countrol word */
+/* Timer control word */
 
 #define PIIX4_TCW_CS_SHF		6
 #define PIIX4_TCW_CS_MSK		(MSK(2) << PIIX4_TCW_CS_SHF)

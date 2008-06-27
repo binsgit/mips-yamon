@@ -9,7 +9,7 @@
  *
  * mips_start_of_legal_notice
  * 
- * Copyright (c) 2006 MIPS Technologies, Inc. All rights reserved.
+ * Copyright (c) 2008 MIPS Technologies, Inc. All rights reserved.
  *
  *
  * Unpublished rights (if any) reserved under the copyright laws of the
@@ -33,12 +33,9 @@
  * this code does not give recipient any license to any intellectual
  * property rights, including any patent rights, that cover this code.
  *
- * This code shall not be exported, reexported, transferred, or released,
- * directly or indirectly, in violation of the law of any country or
- * international law, regulation, treaty, Executive Order, statute,
- * amendments or supplements thereto. Should a conflict arise regarding the
- * export, reexport, transfer, or release of this code, the laws of the
- * United States of America shall be the governing law.
+ * This code shall not be exported or transferred for the purpose of
+ * reexporting in violation of any U.S. or non-U.S. regulation, treaty,
+ * Executive Order, law, statute, amendment or supplement thereto.
  *
  * This code constitutes one or more of the following: commercial computer
  * software, commercial computer software documentation or other commercial
@@ -54,8 +51,6 @@
  * the terms of the license agreement(s) and/or applicable contract terms
  * and conditions covering this code from MIPS Technologies or an authorized
  * third party.
- *
- *
  *
  * 
  * mips_end_of_legal_notice
@@ -181,82 +176,198 @@ SLEAF( appl2yamon )
 
 	/* Preserves all regs except v0, t0-t1 */
 
-	/* Clean up CP0 STATUS
-	 * Clear KSU bits so that we remain in kernel mode when we
-	 * afterwards clear ERL and EXL.
-	 * Clear IE bit in case user appl. has reenabled interrupts.
+	/*
+	 * Disable interrupts in case user application has enabled them
 	 */
         MFC0(	t1, C0_Status )
-	or	v0, t1, (M_StatusKSU | M_StatusIE)
-	xor	v0, (M_StatusKSU | M_StatusIE)
+	or	v0, t1, M_StatusIE
+	xor	v0, M_StatusIE
 	MTC0(	v0, C0_Status )
 
-	/* Clear ERL and EXL */
-	or	v0, (M_StatusERL | M_StatusEXL)
-	xor	v0, (M_StatusERL | M_StatusEXL)
-	MTC0(	v0, C0_Status )
+	/* save the shell function code */
+	la	v0, appl_shell_func_code
+	sw	t0, 0(v0)
+	
+        /* save application status register */
+	la	v0, appl_context
+	sw	t1, GDB_REG32_OFS(GDB_FR_STATUS)(v0)
+	
+	/**** Store general registers ****/
+	la	t1, sys_64bit
+	lb	t1, 0(t1)
+	bnez	t1, 64f
+	 nop
+	
+	sw	$0,   GDB_REG32_OFS(GDB_FR_REG0 )(v0)
+	sw	$1,   GDB_REG32_OFS(GDB_FR_REG1 )(v0)
+	/* not v0 = $2 */
+	sw	$3,   GDB_REG32_OFS(GDB_FR_REG3 )(v0)
+	sw	$4,   GDB_REG32_OFS(GDB_FR_REG4 )(v0)
+	sw	$5,   GDB_REG32_OFS(GDB_FR_REG5 )(v0)
+	sw	$6,   GDB_REG32_OFS(GDB_FR_REG6 )(v0)
+	sw	$7,   GDB_REG32_OFS(GDB_FR_REG7 )(v0)
+	/* not t0,t1 = $8, $9 */
+	sw	$10,  GDB_REG32_OFS(GDB_FR_REG10)(v0)
+	sw	$11,  GDB_REG32_OFS(GDB_FR_REG11)(v0)
+	sw	$12,  GDB_REG32_OFS(GDB_FR_REG12)(v0)
+	sw	$13,  GDB_REG32_OFS(GDB_FR_REG13)(v0)
+	sw	$14,  GDB_REG32_OFS(GDB_FR_REG14)(v0)
+	sw	$15,  GDB_REG32_OFS(GDB_FR_REG15)(v0)
+	sw	$16,  GDB_REG32_OFS(GDB_FR_REG16)(v0)
+	sw	$17,  GDB_REG32_OFS(GDB_FR_REG17)(v0)
+	sw	$18,  GDB_REG32_OFS(GDB_FR_REG18)(v0)
+	sw	$19,  GDB_REG32_OFS(GDB_FR_REG19)(v0)
+	sw	$20,  GDB_REG32_OFS(GDB_FR_REG20)(v0)
+	sw	$21,  GDB_REG32_OFS(GDB_FR_REG21)(v0)
+	sw	$22,  GDB_REG32_OFS(GDB_FR_REG22)(v0)
+	sw	$23,  GDB_REG32_OFS(GDB_FR_REG23)(v0)
+	sw	$24,  GDB_REG32_OFS(GDB_FR_REG24)(v0)
+	sw	$25,  GDB_REG32_OFS(GDB_FR_REG25)(v0)
+	/* Not k0, k1 = $26, $27 */
+	sw	$28,  GDB_REG32_OFS(GDB_FR_REG28)(v0)
+	sw	$29,  GDB_REG32_OFS(GDB_FR_REG29)(v0)
+	sw	$30,  GDB_REG32_OFS(GDB_FR_REG30)(v0)
+	sw	$31,  GDB_REG32_OFS(GDB_FR_REG31)(v0)
 
-        /* Running disabled - Store original CP0 STATUS */
-	la	v0, save_cp0_status
-	sw	t1, 0(v0)
-
-	la	t1, appl_shell_func_code
-	sw	t0, 0(t1)
-
-	/**** Store all cp0 general registers (to keep bit63-32) ****/
-	la	t1, appl_context
-	la	t0, sys_64bit
-	lb	t0, 0(t0)
-	bne	t0, zero, 64f
-	nop
-	b	32f
-	sw	ra, (GDB_FR_REG31 + OFS_END)(t1)
+	b	1f	
+	 nop
 64:
+	/* Store 64 bit CPU Registers */
 SET_MIPS3()
-        sd	ra, GDB_FR_REG31(t1)
+        sd	$0,   GDB_REG64_OFS(GDB_FR_REG0 )(v0)
+        sd	$1,   GDB_REG64_OFS(GDB_FR_REG1 )(v0)
+        sd	$2,   GDB_REG64_OFS(GDB_FR_REG2 )(v0)
+        sd	$3,   GDB_REG64_OFS(GDB_FR_REG3 )(v0)
+        sd	$4,   GDB_REG64_OFS(GDB_FR_REG4 )(v0)
+        sd	$5,   GDB_REG64_OFS(GDB_FR_REG5 )(v0)
+        sd	$6,   GDB_REG64_OFS(GDB_FR_REG6 )(v0)
+        sd	$7,   GDB_REG64_OFS(GDB_FR_REG7 )(v0)
+	/* not t0,t1 = $8, $9 */
+        sd	$10,  GDB_REG64_OFS(GDB_FR_REG10)(v0)
+        sd	$11,  GDB_REG64_OFS(GDB_FR_REG11)(v0)
+        sd	$12,  GDB_REG64_OFS(GDB_FR_REG12)(v0)
+        sd	$13,  GDB_REG64_OFS(GDB_FR_REG13)(v0)
+        sd	$14,  GDB_REG64_OFS(GDB_FR_REG14)(v0)
+        sd	$15,  GDB_REG64_OFS(GDB_FR_REG15)(v0)
+        sd	$16,  GDB_REG64_OFS(GDB_FR_REG16)(v0)
+        sd	$17,  GDB_REG64_OFS(GDB_FR_REG17)(v0)
+        sd	$18,  GDB_REG64_OFS(GDB_FR_REG18)(v0)
+        sd	$19,  GDB_REG64_OFS(GDB_FR_REG19)(v0)
+        sd	$20,  GDB_REG64_OFS(GDB_FR_REG20)(v0)
+        sd	$21,  GDB_REG64_OFS(GDB_FR_REG21)(v0)
+        sd	$22,  GDB_REG64_OFS(GDB_FR_REG22)(v0)
+        sd	$23,  GDB_REG64_OFS(GDB_FR_REG23)(v0)
+        sd	$24,  GDB_REG64_OFS(GDB_FR_REG24)(v0)
+        sd	$25,  GDB_REG64_OFS(GDB_FR_REG25)(v0)
+	/* Not k0, k1 = $26, $27 */
+        sd	$28,  GDB_REG64_OFS(GDB_FR_REG28)(v0)
+        sd	$29,  GDB_REG64_OFS(GDB_FR_REG29)(v0)
+        sd	$30,  GDB_REG64_OFS(GDB_FR_REG30)(v0)
+        sd	$31,  GDB_REG64_OFS(GDB_FR_REG31)(v0)
 SET_MIPS0()
-32:
-#define SAVE_K0 t0
-#define SAVE_K1 t1
-	move	SAVE_K0, k0
-	move	SAVE_K1, k1
-	la	k1, appl_context
-	jal	EXCEP_store_gpr_but_k0k1ra
-	nop
 
+1:
 	/**** set up minimal YAMON context ****/
 	la    sp, EXCEP_shell_sp
 	lw    sp, 0(sp)
 
 	/**** make the call ****/
 	jal   appl_shell_func
-	addiu sp, -4*4
+	 addiu sp, -4*4
 
 	/**** the call returned, so restore application context ****/
-	la	k0, appl_context	/* context to be restored */
-	la	k1, back2user		/* k1 holds return address */
-	j	EXCEP_restore_gpr_but_k1
-	nop
-back2user:
-	move	k0, SAVE_K0
-	move	k1, SAVE_K1
 
-	/* Restore CP0 STATUS */
-	la	t0, save_cp0_status
-	lw	t0, 0(t0)
+	la	t0, appl_context
+	la	t1, sys_64bit
+	lb	t1, 0(t1)
+	bnez	t1, 64f
+	 nop
+	
+	lw	$0,   GDB_REG32_OFS(GDB_FR_REG0 )(t0)
+	lw	$1,   GDB_REG32_OFS(GDB_FR_REG1 )(t0)
+	lw	$2,   GDB_REG64_OFS(GDB_FR_REG2 )(t0)
+	lw	$3,   GDB_REG32_OFS(GDB_FR_REG3 )(t0)
+	lw	$4,   GDB_REG32_OFS(GDB_FR_REG4 )(t0)
+	lw	$5,   GDB_REG32_OFS(GDB_FR_REG5 )(t0)
+	lw	$6,   GDB_REG32_OFS(GDB_FR_REG6 )(t0)
+	lw	$7,   GDB_REG32_OFS(GDB_FR_REG7 )(t0)
+	/* not t0,t1 = $8, $9 */
+	lw	$10,  GDB_REG32_OFS(GDB_FR_REG10)(t0)
+	lw	$11,  GDB_REG32_OFS(GDB_FR_REG11)(t0)
+	lw	$12,  GDB_REG32_OFS(GDB_FR_REG12)(t0)
+	lw	$13,  GDB_REG32_OFS(GDB_FR_REG13)(t0)
+	lw	$14,  GDB_REG32_OFS(GDB_FR_REG14)(t0)
+	lw	$15,  GDB_REG32_OFS(GDB_FR_REG15)(t0)
+	lw	$16,  GDB_REG32_OFS(GDB_FR_REG16)(t0)
+	lw	$17,  GDB_REG32_OFS(GDB_FR_REG17)(t0)
+	lw	$18,  GDB_REG32_OFS(GDB_FR_REG18)(t0)
+	lw	$19,  GDB_REG32_OFS(GDB_FR_REG19)(t0)
+	lw	$20,  GDB_REG32_OFS(GDB_FR_REG20)(t0)
+	lw	$21,  GDB_REG32_OFS(GDB_FR_REG21)(t0)
+	lw	$22,  GDB_REG32_OFS(GDB_FR_REG22)(t0)
+	lw	$23,  GDB_REG32_OFS(GDB_FR_REG23)(t0)
+	lw	$24,  GDB_REG32_OFS(GDB_FR_REG24)(t0)
+	lw	$25,  GDB_REG32_OFS(GDB_FR_REG25)(t0)
+	/* Not k0, k1 = $26, $27 */
+	lw	$28,  GDB_REG32_OFS(GDB_FR_REG28)(t0)
+	lw	$29,  GDB_REG32_OFS(GDB_FR_REG29)(t0)
+	lw	$30,  GDB_REG32_OFS(GDB_FR_REG30)(t0)
+	lw	$31,  GDB_REG32_OFS(GDB_FR_REG31)(t0)
+
+	b	1f
+	 nop
+
+64:
+SET_MIPS3()
+	ld	$0,   GDB_REG64_OFS(GDB_FR_REG0 )(t0)
+	ld	$1,   GDB_REG64_OFS(GDB_FR_REG1 )(t0)
+	ld	$2,   GDB_REG64_OFS(GDB_FR_REG2 )(t0)
+	ld	$3,   GDB_REG64_OFS(GDB_FR_REG3 )(t0)
+	ld	$4,   GDB_REG64_OFS(GDB_FR_REG4 )(t0)
+	ld	$5,   GDB_REG64_OFS(GDB_FR_REG5 )(t0)
+	ld	$6,   GDB_REG64_OFS(GDB_FR_REG6 )(t0)
+	ld	$7,   GDB_REG64_OFS(GDB_FR_REG7 )(t0)
+	/* not t0,t1 = $8, $9 */
+	ld	$10,  GDB_REG64_OFS(GDB_FR_REG10)(t0)
+	ld	$11,  GDB_REG64_OFS(GDB_FR_REG11)(t0)
+	ld	$12,  GDB_REG64_OFS(GDB_FR_REG12)(t0)
+	ld	$13,  GDB_REG64_OFS(GDB_FR_REG13)(t0)
+	ld	$14,  GDB_REG64_OFS(GDB_FR_REG14)(t0)
+	ld	$15,  GDB_REG64_OFS(GDB_FR_REG15)(t0)
+	ld	$16,  GDB_REG64_OFS(GDB_FR_REG16)(t0)
+	ld	$17,  GDB_REG64_OFS(GDB_FR_REG17)(t0)
+	ld	$18,  GDB_REG64_OFS(GDB_FR_REG18)(t0)
+	ld	$19,  GDB_REG64_OFS(GDB_FR_REG19)(t0)
+	ld	$20,  GDB_REG64_OFS(GDB_FR_REG20)(t0)
+	ld	$21,  GDB_REG64_OFS(GDB_FR_REG21)(t0)
+	ld	$22,  GDB_REG64_OFS(GDB_FR_REG22)(t0)
+	ld	$23,  GDB_REG64_OFS(GDB_FR_REG23)(t0)
+	ld	$24,  GDB_REG64_OFS(GDB_FR_REG24)(t0)
+	ld	$25,  GDB_REG64_OFS(GDB_FR_REG25)(t0)
+	/* Not k0, k1 = $26, $27 */
+	ld	$28,  GDB_REG64_OFS(GDB_FR_REG28)(t0)
+	ld	$29,  GDB_REG64_OFS(GDB_FR_REG29)(t0)
+	ld	$30,  GDB_REG64_OFS(GDB_FR_REG30)(t0)
+	ld	$31,  GDB_REG64_OFS(GDB_FR_REG31)(t0)
+SET_MIPS0()
+
+1:
+	/* Get the application status register */
+	lw	t0, GDB_REG32_OFS(GDB_FR_STATUS)(t0)
+
+	/* Some functions may have changed the interrupt mask */	
 	la	t1, appl_shell_func_code
 	lw	t1, 0(t1)
 	xor	t1, SHELL_FUNC_REGISTER_CPU_ISR_CODE
-	beq	t1, zero, set_imask
-	xor	t1, SHELL_FUNC_REGISTER_CPU_ISR_CODE
-	xor	t1, SHELL_FUNC_DEREGISTER_CPU_ISR_CODE
-	bne	t1, zero, set_status
-	nop
+	beqz	t1, set_imask
+	 xor	t1, SHELL_FUNC_REGISTER_CPU_ISR_CODE^SHELL_FUNC_DEREGISTER_CPU_ISR_CODE
+	bnez	t1, set_status
+	 nop
 
 set_imask :
 	/*  Modify IM field of saved STATUS register
 	 *  to comply with YAMON return condition.
-	 *  v0 was set to current CP0 STATUS value
+	 *  t0 was set to current CP0 STATUS value
 	 */
 	/* Update CP0 STATUS */
 	or	t0, M_StatusIM
@@ -269,7 +380,7 @@ set_status :
 
 	/**** Return to caller ****/
 	jr	ra
-	nop
+	 nop
 
 END( appl2yamon )
 

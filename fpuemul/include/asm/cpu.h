@@ -63,6 +63,7 @@
 #define PRID_IMP_34K		0x9500
 #define PRID_IMP_24KE		0x9600
 #define PRID_IMP_74K		0x9700
+#define PRID_IMP_1004K		0x9900
 
 
 #define PRID_IMP_UNKNOWN	0xff00

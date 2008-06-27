@@ -9,7 +9,7 @@
  *
  * mips_start_of_legal_notice
  * 
- * Copyright (c) 2006 MIPS Technologies, Inc. All rights reserved.
+ * Copyright (c) 2008 MIPS Technologies, Inc. All rights reserved.
  *
  *
  * Unpublished rights (if any) reserved under the copyright laws of the
@@ -33,12 +33,9 @@
  * this code does not give recipient any license to any intellectual
  * property rights, including any patent rights, that cover this code.
  *
- * This code shall not be exported, reexported, transferred, or released,
- * directly or indirectly, in violation of the law of any country or
- * international law, regulation, treaty, Executive Order, statute,
- * amendments or supplements thereto. Should a conflict arise regarding the
- * export, reexport, transfer, or release of this code, the laws of the
- * United States of America shall be the governing law.
+ * This code shall not be exported or transferred for the purpose of
+ * reexporting in violation of any U.S. or non-U.S. regulation, treaty,
+ * Executive Order, law, statute, amendment or supplement thereto.
  *
  * This code constitutes one or more of the following: commercial computer
  * software, commercial computer software documentation or other commercial
@@ -55,8 +52,6 @@
  * and conditions covering this code from MIPS Technologies or an authorized
  * third party.
  *
- *
- *
  * 
  * mips_end_of_legal_notice
  * 
@@ -71,6 +66,7 @@
 #include <sysdefs.h>
 #include <mips.h>
 #include <product.h>
+#include <malta.h>
 #include <atlas.h>
 #include <sead.h>
 #include <shell_api.h>
@@ -78,6 +74,7 @@
 #include <syscon_api.h>
 #include <stdio.h>
 #include <string.h>
+#include <gcmp.h>
 
 /************************************************************************
  *  Definitions
@@ -86,6 +83,8 @@
 /************************************************************************
  *  Public variables
  ************************************************************************/
+extern bool gic_present;
+extern bool gcmp_present;
 
 /************************************************************************
  *  Static variables
@@ -232,6 +231,8 @@ shell_arch(void)
 
     if( sys_mmu_tlb )
         shell_register_cmd( shell_tlb_init() );
+
+    shell_register_cmd( shell_cpu_init() );
 }
 
 
@@ -270,6 +271,10 @@ sead_msc01:
 	    {
                 strcat( msg," / " );
                 strcat( msg, name );
+	    }
+	    if(gic_present) 
+	    {
+		strcat( msg," GIC");
 	    }
             strcat( msg,"\r\n" );
 	    if(SHELL_PUTS_INDENT( msg, indent )) return FALSE;
@@ -369,6 +374,18 @@ shell_arch_info(
         /* System controller name/revision */
         if(shell_sysctrl_info( indent ) == FALSE) return FALSE;
     
+	/*
+	 * MIPSCMP
+	 * Report GCMP presence 
+	 */
+	if (gcmp_present) {
+	    /* FIXME: Get this information via SYSCON_read */
+	    wdata = GCMPGCB(GCMPBASE,GCMPREV);
+	    if(SHELL_PUTS( "GCMP Revision =" )) return FALSE;
+	    sprintf( msg, "0x%02x / 0x%02x\n", ((wdata >> 8) & 0xff), (wdata & 0xff));
+	    if(SHELL_PUTS_INDENT( msg, indent )) return FALSE;
+	}
+
         /* FPGA revision */
 	if(SYSCON_read(SYSCON_BOARD_FPGAREV_ID, &wdata, sizeof(UINT32)) == 0)
 	{

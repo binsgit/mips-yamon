@@ -11,7 +11,7 @@
  *
  * mips_start_of_legal_notice
  * 
- * Copyright (c) 2006 MIPS Technologies, Inc. All rights reserved.
+ * Copyright (c) 2008 MIPS Technologies, Inc. All rights reserved.
  *
  *
  * Unpublished rights (if any) reserved under the copyright laws of the
@@ -35,12 +35,9 @@
  * this code does not give recipient any license to any intellectual
  * property rights, including any patent rights, that cover this code.
  *
- * This code shall not be exported, reexported, transferred, or released,
- * directly or indirectly, in violation of the law of any country or
- * international law, regulation, treaty, Executive Order, statute,
- * amendments or supplements thereto. Should a conflict arise regarding the
- * export, reexport, transfer, or release of this code, the laws of the
- * United States of America shall be the governing law.
+ * This code shall not be exported or transferred for the purpose of
+ * reexporting in violation of any U.S. or non-U.S. regulation, treaty,
+ * Executive Order, law, statute, amendment or supplement thereto.
  *
  * This code constitutes one or more of the following: commercial computer
  * software, commercial computer software documentation or other commercial
@@ -56,8 +53,6 @@
  * the terms of the license agreement(s) and/or applicable contract terms
  * and conditions covering this code from MIPS Technologies or an authorized
  * third party.
- *
- *
  *
  * 
  * mips_end_of_legal_notice
@@ -106,16 +101,8 @@
 #define  ATLAS_SYSTEMRAM_BASE         0x00000000 /* System RAM:     */
 #define  ATLAS_SYSTEMRAM_SIZE         0x10000000 /*   256 MByte     */
 
-/* The following 6 definitions are used with Galileo 64120 only     */
-#define  ATLAS_PCIMEM1_BASE           0x10000000 /* PCI 1 memory:   */
-#define  ATLAS_PCIMEM1_SIZE           0x0be00000 /*  128+2+60 MByte */
-                  /* the 2 MByte constitutes a "red page" (PCIMEM2) */
-
-#define  ATLAS_PCIMEM2_BASE           0x18000000 /* PCI 2 memory    */
-#define  ATLAS_PCIMEM2_SIZE           0x00200000 /*     2 MByte     */
-
-#define  ATLAS_CORECTRL_BASE          0x1BE00000 /* Core control:   */
-#define  ATLAS_CORECTRL_SIZE          0x00200000 /*     2 MByte     */
+#define  ATLAS_GT64120_BASE	      0x1BE00000 /* GT64120:        */
+#define  ATLAS_GT64120_SIZE	      0x00200000 /*     2 MByte     */
 
 #define  ATLAS_SYSTEMFLASH_BASE       0x1C000000 /* System Flash:   */
 #define  ATLAS_SYSTEMFLASH_SIZE       0x02000000 /*    32 MByte     */
@@ -142,13 +129,11 @@
  *  Use of PCI ranges (Memory vs I/O)
 *************************************************************************/
 
-#define  ATLAS_PCI_MEM_BASE	      ATLAS_PCIMEM1_BASE
-#define  ATLAS_PCI_MEM_SIZE	      ATLAS_PCIMEM1_SIZE
+#define  GT64120_PCIMEM_BASE          0x10000000 /* PCI 1 memory:   */
+#define  GT64120_PCIMEM_SIZE          0x0be00000 /*  128+2+60 MByte */
 
-#define  ATLAS_PCI_IO_BASE	      ATLAS_PCIMEM2_BASE
-#define  ATLAS_PCI_IO_SIZE	      ATLAS_PCIMEM2_SIZE
-
-
+#define  GT64120_PCIIO_BASE           0x18000000 /* PCI 2 memory    */
+#define  GT64120_PCIIO_SIZE           0x00200000 /*     2 MByte     */
 
 /************************************************************************
  *  ATLAS FILEFLASH: upper 128 KByte (2x64 KByte sectors) of MONITORFLASH

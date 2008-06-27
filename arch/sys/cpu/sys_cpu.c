@@ -9,7 +9,7 @@
  *
  * mips_start_of_legal_notice
  * 
- * Copyright (c) 2006 MIPS Technologies, Inc. All rights reserved.
+ * Copyright (c) 2008 MIPS Technologies, Inc. All rights reserved.
  *
  *
  * Unpublished rights (if any) reserved under the copyright laws of the
@@ -33,12 +33,9 @@
  * this code does not give recipient any license to any intellectual
  * property rights, including any patent rights, that cover this code.
  *
- * This code shall not be exported, reexported, transferred, or released,
- * directly or indirectly, in violation of the law of any country or
- * international law, regulation, treaty, Executive Order, statute,
- * amendments or supplements thereto. Should a conflict arise regarding the
- * export, reexport, transfer, or release of this code, the laws of the
- * United States of America shall be the governing law.
+ * This code shall not be exported or transferred for the purpose of
+ * reexporting in violation of any U.S. or non-U.S. regulation, treaty,
+ * Executive Order, law, statute, amendment or supplement thereto.
  *
  * This code constitutes one or more of the following: commercial computer
  * software, commercial computer software documentation or other commercial
@@ -54,8 +51,6 @@
  * the terms of the license agreement(s) and/or applicable contract terms
  * and conditions covering this code from MIPS Technologies or an authorized
  * third party.
- *
- *
  *
  * 
  * mips_end_of_legal_notice
@@ -109,6 +104,8 @@ static char *name_34Kc      = "MIPS 34Kc";
 static char *name_34Kf      = "MIPS 34Kf";
 static char *name_74Kc      = "MIPS 74Kc";
 static char *name_74Kf      = "MIPS 74Kf";
+static char *name_1004Kc    = "MIPS 1004Kc";
+static char *name_1004Kf    = "MIPS 1004Kf";
 static char *name_m4k	    = "MIPS M4K";
 static char *name_qed52xx   = "QED RM5261";  /* Assume 5261  */
 static char *name_qed70xx   = "QED RM7061A"; /* Assume 7061A */
@@ -205,6 +202,8 @@ sys_decode_procid( void )
         return sys_fpu ? name_34Kf : name_34Kc;
       case MIPS_74K :
         return sys_fpu ? name_74Kf : name_74Kc;
+      case MIPS_1004K :
+        return sys_fpu ? name_1004Kf : name_1004Kc;
       case MIPS_M4K :
         return name_m4k;
       case QED_RM52XX :
@@ -347,14 +346,17 @@ sys_cpu_cache_bpw(
       case MIPS_M4K   : /* CPU has no cache */
          sys_array->count = 0;
 	 break;
-      case MIPS_5K       :
-      case MIPS_5KE      :
+      case MIPS_74K      :	/* MD00213 Rev 01.09 says spw_min==64 not supported */
+      case MIPS_24K      :	/* MD00213 Rev 01.09 says larger caches cannot be downsized to spw_min==64 */
+      case MIPS_24KE     :	/* MD00213 Rev 01.09 says larger caches cannot be downsized to spw_min==64 */
+      case MIPS_34K      :	/* MD00213 Rev 01.09 says larger caches cannot be downsized to spw_min==64 */
+      case MIPS_1004K    :	/* MD00213 Rev 01.09 says larger caches cannot be downsized to spw_min==64 */
+	if (!icache && sys_dcache_antialias)
+	  goto not_downsizable;	/* MD00213 Rev 01.09 says dcaches cannot be downsized if HW antialiasing supported */
+      case MIPS_5K       :	/* MD00213 Rev 01.09 says spw_min==64 but YAMON historically uses 128 */
+      case MIPS_5KE      :	/* MD00213 Rev 01.09 says spw_min==64 but YAMON historically uses 128 */
          spw_min = 128;
 	 /* Fall through !! */
-      case MIPS_24K      :
-      case MIPS_24KE     :
-      case MIPS_34K      :
-      case MIPS_74K      :
       case MIPS_4Kc      :
       case MIPS_4Kmp     :
       case MIPS_4KEc     :
@@ -372,7 +374,7 @@ sys_cpu_cache_bpw(
 	  *  Available spw are calculated by starting with the
 	  *  hardware default and stepping down.
 	  *  The check on count should not be necessary.
-	  *  64 sets per way is not allowed for 5Kc/5Kf.
+	  *  64 sets per way is not allowed for 5Kc/5Kf/74K.
 	  */
 	 while( (spw >= spw_min) && (sys_array->count < BPW_SETTINGS - 1) )
 	 {
@@ -388,6 +390,7 @@ sys_cpu_cache_bpw(
 	 break;
 
       default :
+    not_downsizable:
          /* Not possible to configure cache size */
 	 sys_array->array[0]		  = spw * linesize;
          sys_array->count = 1;
@@ -436,10 +439,6 @@ sys_cpu_cache_assoc(
       case MIPS_5KE      :
       case MIPS_20Kc     :
       case MIPS_25Kf     :
-      case MIPS_24K      :
-      case MIPS_24KE     :
-      case MIPS_34K      :
-      case MIPS_74K      :
 	/*  Valid way counts are 1..max. 
 	 *  The MIN macro is not really necessary.
 	 */
@@ -453,6 +452,12 @@ sys_cpu_cache_assoc(
 	sys_array->count = max;
 
 	break;
+
+      case MIPS_24K      :		/* MD00213 Rev 01.09 */
+      case MIPS_24KE     :		/* MD00213 Rev 01.09 */
+      case MIPS_34K      :		/* MD00213 Rev 01.09 */
+      case MIPS_74K      :		/* MD00213 Rev 01.09 */
+      case MIPS_1004K    :		/* MD00213 Rev 01.09 */
 
       default :
         /* Not possible to configure cache size */

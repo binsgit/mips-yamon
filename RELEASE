@@ -1,38 +1,40 @@
 MIPS YAMON(tm) Release Notes
 ============================
 
-Revision:     02.13
-Release Date: 20061207
+Revision:     02.16
+Release Date: 20080607
 
 
 Reason for release:
 -------------------
-
 Enhancements
-o Additional SOCit support
-o Added 24KE cache support
+o Support for CMP IOCU
 
 BugFixes
-o Corrections to Galileo memory configuration
-o Avoid downloading into memory used by YAMON
-o Allow the MIPS L2 cache to be bypassed correctly
+o Ensure PIIX4 initialisation is PCI2.1 compliant
+o Corrected cache reduction options for 24K/34K/74K/1004K
 
-Boards supported :
-------------------
-Atlas with following Core boards : 
-    CoreLV
-    CoreBonito64
-    "QED RM5261 Board"
 
+Boards actively supported :
+---------------------------
 Malta with following Core boards :
     CoreFPGA
     CoreFPGA-2
     CoreFPGA3
+    CoreFPGA4
+    CoreFPGA5
     CoreLV
     CoreBonito64
     Core20K
     Core24K
     "QED RM5261 Board" 
+
+Extra boards currently working:
+-------------------------------
+Atlas with following Core boards : 
+    CoreLV
+    CoreBonito64
+    "QED RM5261 Board"
 
 SEAD
 SEAD-2
@@ -50,4 +52,5 @@ MIPS 20Kc, 25Kf
 MIPS 24Kc, 24Kf, 24Ke
 MIPS 34Kc, 34Kf
 MIPS 74Kc, 74Kf
+MIPS 1004K
 QED  RM5261, RM7061A

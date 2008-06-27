@@ -9,7 +9,7 @@
  *
  * mips_start_of_legal_notice
  * 
- * Copyright (c) 2006 MIPS Technologies, Inc. All rights reserved.
+ * Copyright (c) 2008 MIPS Technologies, Inc. All rights reserved.
  *
  *
  * Unpublished rights (if any) reserved under the copyright laws of the
@@ -33,12 +33,9 @@
  * this code does not give recipient any license to any intellectual
  * property rights, including any patent rights, that cover this code.
  *
- * This code shall not be exported, reexported, transferred, or released,
- * directly or indirectly, in violation of the law of any country or
- * international law, regulation, treaty, Executive Order, statute,
- * amendments or supplements thereto. Should a conflict arise regarding the
- * export, reexport, transfer, or release of this code, the laws of the
- * United States of America shall be the governing law.
+ * This code shall not be exported or transferred for the purpose of
+ * reexporting in violation of any U.S. or non-U.S. regulation, treaty,
+ * Executive Order, law, statute, amendment or supplement thereto.
  *
  * This code constitutes one or more of the following: commercial computer
  * software, commercial computer software documentation or other commercial
@@ -54,8 +51,6 @@
  * the terms of the license agreement(s) and/or applicable contract terms
  * and conditions covering this code from MIPS Technologies or an authorized
  * third party.
- *
- *
  *
  * 
  * mips_end_of_legal_notice
@@ -94,6 +89,12 @@
 #define SDA_HI		MALTA_I2COUT_I2CSDA_BIT
 #define SDA_LO		0
 
+#define MALTA_I2CBASE	MALTA_I2CINP
+#define I2CINP		(MALTA_I2CINP-MALTA_I2CBASE)
+#define I2COE		(MALTA_I2COE -MALTA_I2CBASE)
+#define I2COUT		(MALTA_I2COUT-MALTA_I2CBASE)
+#define I2CSEL		(MALTA_I2CSEL-MALTA_I2CBASE)
+
 /*  Loop counter for PAUSE loop :
  *
  *  Each iteration of loop consists of two instructions, i.e. two
@@ -105,42 +106,47 @@
  */
 #define PAUSE_COUNT (1000000 / MAX_I2C_FREQ_KHZ  / 2 / 2)
 
-#define PAUSE				          \
-	    li    t7, PAUSE_COUNT;		  \
-10:						  \
-	    bne   t7, zero, 10b;		  \
-	    addiu t7, -1
+#define PAUSE					\
+	.set push;				\
+	.set noat;				\
+	li	AT, PAUSE_COUNT;		\
+10:     bnez	AT, 10b;			\
+	 subu AT, 1;				\
+	.set pop
 
-#define I2C_DIRECTION( scl, sda )	          \
-	    li t7, KSEG1(MALTA_I2COE);		  \
-	    li t6, (scl) | (sda);		  \
-	    sw t6, 0(t7);			  \
-	    PAUSE
+#define I2C_DIRECTION(base, scl, sda)		\
+	.set	push;				\
+	.set	noat;				\
+	li	AT, (scl)|(sda);		\
+	sw	AT, I2COE(base);		\
+	.set	pop;				\
+	PAUSE
 
-#define I2C_TX( scl, sda )		          \
-	    li t7, KSEG1(MALTA_I2COUT);		  \
-	    li t6, (scl) | (sda);		  \
-	    sw t6, 0(t7);			  \
-	    PAUSE
+#define I2C_TX(base, scl, sda)			\
+	.set	push;				\
+	.set	noat;				\
+	li	AT, (scl)|(sda);		\
+	sw	AT, I2COUT(base);		\
+	.set	pop;				\
+	PAUSE
 
-#define I2C_RX( reg )				  \
-	    li   t7, KSEG1(MALTA_I2CINP);	  \
-	    lw   reg, 0(t7);			  \
-	    andi reg, MALTA_I2CINP_I2CSDA_MSK;	  \
-	    srl  reg, MALTA_I2CINP_I2CSDA_SHF;	  \
-	    PAUSE
+#define I2C_RX(base, reg)			\
+	lw	reg, I2CINP(base);		\
+	andi	reg, MALTA_I2CINP_I2CSDA_MSK;	\
+	srl	reg, MALTA_I2CINP_I2CSDA_SHF;	\
+	PAUSE
 
-#define I2C_FPGA_ENABLE		                  \
-	    li t7, KSEG1(MALTA_I2COE);		  \
-	    li t6, (SCL_RX) | (SDA_RX);		  \
-	    sw t6, 0(t7);			  \
-	    li t7, KSEG1(MALTA_I2COUT);		  \
-	    li t6, (SCL_HI) | (SDA_HI);		  \
-	    sw t6, 0(t7);			  \
-	    li t7, KSEG1(MALTA_I2CSEL);		  \
-	    li t6, MALTA_I2CSEL_FPGA_BIT;	  \
-	    sw t6, 0(t7);			  \
-	    PAUSE
+#define I2C_FPGA_ENABLE(base)	                \
+	.set	push;				\
+	.set	noat;				\
+	li	AT, SCL_RX|SDA_RX;		\
+	sw	AT, I2COE(base);		\
+	li	AT, SCL_HI|SDA_HI;		\
+	sw	AT, I2COUT(base);		\
+	li	AT, MALTA_I2CSEL_FPGA_BIT;	\
+	sw	AT, I2CSEL(base);		\
+	.set	pop;				\
+	PAUSE
 
 /************************************************************************
  *  Public variables
@@ -206,7 +212,7 @@ LEAF(sys_init_atlas_malta)
 	li	a0, ATLAS_DEVNUM_SAA9730
 	li	a1, PCI_BAR(1)
 	move	a2, PCIMEM_DEFAULT
-	li	a3, KSEG1(ATLAS_CORECTRL_BASE)
+	li	a3, KSEG1(ATLAS_GT64120_BASE)
 	jal	sys_core_config_write
 	nop
 	bne	v0, zero, error_init
@@ -216,7 +222,7 @@ LEAF(sys_init_atlas_malta)
 	li	a2, PCI_SC_CMD_MS_BIT | PCI_SC_CMD_SERR_BIT
 	li	a0, ATLAS_DEVNUM_SAA9730
 	li	a1, PCI_SC
-	li	a3, KSEG1(ATLAS_CORECTRL_BASE)
+	li	a3, KSEG1(ATLAS_GT64120_BASE)
 	jal	sys_core_config_write
 	nop
 	bne	v0, zero, error_init
@@ -232,7 +238,7 @@ setup_sdram:
 
 	/* Configure North Bridge SDRAM parameters */
 	li      a0, ATLAS_CPUFREQ_LOWEST_MHZ
-	li	a1, KSEG1(ATLAS_CORECTRL_BASE)
+	li	a1, KSEG1(ATLAS_GT64120_BASE)
 	li	a2, ATLAS_SYSTEMRAM_SIZE
 	jal	sys_core_configure_sdram
 	nop
@@ -241,13 +247,13 @@ setup_sdram:
 	move	MEMSIZE, v1
 
 	/* Configure North Bridge memory map */
-	li      a0, ATLAS_PCI_MEM_BASE
-	li	a1, ATLAS_PCI_MEM_SIZE
-	li	a2, ATLAS_PCI_IO_BASE
-	li	a3, ATLAS_PCI_IO_SIZE
+	li      a0, GT64120_PCIMEM_BASE
+	li	a1, GT64120_PCIMEM_SIZE
+	li	a2, GT64120_PCIIO_BASE
+	li	a3, GT64120_PCIIO_SIZE
 	li	t0, ATLAS_SYSTEMFLASH_BASE
 	li	t1, ATLAS_SYSTEMFLASH_SIZE + ATLAS_MONITORFLASH_SIZE
-	li	t2, KSEG1(ATLAS_CORECTRL_BASE)
+	li	t2, KSEG1(ATLAS_GT64120_BASE)
 	jal	sys_core_setup_decode
 	nop
 	bne	v0, zero, error_init
@@ -260,7 +266,7 @@ setup_sdram:
 	li	t0, PRODUCT_MALTA_ID
 	bne	t0, k0, 1f
 	nop
-	li	a0, KSEG1(ATLAS_CORECTRL_BASE)
+	li	a0, KSEG1(ATLAS_GT64120_BASE)
 	jal     sys_core_remap_pci_io
 	nop
 1:
@@ -327,58 +333,60 @@ eeprom_malta:
 
 	/*  Set I2C registers in FPGA to a well-defined state (not
 	 *  really necessary).
-	 *  Macros use t7..t6.
 	 */
-	I2C_FPGA_ENABLE
+#define I2CBASE	t7	
+
+	li	I2CBASE, KSEG1(MALTA_I2CBASE)
+	I2C_FPGA_ENABLE(I2CBASE)
 
 	jal     iic_malta_start
 	nop
 
 	ori	a0, SPD_ADDR, I2C_WRITE_BIT    /* SPD address + write bit */
 	jal	iic_malta_write
-	nop
+	 nop
 	li	a0, I2C_ACK_BIT
 	bne	v0, a0, error_eeprom
-	li	v0, ERROR_SPD
+	 li	v0, ERROR_SPD
 
 	move	a0, SUB_ADDR		       /* Subaddress		  */
 	jal	iic_malta_write
-	nop
+	 nop
 	li	a0, I2C_ACK_BIT
 	bne	v0, a0, error_eeprom
-	li	v0, ERROR_SPD
+	 li	v0, ERROR_SPD
 
 	jal	iic_malta_start
-	nop
+	 nop
 
 	ori     a0, SPD_ADDR, I2C_READ_BIT     /* SPD address + read bit */
 	jal     iic_malta_write
-	nop
+	 nop
 	li	a0, I2C_ACK_BIT
 	bne	v0, a0, error_eeprom
-	li	v0, ERROR_SPD
+	 li	v0, ERROR_SPD
 
 	/* Read data */
 	jal	iic_malta_read		       /* Returns data in v0     */
-	nop
+	 nop
 	move	v1, v0
 
 	jal	iic_malta_stop
-	nop
+	 nop
 
 	b	eeprom_done
-	nop
+	 nop
 
 iic_malta_start :
 
-	I2C_DIRECTION( SCL_TX, SDA_TX )
+	I2C_DIRECTION(I2CBASE, SCL_TX, SDA_TX)
 
-	I2C_TX( SCL_HI, SDA_HI )
-	I2C_TX( SCL_HI, SDA_LO )	/* Hi to Lo transition -> START */
-	I2C_TX( SCL_LO, SDA_LO )
+	I2C_TX(I2CBASE, SCL_HI, SDA_HI)
+	I2C_TX(I2CBASE, SCL_HI, SDA_LO)	/* Hi to Lo transition -> START */
+	I2C_TX(I2CBASE, SCL_LO, SDA_LO)
 
 	jr	ra
-	nop
+	 nop
 
 iic_malta_write :
 
@@ -386,7 +394,7 @@ iic_malta_write :
 	 *  v0 := ACK/NACK bit
 	 */
 
-	I2C_DIRECTION( SCL_TX, SDA_TX )
+	I2C_DIRECTION(I2CBASE, SCL_TX, SDA_TX)
 
 	li	t3, 7		      /* 8 bit loop counter */
 1:
@@ -394,21 +402,21 @@ iic_malta_write :
 	srlv	t4, a0, t3
 	andi	t4, 1
 	beq	t4, zero, 2f
-	nop
+	 nop
 
-	I2C_TX( SCL_LO, SDA_HI )	/* Set SDA	    */
-	I2C_TX( SCL_HI, SDA_HI )	/* Clock Hi	    */
-	I2C_TX( SCL_LO, SDA_HI )	/* Clock Lo	    */
+	I2C_TX(I2CBASE, SCL_LO, SDA_HI)	/* Set SDA	    */
+	I2C_TX(I2CBASE, SCL_HI, SDA_HI)	/* Clock Hi	    */
+	I2C_TX(I2CBASE, SCL_LO, SDA_HI)	/* Clock Lo	    */
 	b	3f
-	nop
+	 nop
 2:
-	I2C_TX( SCL_LO, SDA_LO )	/* Clear SDA	    */
-	I2C_TX( SCL_HI, SDA_LO )	/* Clock Hi	    */
-	I2C_TX( SCL_LO, SDA_LO )	/* Clock lo	    */
+	I2C_TX(I2CBASE, SCL_LO, SDA_LO)	/* Clear SDA	    */
+	I2C_TX(I2CBASE, SCL_HI, SDA_LO)	/* Clock Hi	    */
+	I2C_TX(I2CBASE, SCL_LO, SDA_LO)	/* Clock lo	    */
 
 3:
 	bne	t3, zero, 1b
-	addiu	t3, -1
+	 addiu	t3, -1
 
 	/*  Get acknowledge.
 	 *
@@ -419,55 +427,56 @@ iic_malta_write :
 	 *         this (open drain implementation).
 	 */
 
-	I2C_DIRECTION( SCL_TX, SDA_RX )
+	I2C_DIRECTION(I2CBASE, SCL_TX, SDA_RX)
 
-	I2C_TX( SCL_HI, SDA_HI )	/* Clock Hi, dummy SDA */
-	I2C_RX( v0 )			/* Read SDA	       */
-	I2C_TX( SCL_LO, SDA_HI )	/* Clock Lo, dummy SDA */
+	I2C_TX(I2CBASE, SCL_HI, SDA_HI)	/* Clock Hi, dummy SDA */
+	I2C_RX(I2CBASE, v0)		/* Read SDA	       */
+	I2C_TX(I2CBASE, SCL_LO, SDA_HI)	/* Clock Lo, dummy SDA */
 
 	jr      ra
-	nop
+	 nop
 
 iic_malta_read :
 
 	/* v0 := data read */
 
-	I2C_DIRECTION( SCL_TX, SDA_RX )
+	I2C_DIRECTION(I2CBASE, SCL_TX, SDA_RX)
 
 	move	v0, zero	        /* Init result register */
 	li	t3, 8			/* 8 bit loop counter   */
 1:
 	sll	v0, 1
 
-	I2C_TX( SCL_HI, SDA_HI )	/* Clock Hi, dummy SDA	*/
-	I2C_RX( t4 )			/* Read SDA		*/
-	I2C_TX( SCL_LO, SDA_HI )	/* Clock Lo, dummy SDA	*/
+	I2C_TX(I2CBASE, SCL_HI, SDA_HI)	/* Clock Hi, dummy SDA	*/
+	I2C_RX(I2CBASE, t4)		/* Read SDA		*/
+	I2C_TX(I2CBASE, SCL_LO, SDA_HI)	/* Clock Lo, dummy SDA	*/
 
 	addiu	t3, -1
 	bne	t3, zero, 1b
-	or	v0, t4
+	 or	v0, t4
 
 	/* Generate NACK */
 
-	I2C_TX( SCL_LO, I2C_NACK_BIT )
-	I2C_DIRECTION( SCL_TX, SDA_TX )
-	I2C_TX( SCL_HI, I2C_NACK_BIT )
-	I2C_TX( SCL_LO, I2C_NACK_BIT )
+	I2C_TX(I2CBASE, SCL_LO, I2C_NACK_BIT)
+	I2C_DIRECTION(I2CBASE, SCL_TX, SDA_TX)
+	I2C_TX(I2CBASE, SCL_HI, I2C_NACK_BIT)
+	I2C_TX(I2CBASE, SCL_LO, I2C_NACK_BIT)
 
 	jr	ra
-	nop
+	 nop
 
 iic_malta_stop :
 
-	I2C_DIRECTION( SCL_TX, SDA_TX )
+	I2C_DIRECTION(I2CBASE, SCL_TX, SDA_TX)
 
-	I2C_TX( SCL_LO, SDA_LO )
-	I2C_TX( SCL_HI, SDA_LO )	/* Lo to Hi transition -> STOP */
-	I2C_TX( SCL_HI, SDA_HI )
-	I2C_TX( SCL_LO, SDA_HI )
+	I2C_TX(I2CBASE, SCL_LO, SDA_LO)
+	I2C_TX(I2CBASE, SCL_HI, SDA_LO)	/* Lo to Hi transition -> STOP */
+	I2C_TX(I2CBASE, SCL_HI, SDA_HI)
+	I2C_TX(I2CBASE, SCL_LO, SDA_HI)
 
 	jr	ra
-	nop
+	 nop
+#undef I2CBASE
 
 	/* ATLAS */
 

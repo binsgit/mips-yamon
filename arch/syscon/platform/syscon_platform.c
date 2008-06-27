@@ -9,7 +9,7 @@
  *
  * mips_start_of_legal_notice
  * 
- * Copyright (c) 2006 MIPS Technologies, Inc. All rights reserved.
+ * Copyright (c) 2008 MIPS Technologies, Inc. All rights reserved.
  *
  *
  * Unpublished rights (if any) reserved under the copyright laws of the
@@ -33,12 +33,9 @@
  * this code does not give recipient any license to any intellectual
  * property rights, including any patent rights, that cover this code.
  *
- * This code shall not be exported, reexported, transferred, or released,
- * directly or indirectly, in violation of the law of any country or
- * international law, regulation, treaty, Executive Order, statute,
- * amendments or supplements thereto. Should a conflict arise regarding the
- * export, reexport, transfer, or release of this code, the laws of the
- * United States of America shall be the governing law.
+ * This code shall not be exported or transferred for the purpose of
+ * reexporting in violation of any U.S. or non-U.S. regulation, treaty,
+ * Executive Order, law, statute, amendment or supplement thereto.
  *
  * This code constitutes one or more of the following: commercial computer
  * software, commercial computer software documentation or other commercial
@@ -54,8 +51,6 @@
  * the terms of the license agreement(s) and/or applicable contract terms
  * and conditions covering this code from MIPS Technologies or an authorized
  * third party.
- *
- *
  *
  * 
  * mips_end_of_legal_notice
@@ -118,7 +113,7 @@ static t_syscon_obj       *syscon_objects;
 
 /* Size of ASCII display (if any) on platform */
 static UINT32		  alpha_display_size;
-/* Addresses of individual ASCII charactes on ASCII display */
+/* Addresses of individual ASCII characters on ASCII display */
 static volatile UINT32    *alpha_io[8];
 
 /* Mapping between hex digit and ASCII character (e.g 0-> ASCII(0x30)) */
@@ -1004,7 +999,7 @@ board_gt64120_base_atlas_malta_read(
     void   *data,
     UINT32 size )
 {
-    *(void **)param = (void *)ATLAS_CORECTRL_BASE;
+    *(void **)param = (void *)ATLAS_GT64120_BASE;
     return OK;
 }
 
@@ -1950,6 +1945,64 @@ board_am79c973_base_malta_read(
 
 
 /************************************************************************
+ *  board_softend_valid_malta_read
+ *************************************************************************/
+static UINT32
+board_softend_valid_malta_read(
+    void   *param,
+    void   *data,
+    UINT32 size )
+{
+#ifdef SOFT_ENDIAN_DEBUG
+    *(UINT32 *)param = (( REGP(KSEG1BASE, MALTA_SWITCH) & 128) >> 7);
+#else
+    *(UINT32 *)param = ( REGP(KSEG1BASE, MALTA_SOFTEND) &
+    			 MALTA_SOFTEND_VALID_MSK ) >>
+			 MALTA_SOFTEND_VALID_SHF;
+#endif
+    return OK;
+}
+
+
+/************************************************************************
+ *  board_softend_done_malta_read
+ *************************************************************************/
+static UINT32
+board_softend_done_malta_read(
+    void   *param,
+    void   *data,
+    UINT32 size )
+{
+#ifdef SOFT_ENDIAN_DEBUG
+    *(UINT32 *)param = (( REGP(KSEG1BASE, MALTA_SWITCH) & 2) >> 1);
+#else
+    *(UINT32 *)param = ( REGP(KSEG1BASE, MALTA_SOFTEND) &
+    			 MALTA_SOFTEND_DONE_MSK ) >>
+			 MALTA_SOFTEND_DONE_SHF;
+#endif
+    return OK;
+}
+
+
+/************************************************************************
+ *  board_softend_resetsys_malta_write
+ *************************************************************************/
+static UINT32
+board_softend_resetsys_malta_write(
+    void   *param,
+    void   *data,
+    UINT32 size )
+{
+#ifdef SOFT_ENDIAN_DEBUG
+    REGP(KSEG1BASE, MALTA_LEDBAR) = *(UINT32 *)param;
+#else
+    REGP(KSEG1BASE, MALTA_SOFTEND) = *(UINT32 *)param;
+#endif
+    return OK;
+}
+
+
+/************************************************************************
  *  com_iic_baudrate_atlas_read
  ************************************************************************/
 static UINT32
@@ -2234,13 +2287,13 @@ syscon_arch_board_init(
 			           /* RAM size */
 				   MALTA_SYSTEMRAM_SIZE,
 				   /* PCI memory space (transparent) */
-				   MALTA_PCI_MEM_BASE,
-				   MALTA_PCI_MEM_SIZE,
+				   GT64120_PCIMEM_BASE,
+				   GT64120_PCIMEM_SIZE,
 				   0,
 				   /* PCI IO space (non-transparent) */
 				   0,
-				   MALTA_PCI_IO_SIZE,
-				   MALTA_PCI_IO_BASE );
+				   GT64120_PCIIO_SIZE,
+				   GT64120_PCIIO_BASE );
         }
 	else
 	{
@@ -2248,12 +2301,12 @@ syscon_arch_board_init(
 			           /* RAM size */
 			           ATLAS_SYSTEMRAM_SIZE,
 			           /* PCI Memory space (transparent) */
-			           ATLAS_PCI_MEM_BASE,
-			           ATLAS_PCI_MEM_SIZE,
+			           GT64120_PCIMEM_BASE,
+			           GT64120_PCIMEM_SIZE,
 			           0,
 			           /* PCI IO space (transparent) */
-			           ATLAS_PCI_IO_BASE,
-			           ATLAS_PCI_IO_SIZE,
+			           GT64120_PCIIO_BASE,
+			           GT64120_PCIIO_SIZE,
 			           0 );
         }
 	
@@ -3066,6 +3119,39 @@ syscon_arch_board_init(
                               /* Malta */
                               com_en0_intline_malta_read, NULL,
                               NULL,			  NULL );
+
+    syscon_register_id_board( SYSCON_BOARD_SOFTEND_VALID_ID,
+    			      /* Atlas */
+			      NULL,			      NULL,
+			      NULL,			      NULL,
+			      /* SEAD */
+			      NULL,			      NULL,
+			      NULL,			      NULL,
+			      /* Malta */
+			      board_softend_valid_malta_read, NULL,
+			      NULL,			      NULL );
+
+    syscon_register_id_board( SYSCON_BOARD_SOFTEND_DONE_ID,
+    			      /* Atlas */
+			      NULL,			     NULL,
+			      NULL,			     NULL,
+			      /* SEAD */
+			      NULL,			     NULL,
+			      NULL,			     NULL,
+			      /* Malta */
+			      board_softend_done_malta_read, NULL,
+			      NULL,			     NULL );
+
+    syscon_register_id_board( SYSCON_BOARD_SOFTEND_RESETSYS_ID,
+    			      /* Atlas */
+			      NULL,				  NULL,
+			      NULL,				  NULL,
+			      /* SEAD */
+			      NULL,				  NULL,
+			      NULL,				  NULL,
+			      /* Malta */
+			      NULL,				  NULL,
+			      board_softend_resetsys_malta_write, NULL );
 
     syscon_register_generic( SYSCON_BOARD_EEPROM_COUNT_ID,
 			     syscon_uint8_read, (void *)&eeprom_count,

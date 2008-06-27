@@ -14,7 +14,7 @@
  *
  * mips_start_of_legal_notice
  * 
- * Copyright (c) 2006 MIPS Technologies, Inc. All rights reserved.
+ * Copyright (c) 2008 MIPS Technologies, Inc. All rights reserved.
  *
  *
  * Unpublished rights (if any) reserved under the copyright laws of the
@@ -38,12 +38,9 @@
  * this code does not give recipient any license to any intellectual
  * property rights, including any patent rights, that cover this code.
  *
- * This code shall not be exported, reexported, transferred, or released,
- * directly or indirectly, in violation of the law of any country or
- * international law, regulation, treaty, Executive Order, statute,
- * amendments or supplements thereto. Should a conflict arise regarding the
- * export, reexport, transfer, or release of this code, the laws of the
- * United States of America shall be the governing law.
+ * This code shall not be exported or transferred for the purpose of
+ * reexporting in violation of any U.S. or non-U.S. regulation, treaty,
+ * Executive Order, law, statute, amendment or supplement thereto.
  *
  * This code constitutes one or more of the following: commercial computer
  * software, commercial computer software documentation or other commercial
@@ -59,8 +56,6 @@
  * the terms of the license agreement(s) and/or applicable contract terms
  * and conditions covering this code from MIPS Technologies or an authorized
  * third party.
- *
- *
  *
  * 
  * mips_end_of_legal_notice
@@ -221,6 +216,9 @@
 
 #define MIPS_74K			( (K_PRIdCoID_MIPS << S_PRIdCoID) | \
 					  (K_PRIdImp_74K   << S_PRIdImp) )
+
+#define MIPS_1004K			( (K_PRIdCoID_MIPS << S_PRIdCoID) | \
+					  (K_PRIdImp_1004K << S_PRIdImp) )
 
 #define QED_RM52XX			( (C0_PRID_COMP_NOT_MIPS32_64 << \
 					      S_PRIdCoID) |	 \
@@ -457,6 +455,7 @@ SET_POP();				  \
 #define MIPS24K_COUNT_CLK_PER_CYCLE     2
 #define MIPS34K_COUNT_CLK_PER_CYCLE     2
 #define MIPS74K_COUNT_CLK_PER_CYCLE     2
+#define MIPS1004K_COUNT_CLK_PER_CYCLE   2
 #define MIPSM4K_COUNT_CLK_PER_CYCLE     2
 
 /**** MIPS 4K/5K families specific fields of CONFIG register ****/
@@ -490,6 +489,9 @@ SET_POP();				  \
 #define M_Config2L2B		     (0x1 << S_Config2L2B)
 
 /* TBD : Until these appear in ArchDefs.h */
+#define R_C0_UserLocal		4
+#define R_C0_SelUserLocal	2
+
 #define R_C0_DErrCtl		26
 #define R_C0_SelDErrCtl		0
 #define R_C0_IErrCtl		26
@@ -511,23 +513,6 @@ SET_POP();				  \
 #define R_C0_L23DataHi		29
 #define R_C0_SelL23DataHi	5
 
-#define R_C0_IWatchLo0		18
-#define R_C0_SelIWatchLo0	0
-#define R_C0_IWatchHi0		19
-#define R_C0_SelIWatchHi0       0
-#define R_C0_IWatchLo1		18
-#define R_C0_SelIWatchLo1       1
-#define R_C0_IWatchHi1		19
-#define R_C0_SelIWatchHi1       1
-#define R_C0_DWatchLo0		18
-#define R_C0_SelDWatchLo0       2
-#define R_C0_DWatchHi0		19
-#define R_C0_SelDWatchHi0       2
-#define R_C0_DWatchLo1		18
-#define R_C0_SelDWatchLo1       3
-#define R_C0_DWatchHi1		19
-#define R_C0_SelDWatchHi1       3
-
 #define S_ConfigMM              18     /* 24K specific, merging enable/disable */
 #define M_ConfigMM              (0x1 << S_ConfigMM)
 
@@ -540,6 +525,16 @@ SET_POP();				  \
 #define R_C0_Config7		16
 #define R_C0_SelConfig7		7
 
+#define S_Config3ULRI		13			/* User Local Register Implemented (R) */
+#define M_Config3ULRI		(0x1 << S_Config3ULRI)
+
+#define S_Config7WII		31			/* Interrupt safe wait */
+#define M_Config7WII		(0x1 << S_Config7WII)
+
+#define S_Config7AR		16			/* Dcache antialiasing present */
+#define M_Config7AR		(0x1 << S_Config7AR)
+
+#define K_PRIdImp_1004K		0x99	/* MIPS32 1004K */
 
 #endif /* #ifndef MIPS_H */
 

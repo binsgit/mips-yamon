@@ -9,7 +9,7 @@
  *
  * mips_start_of_legal_notice
  * 
- * Copyright (c) 2006 MIPS Technologies, Inc. All rights reserved.
+ * Copyright (c) 2008 MIPS Technologies, Inc. All rights reserved.
  *
  *
  * Unpublished rights (if any) reserved under the copyright laws of the
@@ -33,12 +33,9 @@
  * this code does not give recipient any license to any intellectual
  * property rights, including any patent rights, that cover this code.
  *
- * This code shall not be exported, reexported, transferred, or released,
- * directly or indirectly, in violation of the law of any country or
- * international law, regulation, treaty, Executive Order, statute,
- * amendments or supplements thereto. Should a conflict arise regarding the
- * export, reexport, transfer, or release of this code, the laws of the
- * United States of America shall be the governing law.
+ * This code shall not be exported or transferred for the purpose of
+ * reexporting in violation of any U.S. or non-U.S. regulation, treaty,
+ * Executive Order, law, statute, amendment or supplement thereto.
  *
  * This code constitutes one or more of the following: commercial computer
  * software, commercial computer software documentation or other commercial
@@ -55,8 +52,6 @@
  * and conditions covering this code from MIPS Technologies or an authorized
  * third party.
  *
- *
- *
  * 
  * mips_end_of_legal_notice
  * 
@@ -72,6 +67,8 @@
 #include <product.h>
 #include <init.h>
 #include <sys_api.h>
+#include <gcmp.h>
+#include <launch.h>
 					
 /************************************************************************
  *  Definitions
@@ -170,15 +167,374 @@ sys_platform_early_done:
 	
 #endif /* #ifndef _SIMULATE_ */
 	
+	/*
+	 * MIPSCMP
+	 * Time to start up the coherency manager if present
+	 */
+#define GCMP	t0
+	li	GCMP,KSEG1(GCMPBASE)
+	lw	t1,GCMPGCBOFS(GCMPB)(GCMP)
+	and	t1,GCMP_GCB_GCMPB_GCMPBASE_MSK
+	or	t2,t1,KSEG1BASE
+	bne	t2,GCMP,nogcmp		/* No GCMP present so skip the initialisation */ 
+	 nop
+
+	/*
+	 * Change the CCA from non-coherent to coherent
+	 * Assumption: GCMP => coherent CCA is usable
+	 */
+	mfc0	t2,C0_Config
+	and	t3,t2,M_ConfigK0
+	xori	t3,K_CacheAttrCN<<S_ConfigK0
+	bnez	t3,1f
+	 nop
+	and	t2,~M_ConfigK0
+	or	t2,K_CacheAttrCCS<<S_ConfigK0
+	mtc0	t2, C0_Config
+1:
+
+	/*
+	 * Primary Core needs to initialise GCMP
+	 */
+	bnez	v1, 1f
+	 nop
+	
+	/* Initialise CM */
+	
+	/* Rewrite the GCMPB register to initialise CM_DEFAULT_TARGET */
+	or	t1,GCMP_GCB_GCMPB_CMDEFTGT_MEM<<GCMP_GCB_GCMPB_CMDEFTGT_SHF
+	sw	t1,GCMPGCBOFS(GCMPB)(GCMP)
+
+	/* Disable the CM regions */
+	lui	t1,0xffff
+	sw	t1,GCMP_GCB_CMxBASE_OFS(0)(GCMP)
+	sw	t1,GCMP_GCB_CMxMASK_OFS(0)(GCMP)
+	sw	t1,GCMP_GCB_CMxBASE_OFS(1)(GCMP)
+	sw	t1,GCMP_GCB_CMxMASK_OFS(1)(GCMP)
+	sw	t1,GCMP_GCB_CMxBASE_OFS(2)(GCMP)
+	sw	t1,GCMP_GCB_CMxMASK_OFS(2)(GCMP)
+	sw	t1,GCMP_GCB_CMxBASE_OFS(3)(GCMP)
+	sw	t1,GCMP_GCB_CMxMASK_OFS(3)(GCMP)
+
+1:
+	/* Allow interventions from all other cores (including self) */
+	li	t1,0xff
+	sw	t1, GCMPCLCBOFS(COHCTL)(GCMP)
+	EHB	/* FIXME: Other hazards? */
+
+nogcmp:
 	/* Caches have now been initialised, so shift to kseg0 */
 	la	t0, 1f
 	KSEG0A( t0)
 	j	t0
 	nop
 1:
-
 	/**** From now on, we are executing cached ****/
 	
+	/*
+         * MIPSMT
+	 * Check for MT capable cores
+	 */
+
+	MFC0(	t0,C0_Config)
+	srl	t0,S_ConfigAR
+	andi	t0,M_ConfigAR>>S_ConfigAR
+	beqz	t0,notmtcapable
+	 nop
+
+	/* Config1 is required for MIPS32 */
+	MFC0_SEL_OPCODE(R_t0, R_C0_Config1, R_C0_SelConfig1)
+#if S_Config1M!=31
+	sll	t0,31 - S_Config1M
+#endif
+	bgez	t0,notmtcapable		/* No Config2 register */
+	 nop
+	MFC0_SEL_OPCODE(R_t0, R_C0_Config2, R_C0_SelConfig2)
+#if S_Config2M!=31
+	sll	t0,31 - S_Config2M
+#endif
+	bgez	t0,notmtcapable		/* No Config3 register */
+	 nop
+	MFC0_SEL_OPCODE(R_t0, R_C0_Config3, R_C0_SelConfig3)
+	and	t0,M_Config3MT
+	beqz	t0,notmtcapable
+	 nop
+
+	/*
+	 * This core supports MT ASE
+	 * Start up secondary VPE's
+	 */
+	.set	push
+	.set	mips32r2
+	.set	mt
+
+
+startmtconfig:
+	/* Enter config mode */
+	mfc0	t0,C0_MVPCtl
+	or	t0,M_MVPCtlVPC
+	mtc0	t0,C0_MVPCtl
+	
+	/* Make sure VPEConf0.MVP is set */
+	mfc0	t0,C0_VPEConf0
+	or	t0,M_VPEConf0MVP
+	mtc0	t0,C0_VPEConf0
+	ehb
+
+#define NTCS	t2
+#define NVPES	t3
+#define TC	t4
+
+	/* Get number of TC's and VPE's */
+	mfc0	t0,C0_MVPConf0
+	srl	NTCS,t0,S_MVPConf0PTC
+	andi	NTCS,M_MVPConf0PTC>>S_MVPConf0PTC
+	srl	NVPES,t0,S_MVPConf0PVPE
+	andi	NVPES,M_MVPConf0PVPE>>S_MVPConf0PVPE
+
+	/* Initialise TC's/VPE's */
+	move	TC,zero
+nexttc:
+	/* Select TCn */
+	mfc0	t0,C0_VPECtl
+	and	t0,~M_VPECtlTargTC
+	sll	t1,TC,S_VPECtlTargTC
+	or	t0,t1
+	mtc0	t0,C0_VPECtl
+	ehb
+
+	/* Bind TC to next VPE */
+	beqz	TC,nextvpe		/* Don't rebind TC0 */
+	 nop
+	bgt	TC,NVPES,2f		/* Bind spare TC's to VPElast */
+	 move	t1,NVPES
+	
+	/* Set XTC for active TC's */
+	mftc0	t0,C0_VPEConf0
+	and	t0,~M_VPEConf0XTC
+	sll	t1,TC,S_VPEConf0XTC
+	or	t0,t1
+	mttc0	t0,C0_VPEConf0
+	move	t1,TC
+2:
+	/* Bind TC to a VPE */
+	mftc0	t0,C0_TCBind
+	and	t0,~M_TCBindCurVPE
+	sll	t1,S_TCBindCurVPE
+	or	t0,t1
+	mttc0	t0,C0_TCBind
+
+	/* mark TC not allocated, not dynamically allocatable and interrupt exempt */
+	mftc0	t0,C0_TCStatus
+	and	t0,~(M_TCStatusA|M_TCStatusDA)
+	or	t0,M_TCStatusIXMT
+	mttc0	t0,C0_TCStatus
+
+	li	t0,M_TCHaltH		/* Halt all TC's */
+	mttc0	t0,C0_TCHalt
+
+nextvpe:
+	bgt	TC,NVPES,donevpe	/* No more VPE's */
+	 nop
+
+	/* Disable multi-threading with TC's */
+	mftc0	t0,C0_VPECtl
+	and	t0,~M_VPECtlTE
+	mttc0	t0,C0_VPECtl
+
+	beqz	TC,1f
+	 nop
+
+	/* For VPE1..n */
+	/* Clear VPA and set master VPE */
+	mftc0	t0,C0_VPEConf0
+	and	t0,~M_VPEConf0VPA
+	or	t0,M_VPEConf0MVP
+	mttc0	t0,C0_VPEConf0
+
+	mfc0	t0,C0_Status
+	mttc0	t0,C0_Status
+
+	li	t0,0x12345678
+	mttc0	t0,C0_EPC
+	
+	mttc0	zero,C0_Cause
+
+	mfc0	t0,C0_Config
+	mttc0	t0,C0_Config	
+
+	mftc0	t0,C0_EBase
+	srl	t0,S_EBaseCPUNum
+	andi	t0,M_EBaseCPUNum
+	mttgpr	t0,v1
+
+	/* Finally... arrange for other VPE's to continue from othercores */
+	la	t0,othercores
+	mttc0	t0,C0_TCRestart
+
+	/* Yes.. this is undoing all of the work done above... :) */
+	mftc0	t0,C0_TCStatus
+	and	t0,~M_TCStatusIXMT
+	or	t0,M_TCStatusA
+	mttc0	t0,C0_TCStatus
+
+	mttc0	zero,C0_TCHalt
+
+	mftc0	t0,C0_VPEConf0
+	ori	t0,M_VPEConf0VPA
+	mttc0	t0,C0_VPEConf0
+
+1:
+	
+donevpe:
+	addu	TC,1
+	bleu	TC,NTCS,nexttc
+	 nop
+
+	/* Exit config mode */
+	mfc0	t0,C0_MVPCtl
+	and	t0, ~M_MVPCtlVPC
+	mtc0	t0,C0_MVPCtl
+	ehb
+
+	/*
+	 * Enable MT for cores other than 0
+	 * MT on Core0 will be enabled later in shell_cpu_init
+	 */
+	beqz	v1,1f
+	 nop
+	evpe
+	ehb
+1:	
+#undef NTCS
+#undef NVPES
+#undef TC
+	.set	pop
+
+notmtcapable:
+	/*
+	 * MIPSCMP
+	 * Only Core0 carries on from here
+	 * Everybody else waits...
+	 */
+	beqz	v1,finish_initialisation
+	 nop
+
+othercores:
+ 	/* FIXME any other per-CPU initialisation required? */
+
+	li	t0,KSEG0(CPULAUNCH)
+	sll	t1,v1,LOG2CPULAUNCH
+	addu	t0,t1
+
+	/*
+	 * Set CPU online flag
+	 */
+	lw	t1,LAUNCH_FLAGS(t0)
+	or	t1,LAUNCH_FREADY
+	sw	t1,LAUNCH_FLAGS(t0)
+
+	/* enable count interrupt in mask, but don't enable interrupts */
+	mfc0	t2,C0_Status
+	li	t1,M_StatusIM7 /* FIXME should calculate dynamically from Config3.ippti */
+	or	t1,t2
+	mtc0	t1,C0_Status
+
+	MFC0_SEL_OPCODE(R_t3, R_C0_Config7, R_C0_SelConfig7)
+	and	t3,M_Config7WII	/* Wakeup from wait with interrupts disabled? */
+
+	/* Execute the startcode out of a safe RAM area */	
+	li	t1,KSEG0(SCRLAUNCH)
+	j	t1
+	 nop
+	
+waitcode_start:
+	/*
+	 * Poll CPU go flag
+	 */
+1:	mfc0	t1,C0_Count
+	addu	t1,LAUNCHPERIOD
+	mtc0	t1,C0_Compare
+
+	bnez	t3,hwwait
+	 nop
+
+
+swwait:	/* Software wait */
+	mfc0	t4,C0_Count
+	subu	t4,t1
+	bltz	t4,swwait
+	 nop
+	b	checklaunch
+	 nop
+
+
+hwwait:	/* Hardware wait */
+	.set	push
+	.set	mips32
+	wait
+	.set	pop
+
+checklaunch:
+#define LEDDBG	
+#ifdef LEDDBG
+	/*
+	 * This is a bad idea...
+	 * It's Malta specific and causes contention on this cache line
+	 * but is amusing for now
+	 */
+#define LEDBITS	KSEG0(CPULAUNCH+LAUNCH_FLAGS-4)
+#define LEDBAR	KSEG1(0x1f000408)
+	
+	/* Only do this every 512 iterations */
+	srl	t6,t5,9
+	beqz	t6,twiddledone
+	 addu	t5,1
+	li	t5,1
+	sll	t5,v1
+	/* update the CPU bits atomically */
+	li	t4,LEDBITS
+twiddleledbits:
+	ll	t6,(t4)
+	xor	t6,t5
+	sc	t6,(t4)
+	beqz	t6,twiddleledbits
+	 nop
+	/* made our change, now go with the flow */
+	lw	t6,(t4)
+	li	t4,LEDBAR
+	sw	t6,(t4)
+	/* reset our counter */
+	move	t5,zero
+twiddledone:
+#endif
+
+	lw	t1,LAUNCH_FLAGS(t0)
+	and	t1,LAUNCH_FGO
+	beqz	t1, 1b
+	 nop
+
+	/* Reset the counter and interrupts to give naive clients a chance */
+	mtc0	t2,C0_Status
+	mfc0	t2,C0_Count
+	subu	t2,1
+	mtc0	t2,C0_Compare
+
+	/* we're off */	
+	lw	t2,LAUNCH_PC(t0)
+	lw	gp,LAUNCH_GP(t0)
+	lw	sp,LAUNCH_SP(t0)
+	lw	a0,LAUNCH_A0(t0)
+	move	a1,zero
+	move	a2,zero
+	move	a3,zero
+	ori	t1,LAUNCH_FGONE
+	jr	t2
+	 sw	t1,LAUNCH_FLAGS(t0)
+waitcode_end:
+
+
+finish_initialisation:	
 	DISP_STR( msg_platform )
 	
 	/* Perform platform specific initialisation.
@@ -215,68 +571,25 @@ sys_platform_early_done:
 	
 #ifndef _SIMULATE_
 		
-	la	t0, _etext_init		/* SRC  */
-	la	t1, _ftext_ram		/* DST  */
-	la	t2, _etext_ram		/* STOP */
-	KSEG0A( t1 )
-	KSEG0A( t2 )
-	beq	t1, t2, copy_data
-	nop
-	addiu	t2, -4
-	
-	/*  Whenever an instruction has been stored to KSEG0, we must
-	 *  make sure the instruction has been flushed to physical memory
-	 *  and invalidate the corresponding I-Cache line.
-	 *
-	 *  We bypass the cache operations if CPU is running uncached.
-	 *  (We assume Config.k0 == K_CacheAttrU is the
-	 *  only uncached mode used).
-	 */
-	
-	MFC0( t4, C0_Config )
-	li    t3, M_ConfigK0
-	and   t4, t3
-	li    t3, S_ConfigK0
-	srlv  t4, t4, t3
-	li    t3, K_CacheAttrU
-	xor   t4, t3
-
-	/*
-	 * L2 cache may also be present
-	 */
-	jal     sys_determine_l2cache_avail_flash
-	 move	a0, k1
-	or	t5, v0, v1	# L2 cache available and enabled
-
-1:	
-	lw	t3, 0(t0)
-	sw	t3, 0(t1)
-
-	beq	t4, zero, 2f	
-	 add	t0, 4
-
-SET_MIPS3()
-	cache   DCACHE_ADDR_HIT_WRITEBACK, 0(t1)
-	sync
-	ICACHE_ADDR_INVALIDATE_OP(t1,a0)
-SET_MIPS0()
-2:	
-	beqz	t5, 2f
+	la	a0, _etext_init		/* SRC  */
+	la	a1, _ftext_ram		/* DST  */
+	la	a2, _etext_ram		/* STOP */
+	bal	copy_text
 	 nop
 	
-SET_MIPS3()
-	cache   SCACHE_ADDR_HIT_WRITEBACK_INVALIDATE, 0(t1)
-SET_MIPS0()
-	
-2:
-	bne	t1, t2, 1b
-	 add	t1, 4
-
 #endif /* #ifndef _SIMULATE_ */
 
-	/* Copy initialised data to RAM */
+	/* Copy the wait code to memory so that it is not running from flash */
+	la	a0, waitcode_start	/* SRC */
+	li	a1, SCRLAUNCH		/* DST */
+	/* Grr... */
+	li	a2, SCRLAUNCH+(waitcode_end-waitcode_start) /* STOP */
+	bal	copy_text
+	 nop
 	
-copy_data:		
+	/* Copy initialised data to RAM */
+
+copy_data:
 
 	DISP_STR( msg_copy_data )
 	
@@ -354,7 +667,10 @@ setup_sp :
 	sb	v0, 0(t0)
         la      t0, sys_l2cache_enabled
 	sb	v1, 0(t0)
-
+	li	v1, 1		/* FIXME: Assume L2 is exclusive */
+	la      t0, sys_l2cache_exclusive
+	sb	v1, 0(t0)
+	
 	beq	v0, zero, 1f
 	nop
 
@@ -404,6 +720,11 @@ setup_sp :
 	la	t0, sys_dcache_linesize
 	sw	v0, 0(t0)
 
+	jal	sys_determine_dcache_antialias_flash
+	 nop
+	la	t0, sys_dcache_antialias
+	sw	v0, 0(t0)
+
         /*  Calc first free RAM address. We add the dcache line size
 	 *  to avoid cache writeback problem if user executes uncached
 	 *  code.
@@ -444,7 +765,69 @@ END(__reset_handler)
 /************************************************************************
  *  Implementation : Static functions
  ************************************************************************/
+
+SLEAF(copy_text)	
+	move	t0, a0
+	KSEG0A2(t1, a1)
+	KSEG0A2(t2, a2)
+	beq	t1, t2, copy_text_done
+	 nop
+	addiu	t2, -4
 	
+	/*  Whenever an instruction has been stored to KSEG0, we must
+	 *  make sure the instruction has been flushed to physical memory
+	 *  and invalidate the corresponding I-Cache line.
+	 *
+	 *  We bypass the cache operations if CPU is running uncached.
+	 *  (We assume Config.k0 == K_CacheAttrU is the
+	 *  only uncached mode used).
+	 */
+	
+	MFC0( t4, C0_Config )
+	and   t4, M_ConfigK0
+	srl   t4, S_ConfigK0
+	xor   t4, K_CacheAttrU
+
+	/*
+	 * L2 cache may also be present
+	 */
+	move	t3, ra
+	jal     sys_determine_l2cache_avail_flash
+	 move	a0, k1
+	or	t5, v0, v1	/* L2 cache available and enabled */
+	move	ra, t3
+
+1:	
+	lw	t3, 0(t0)
+	sw	t3, 0(t1)
+
+	beqz	t4, 2f	
+	 addu	t0, 4
+
+	SET_MIPS3()
+	cache   DCACHE_ADDR_HIT_WRITEBACK, 0(t1)
+	sync
+	.set	noat
+	ICACHE_ADDR_INVALIDATE_OP(t1,AT)
+	.set	at
+	SET_MIPS0()
+2:	
+	beqz	t5, 2f
+	 nop
+	
+	SET_MIPS3()
+	cache   SCACHE_ADDR_HIT_WRITEBACK_INVALIDATE, 0(t1)
+	SET_MIPS0()
+	
+2:
+	bne	t1, t2, 1b
+	 addu	t1, 4
+
+copy_text_done:
+	j	ra
+	 nop
+END(copy_text)	
+		
 /************************************************************************
  *  sys_memory_setup
  ************************************************************************/
@@ -707,50 +1090,41 @@ END(sys_memory_setup)
  ************************************************************************/
 SLEAF(sys_memory_test)
 
-#define ADDR     t0
-#define LAST     t1
-#define DATA     t2
-	
+#define ADDR	t0
+#define LAST	t1
+#define STRIDE	4
+
 	KSEG1A( a0 )
-	
-	/**** WORD ACCESSES ****/
 
-	li	t4, 0xFFFFF
+	/* Default to no error */
+	li	v0, 0
 
-	/* Default error */
-	li	v0, ERROR_MEMTEST_WORD
-	
 	addu	LAST, a0, a1
-	addiu	LAST, -4
+	subu	LAST, STRIDE
 
 	/* Write */
 	move	ADDR, a0
-	move	DATA, zero
-1:
-	sw	DATA, 0(ADDR)
-	addiu	DATA, 1
+1: 	sw	ADDR, 0(ADDR)
 	bne	ADDR, LAST, 1b
-	addiu	ADDR, 4
+	 addiu	ADDR, STRIDE
 
 	/* Read */
 	move	ADDR, a0
-	move	DATA, zero
 1:
 	lw	t5, 0(ADDR)
-	bne	t5, DATA, mem_test_done
-	addiu	DATA, 1
-	bne	ADDR, LAST, 1b
-	addiu	ADDR, 4
-
-	/* No error */
-	move	v0, zero
+	beq	t5, ADDR, 2f
+	 nop
+	li	v0, ERROR_MEMTEST_WORD
+	lui	t5,0xbfc0
+	sw	t5,(t5)
+		
+2:	bne	ADDR, LAST, 1b
+	 addiu	ADDR, STRIDE
 	
 	/**** DONE ****/
 
-mem_test_done:		
 	jr	ra
-	nop
-
+	 nop
 END(sys_memory_test)
 
 

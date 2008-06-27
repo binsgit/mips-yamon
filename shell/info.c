@@ -11,7 +11,7 @@
  *
  * mips_start_of_legal_notice
  * 
- * Copyright (c) 2006 MIPS Technologies, Inc. All rights reserved.
+ * Copyright (c) 2008 MIPS Technologies, Inc. All rights reserved.
  *
  *
  * Unpublished rights (if any) reserved under the copyright laws of the
@@ -35,12 +35,9 @@
  * this code does not give recipient any license to any intellectual
  * property rights, including any patent rights, that cover this code.
  *
- * This code shall not be exported, reexported, transferred, or released,
- * directly or indirectly, in violation of the law of any country or
- * international law, regulation, treaty, Executive Order, statute,
- * amendments or supplements thereto. Should a conflict arise regarding the
- * export, reexport, transfer, or release of this code, the laws of the
- * United States of America shall be the governing law.
+ * This code shall not be exported or transferred for the purpose of
+ * reexporting in violation of any U.S. or non-U.S. regulation, treaty,
+ * Executive Order, law, statute, amendment or supplement thereto.
  *
  * This code constitutes one or more of the following: commercial computer
  * software, commercial computer software documentation or other commercial
@@ -56,8 +53,6 @@
  * the terms of the license agreement(s) and/or applicable contract terms
  * and conditions covering this code from MIPS Technologies or an authorized
  * third party.
- *
- *
  *
  * 
  * mips_end_of_legal_notice
@@ -87,6 +82,7 @@
 #include <string.h>
 #include <io_api.h>
 #include <env_api.h>
+#include <launch.h>
 
 /************************************************************************
  *  Definitions
@@ -124,7 +120,7 @@ Front panel switch S1 functions as per Harp SDB spec."
     "YAMON ROM Monitor, Revision "			\
     YAMON_REV_STRING					\
     ".\n"						\
-    "Copyright (c) 1999-2006 "				\
+    "Copyright (c) 1999-2007 "				\
     MIPS_NAME						\
     " - All Rights Reserved.\n\n"			\
     "For a list of available commands, type 'help'.\n"
@@ -1110,6 +1106,8 @@ info_cpu_boot( void )
     bool   bdata;
     UINT32 cpu_freq, bus_freq;
     char   *s;
+    extern bool gcmp_present, io_coherent;
+    int	   cpu;
 
     if(SYSCON_read( SYSCON_CPU_CP0_PRID_ID, &wdata, sizeof(wdata)) == OK)
     {
@@ -1150,6 +1148,35 @@ info_cpu_boot( void )
         else
             sprintf( s, " / %d MHz\n", (bus_freq+500000)/1000000 );
 
+        if(SHELL_PUTS_INDENT( msg, INDENT )) return FALSE;
+    }
+
+    if(SHELL_PUTS( "Coherency =" )) return FALSE;
+    s = msg;
+    if (gcmp_present) {
+      s += sprintf (s, "Cache");
+      if (io_coherent)
+	s += sprintf (s, ",IO");
+    }
+    else {
+      sprintf (s, "None");
+    }
+    *s++ = '\n';
+    *s++ = '\0';
+    if(SHELL_PUTS_INDENT( msg, INDENT )) return FALSE;
+
+    if (gcmp_present) {
+        if(SHELL_PUTS( "Running CPUs =" )) return FALSE;
+	s = msg;
+	for (cpu = 0; cpu < 8; cpu++) {
+	  if (cpu_present(cpu)) {
+	    if (s != msg)
+	      *s++ = ',';
+	    *s++ = '0' + cpu;
+	  }
+	}
+	*s++ = '\n';
+	*s = '\0';
         if(SHELL_PUTS_INDENT( msg, INDENT )) return FALSE;
     }
 
@@ -1356,8 +1383,11 @@ info_sysctrl( void )
         if(SHELL_PUTS("SDRAM CAS latency =" )) return FALSE;
 	switch (wdata)
 	{
+	  /* See board_systemram_caslat_cycles_msc01_read for these encodings... */
 	  case 5: strcpy( msg, "1.5 ram cycles\n" ); break;
 	  case 6: strcpy( msg, "2.5 ram cycles\n" ); break;
+	  case 7: strcpy( msg, "0.5 ram cycles\n" ); break;
+	  case 8: strcpy( msg, "3.5 ram cycles\n" ); break;
           default: sprintf( msg, "%d ram cycles\n", wdata ); break;
 	}
         if(SHELL_PUTS_INDENT( msg, INDENT )) return FALSE;
@@ -1437,6 +1467,15 @@ info_sysctrl( void )
         if(SHELL_PUTS_INDENT( msg, INDENT )) return FALSE;
     }
  
+    /* System RAS Max */
+    if(SYSCON_read( SYSCON_BOARD_SYSTEMRAM_RASMAX_CYCLES_CFG_ID,
+		    &wdata, sizeof(wdata)) == OK)
+    {
+        if(SHELL_PUTS("SDRAM RAS max =" )) return FALSE;
+        sprintf( msg, "%d ram cycles\n", wdata );
+        if(SHELL_PUTS_INDENT( msg, INDENT )) return FALSE;
+    }
+
     return TRUE;
 }
  
@@ -1616,7 +1655,11 @@ info_boot( void )
 
     /* Compile data and time */
     if(SHELL_PUTS( "\nCompilation time =" )) return FALSE;
+#ifdef _BUILD_USER_
+    sprintf( msg, "%s  %s (%s)\n", _shell_date, _shell_time, _BUILD_USER_ );
+#else
     sprintf( msg, "%s  %s\n", _shell_date, _shell_time );
+#endif
     if(SHELL_PUTS_INDENT( msg, INDENT )) return FALSE;
 
     if( !disp_all )

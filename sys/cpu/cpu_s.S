@@ -9,7 +9,7 @@
  *
  * mips_start_of_legal_notice
  * 
- * Copyright (c) 2006 MIPS Technologies, Inc. All rights reserved.
+ * Copyright (c) 2008 MIPS Technologies, Inc. All rights reserved.
  *
  *
  * Unpublished rights (if any) reserved under the copyright laws of the
@@ -33,12 +33,9 @@
  * this code does not give recipient any license to any intellectual
  * property rights, including any patent rights, that cover this code.
  *
- * This code shall not be exported, reexported, transferred, or released,
- * directly or indirectly, in violation of the law of any country or
- * international law, regulation, treaty, Executive Order, statute,
- * amendments or supplements thereto. Should a conflict arise regarding the
- * export, reexport, transfer, or release of this code, the laws of the
- * United States of America shall be the governing law.
+ * This code shall not be exported or transferred for the purpose of
+ * reexporting in violation of any U.S. or non-U.S. regulation, treaty,
+ * Executive Order, law, statute, amendment or supplement thereto.
  *
  * This code constitutes one or more of the following: commercial computer
  * software, commercial computer software documentation or other commercial
@@ -54,8 +51,6 @@
  * the terms of the license agreement(s) and/or applicable contract terms
  * and conditions covering this code from MIPS Technologies or an authorized
  * third party.
- *
- *
  *
  * 
  * mips_end_of_legal_notice
@@ -618,6 +613,7 @@ LEAF(sys_flush_pipeline)
 	MTC0(	t2, C0_EPC )
 
 SET_MIPS3()
+	sync
 	eret
 SET_MIPS0()
 
@@ -635,6 +631,7 @@ SET_MIPS3()
 	la	t2, after_eret64
 	DMTC0(	t2, C0_EPC )
 
+	sync
 	eret
 
 after_eret64 :
@@ -650,6 +647,63 @@ SET_MIPS0()
 END(sys_flush_pipeline)
 	
 	
+/************************************************************************
+ *
+ *                          sys_dcache_exclusivel2_flush_all
+ *  Description :
+ *  -------------
+ *
+ *  Dcache flush that does not reference dcache after
+ *  flushing has begun. Required for exclusive L2 caches
+ *
+ *  Return values :
+ *  ---------------
+ *
+ *  None
+ *
+ ************************************************************************/
+LEAF(sys_dcache_exclusivel2_flush_all)
+	lw	t0,sys_dcache_lines
+	lw	t1,sys_dcache_linesize
+	lw	t2,sys_l2cache_lines
+	lw	t3,sys_l2cache_linesize
+	lbu	t4,sys_l2cache_enabled
+
+	beqz	t0,2f
+	 li	t5,HIKSEG0(0)
+1:
+SET_MIPS3()
+	cache	DCACHE_INDEX_WRITEBACK_INVALIDATE, 0(t5)
+SET_MIPS0()
+	subu	t0,1
+	bnez	t0,1b
+	 addu	t5,t1
+
+	sync
+
+2:		
+	beqz	t4,2f		/* Final check for L2 enabled */ 
+	 nop
+	beqz	t2,2f
+	 li	t5,HIKSEG0(0)
+1:
+SET_MIPS3()
+	SCACHE_INDEX_WRITEBACK_INVALIDATE_OP(t5)
+SET_MIPS0()
+	subu	t2,1
+	bnez	t2,1b
+	 addu	t5,t3
+	
+	sync
+
+2:
+
+	j	ra
+	 nop
+END(sys_dcache_exclusivel2_flush_all)
+
+
+
 /************************************************************************
  *
  *                          sys_dcache_flush_index
@@ -1731,7 +1785,7 @@ LEAF( sys_cp0_mtwrite32 )
 mttr_location :
 	nop	/* Placeholder for MTTR operation */
 
-	ehb
+	EHB
 	
 	/* restore VPECtl */
 	lw	t4, 16(sp)

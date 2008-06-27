@@ -9,7 +9,7 @@
  *
  * mips_start_of_legal_notice
  * 
- * Copyright (c) 2006 MIPS Technologies, Inc. All rights reserved.
+ * Copyright (c) 2008 MIPS Technologies, Inc. All rights reserved.
  *
  *
  * Unpublished rights (if any) reserved under the copyright laws of the
@@ -33,12 +33,9 @@
  * this code does not give recipient any license to any intellectual
  * property rights, including any patent rights, that cover this code.
  *
- * This code shall not be exported, reexported, transferred, or released,
- * directly or indirectly, in violation of the law of any country or
- * international law, regulation, treaty, Executive Order, statute,
- * amendments or supplements thereto. Should a conflict arise regarding the
- * export, reexport, transfer, or release of this code, the laws of the
- * United States of America shall be the governing law.
+ * This code shall not be exported or transferred for the purpose of
+ * reexporting in violation of any U.S. or non-U.S. regulation, treaty,
+ * Executive Order, law, statute, amendment or supplement thereto.
  *
  * This code constitutes one or more of the following: commercial computer
  * software, commercial computer software documentation or other commercial
@@ -54,8 +51,6 @@
  * the terms of the license agreement(s) and/or applicable contract terms
  * and conditions covering this code from MIPS Technologies or an authorized
  * third party.
- *
- *
  *
  * 
  * mips_end_of_legal_notice
@@ -174,6 +169,26 @@ LEAF(sys_init_processor)
 	li	t1, STATUS_MIPS32_64_MSK
 	and	t0, t1
 	li	t1, STATUS_MIPS74K
+	or	t0, t1
+	MTC0(	t0, C0_Status )
+2:
+	/* Check if it is a MIPS 1004K processor */	
+	li	t0, MIPS_1004K
+	bne	k1, t0, 2f
+	nop
+
+	/* Setup MIPS74K specifics (implementation dependent fields) */
+	MFC0(   t0, C0_Config )
+	li	t1, CONFIG0_MIPS32_64_MSK
+	and	t0, t1
+	li	t1, CONFIG0_MIPS1004K
+	or	t0, t1
+	MTC0(	t0, C0_Config )
+
+	MFC0(   t0, C0_Status )
+	li	t1, STATUS_MIPS32_64_MSK
+	and	t0, t1
+	li	t1, STATUS_MIPS1004K
 	or	t0, t1
 	MTC0(	t0, C0_Status )
 2:

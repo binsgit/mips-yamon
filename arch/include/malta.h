@@ -10,7 +10,7 @@
  *
  * mips_start_of_legal_notice
  * 
- * Copyright (c) 2006 MIPS Technologies, Inc. All rights reserved.
+ * Copyright (c) 2008 MIPS Technologies, Inc. All rights reserved.
  *
  *
  * Unpublished rights (if any) reserved under the copyright laws of the
@@ -34,12 +34,9 @@
  * this code does not give recipient any license to any intellectual
  * property rights, including any patent rights, that cover this code.
  *
- * This code shall not be exported, reexported, transferred, or released,
- * directly or indirectly, in violation of the law of any country or
- * international law, regulation, treaty, Executive Order, statute,
- * amendments or supplements thereto. Should a conflict arise regarding the
- * export, reexport, transfer, or release of this code, the laws of the
- * United States of America shall be the governing law.
+ * This code shall not be exported or transferred for the purpose of
+ * reexporting in violation of any U.S. or non-U.S. regulation, treaty,
+ * Executive Order, law, statute, amendment or supplement thereto.
  *
  * This code constitutes one or more of the following: commercial computer
  * software, commercial computer software documentation or other commercial
@@ -55,8 +52,6 @@
  * the terms of the license agreement(s) and/or applicable contract terms
  * and conditions covering this code from MIPS Technologies or an authorized
  * third party.
- *
- *
  *
  * 
  * mips_end_of_legal_notice
@@ -97,24 +92,15 @@
 #define MALTA_SYSTEMRAM_BASE      0x00000000  /* System RAM:          */
 #define MALTA_SYSTEMRAM_SIZE      0x10000000  /*   256 MByte          */
  
-/* The following 6 definitions are used with Galileo 64120 only       */
-#define MALTA_PCIMEM1_BASE        0x10000000  /* PCI 1 memory:        */
-#define MALTA_PCIMEM1_SIZE        0x0be00000  /*  128 + 2 + 60 MByte  */
-                    /* the 2 MByte constitutes a "red page" (PCIMEM2) */
+#define MALTA_GT64120_BASE        0x1BE00000  /* GT64120:             */
+#define MALTA_GT64120_SIZE	  0x00200000  /*     2 MByte          */
 
-#define MALTA_PCIMEM2_BASE        0x18000000  /* PCI 2 memory         */
-#define MALTA_PCIMEM2_SIZE        0x00200000  /*     2 MByte          */
-
-#define MALTA_CORECTRL_BASE       0x1BE00000  /* Core control:        */
-#define MALTA_CORECTRL_SIZE       0x00200000  /*     2 MByte          */
-
-#define MALTA_RESERVED_BASE1      0x1C000000  /* Reserved:            */
-#define MALTA_RESERVED_SIZE1      0x02000000  /*    32 MByte          */
+#define MALTA_CBUS_BASE		  0x1C000000  /* CBUS:		      */
+#define MALTA_CBUS_SIZE		  0x04000000  /*    64 MByte          */
 
 #define MALTA_MONITORFLASH_BASE   0x1E000000  /* Monitor Flash:       */
 #define MALTA_MONITORFLASH_SIZE   0x003E0000  /*     4 MByte          */
 #define MALTA_MONITORFLASH_SECTORSIZE 0x00010000 /* Sect. = 64 KB     */
-
 
 #define MALTA_RESERVED_BASE2      0x1E400000  /* Reserved:            */
 #define MALTA_RESERVED_SIZE2      0x00C00000  /*    12 MByte          */
@@ -125,17 +111,34 @@
 #define MALTA_BOOTROM_BASE        0x1FC00000  /* Boot ROM:            */
 #define MALTA_BOOTROM_SIZE        0x00400000  /*     4 MByte          */
 
-
 /************************************************************************
  *  Use of PCI ranges (Memory vs I/O)
 *************************************************************************/
 
-#define  MALTA_PCI_MEM_BASE	      MALTA_PCIMEM1_BASE
-#define  MALTA_PCI_MEM_SIZE	      MALTA_PCIMEM1_SIZE
+#define GT64120_PCIMEM_BASE		0x10000000  /* PCI memory:          */
+#define GT64120_PCIMEM_SIZE		0x0be00000  /*  128 + 2 + 60 MByte  */
 
-#define  MALTA_PCI_IO_BASE	      MALTA_PCIMEM2_BASE
-#define  MALTA_PCI_IO_SIZE	      MALTA_PCIMEM2_SIZE
+#define GT64120_PCIIO_BASE		0x18000000  /* PCI IO:              */
+#define GT64120_PCIIO_SIZE		0x00200000  /*     2 MByte          */
 
+#define BONITO_PCIMEM_BASE		0x10000000  /* PCI memory:          */
+#define BONITO_PCIMEM_SIZE		0x0c000000  /*    96 Mbyte          */
+
+#define BONITO_PCIIO_BASE		0x1fd00000  /* PCI IO:              */
+#define BONITO_PCIIO_SIZE		0x00100000  /*     1 MByte          */
+
+#define MSC01_PCIMEM_BASE		0x10000000  /* PCI memory:          */
+#define MSC01_PCIMEM_SIZE		0x08000000  /*    64 Mbyte          */
+
+#define MSC01_PCIIO_BASE		0x1b000000   /* PCI IO:              */
+#define MSC01_PCIIO_SIZE		0x00800000  /*    16 Mbyte          */
+
+#define SOCITSC_PCIMEM_BASE		0x10000000  /* PCI memory:          */
+#define SOCITSC_PCIMEM_SIZE		0x08000000  /*   128 MByte          */
+
+/* FIXME... could be smaller? */
+#define SOCITSC_PCIIO_BASE		0x17000000  /* PCI IO:              */
+#define SOCITSC_PCIIO_SIZE		0x01000000  /*    16 Mbyte          */
 
 /************************************************************************
  * Malta FILEFLASH: upper 128 KByte (2x64 KByte sectors) of MONITORFLASH
@@ -145,13 +148,6 @@
 #define MALTA_FILEFLASH_SIZE       0x00020000 /*   128 KByte           */
 
 #define MALTA_FILEFLASH_SECTORSIZE 0x00010000 /* Sect. = 64 KB	       */
-
-
-/************************************************************************
- *  Malta, devices, base adresses:
-*************************************************************************/
-
-#define  MALTA_TI16C550_BASE      0x1F000900 /* TI16C550 UART (tty2)  */
 
 
 /************************************************************************
@@ -184,12 +180,14 @@
 #define MALTA_ASCIIPOS7           0x1F000450 /* ASCIIPOS7    bit 7:0  */
 #define MALTA_SOFTRES             0x1F000500 /* SOFTRES               */
 #define MALTA_BRKRES              0x1F000508 /* BRKRES                */
+#define MALTA_TI16C550		  0x1F000900 /* TI16C550 UART (tty2)  */
 #define MALTA_GPOUT               0x1F000A00 /* GPOUT                 */
 #define MALTA_GPINP               0x1F000A08 /* GPINP                 */
 #define MALTA_I2CINP              0x1F000b00 /* I2CINP                */
 #define MALTA_I2COE               0x1F000b08 /* I2COE                 */
 #define MALTA_I2COUT              0x1F000b10 /* I2COUT                */
 #define MALTA_I2CSEL		  0x1F000b18 /* I2CSEL		      */
+#define MALTA_SOFTEND		  0x1F000C00 /* Soft Endianness       */
 
 
 /************************************************************************
@@ -198,6 +196,10 @@
 
 
 /******** reg: REVISION ********/
+
+/* field: SCON */
+#define MALTA_REVISION_SCON_SHF	  24
+#define MALTA_REVISION_SCON_MSK	  (MSK(8) << MALTA_REVISION_SCON_SHF)
 
 /* field: FPGRV */
 #define MALTA_REVISION_FPGRV_SHF  16
@@ -359,6 +361,23 @@
 #define MALTA_I2CSEL_FPGA_MSK       (MSK(1) << MALTA_I2CSEL_FPGA_SHF)
 #define MALTA_I2CSEL_FPGA_BIT       MALTA_I2CSEL_FPGA_MSK
 
+
+/******** reg: SOFTEND *******/
+
+/* field: VALID */
+#define MALTA_SOFTEND_VALID_SHF	    31
+#define MALTA_SOFTEND_VALID_MSK     (MSK(1) << MALTA_SOFTEND_VALID_SHF)
+#define MALTA_SOFTEND_VALID_BIT	    MALTA_SOFTEND_VALID_MSK
+
+/* field: DONE */
+#define MALTA_SOFTEND_DONE_SHF      1
+#define MALTA_SOFTEND_DONE_MSK      (MSK(1) << MALTA_SOFTEND_DONE_SHF)
+#define MALTA_SOFTEND_DONE_BIT      MALTA_SOFTEND_DONE_MSK
+
+/* field: SYSRESET */
+#define MALTA_SOFTEND_SYSRESET_SHF  0
+#define MALTA_SOFTEND_SYSRESET_MSK  (MSK(1) << MALTA_SOFTEND_SYSRESET_SHF)
+#define MALTA_SOFTEND_SYSRESET_BIT  MALTA_SOFTEND_SYSRESET_MSK
 
 
 /************************************************************************

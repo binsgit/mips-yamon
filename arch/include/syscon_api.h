@@ -14,7 +14,7 @@
  *
  * mips_start_of_legal_notice
  * 
- * Copyright (c) 2006 MIPS Technologies, Inc. All rights reserved.
+ * Copyright (c) 2008 MIPS Technologies, Inc. All rights reserved.
  *
  *
  * Unpublished rights (if any) reserved under the copyright laws of the
@@ -38,12 +38,9 @@
  * this code does not give recipient any license to any intellectual
  * property rights, including any patent rights, that cover this code.
  *
- * This code shall not be exported, reexported, transferred, or released,
- * directly or indirectly, in violation of the law of any country or
- * international law, regulation, treaty, Executive Order, statute,
- * amendments or supplements thereto. Should a conflict arise regarding the
- * export, reexport, transfer, or release of this code, the laws of the
- * United States of America shall be the governing law.
+ * This code shall not be exported or transferred for the purpose of
+ * reexporting in violation of any U.S. or non-U.S. regulation, treaty,
+ * Executive Order, law, statute, amendment or supplement thereto.
  *
  * This code constitutes one or more of the following: commercial computer
  * software, commercial computer software documentation or other commercial
@@ -59,8 +56,6 @@
  * the terms of the license agreement(s) and/or applicable contract terms
  * and conditions covering this code from MIPS Technologies or an authorized
  * third party.
- *
- *
  *
  * 
  * mips_end_of_legal_notice
@@ -534,14 +529,14 @@ typedef enum syscon_ids
     /**********************************************************************
      * Below IDs are available in YAMON revision 02.05 and later revisions
      **********************************************************************/
-    SYSCON_CPU_CP0_IWATCHLO0_ID = 244,               /* UINT32/UINT64 */
-    SYSCON_CPU_CP0_IWATCHHI0_ID = 245,               /* UINT32/UINT64 */
-    SYSCON_CPU_CP0_IWATCHLO1_ID = 246,               /* UINT32/UINT64 */
-    SYSCON_CPU_CP0_IWATCHHI1_ID = 247,               /* UINT32/UINT64 */
-    SYSCON_CPU_CP0_DWATCHLO0_ID = 248,               /* UINT32/UINT64 */
-    SYSCON_CPU_CP0_DWATCHHI0_ID = 249,               /* UINT32/UINT64 */
-    SYSCON_CPU_CP0_DWATCHLO1_ID = 250,               /* UINT32/UINT64 */
-    SYSCON_CPU_CP0_DWATCHHI1_ID = 251,               /* UINT32/UINT64 */
+    SYSCON_CPU_CP0_WATCHLO0_ID = 244,               /* UINT32/UINT64 */
+    SYSCON_CPU_CP0_WATCHHI0_ID = 245,               /* UINT32/UINT64 */
+    SYSCON_CPU_CP0_WATCHLO1_ID = 246,               /* UINT32/UINT64 */
+    SYSCON_CPU_CP0_WATCHHI1_ID = 247,               /* UINT32/UINT64 */
+    SYSCON_CPU_CP0_WATCHLO2_ID = 248,               /* UINT32/UINT64 */
+    SYSCON_CPU_CP0_WATCHHI2_ID = 249,               /* UINT32/UINT64 */
+    SYSCON_CPU_CP0_WATCHLO3_ID = 250,               /* UINT32/UINT64 */
+    SYSCON_CPU_CP0_WATCHHI3_ID = 251,               /* UINT32/UINT64 */
 
     /**********************************************************************
      * Below IDs are available in YAMON revision 02.07 and later revisions
@@ -604,10 +599,28 @@ typedef enum syscon_ids
     SYSCON_BOARD_SYSTEMRAM_RAS2RAS_CYCLES_CFG_ID = 284,  /* UINT32    */
 
     /**********************************************************************
+     * Below IDs are available in YAMON revision 02.14 and later revisions
+     **********************************************************************/
+
+    /* Soft Endian support */
+    SYSCON_BOARD_SOFTEND_VALID_ID = 285,	     /* UINT32        */
+    SYSCON_BOARD_SOFTEND_DONE_ID = 286,		     /* UINT32        */
+    SYSCON_BOARD_SOFTEND_RESETSYS_ID = 287,	     /* UINT32        */
+    SYSCON_BOARD_SYSTEMRAM_RASMAX_CYCLES_CFG_ID = 288,   /* UINT32    */
+
+    /**********************************************************************
+     * Below IDs are available in YAMON revision 02.16 and later revisions
+     **********************************************************************/
+    SYSCON_CPU_CP0_TRACEIBPC_ID = 289,		     /* UINT32	      */
+    SYSCON_CPU_CP0_TRACEDBPC_ID = 290,		     /* UINT32	      */
+    SYSCON_CPU_CP0_USERLOCAL_ID = 291,		     /* UINT32	      */
+    SYSCON_CPU_CP0_VPEOPT_ID = 292,		     /* UINT32	      */
+
+    /**********************************************************************
      * Insert new IDs below. Remember to update SYSCON_OBJ_COUNT !!!
      **********************************************************************/
 
-    SYSCON_OBJ_COUNT = 285
+    SYSCON_OBJ_COUNT = 293
 }
 t_syscon_ids;
 

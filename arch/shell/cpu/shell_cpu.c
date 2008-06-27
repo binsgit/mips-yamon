@@ -9,7 +9,7 @@
  *
  * mips_start_of_legal_notice
  * 
- * Copyright (c) 2006 MIPS Technologies, Inc. All rights reserved.
+ * Copyright (c) 2008 MIPS Technologies, Inc. All rights reserved.
  *
  *
  * Unpublished rights (if any) reserved under the copyright laws of the
@@ -33,12 +33,9 @@
  * this code does not give recipient any license to any intellectual
  * property rights, including any patent rights, that cover this code.
  *
- * This code shall not be exported, reexported, transferred, or released,
- * directly or indirectly, in violation of the law of any country or
- * international law, regulation, treaty, Executive Order, statute,
- * amendments or supplements thereto. Should a conflict arise regarding the
- * export, reexport, transfer, or release of this code, the laws of the
- * United States of America shall be the governing law.
+ * This code shall not be exported or transferred for the purpose of
+ * reexporting in violation of any U.S. or non-U.S. regulation, treaty,
+ * Executive Order, law, statute, amendment or supplement thereto.
  *
  * This code constitutes one or more of the following: commercial computer
  * software, commercial computer software documentation or other commercial
@@ -54,8 +51,6 @@
  * the terms of the license agreement(s) and/or applicable contract terms
  * and conditions covering this code from MIPS Technologies or an authorized
  * third party.
- *
- *
  *
  * 
  * mips_end_of_legal_notice
@@ -74,6 +69,8 @@
 #include <qed.h>
 #include <shell_api.h>
 #include <shell.h>
+
+extern bool gcmp_present;
 
 /************************************************************************
  *  Definitions
@@ -183,6 +180,24 @@ static t_shell_cache_config_name_val mapping_20kc[] =
 
 static t_shell_cache_config_name_val mapping_24k[] =
 {
+#if 0
+    { "cce",
+      "Write-back, coherent, exclusive",
+      K_CacheAttrCCE
+    },
+
+    { "ccu",
+      "Write-back, coherent, update",
+      K_CacheAttrCCU
+    },
+#endif
+
+    { "ccs",   
+      "Write-back, coherent, shared",
+      K_CacheAttrCCS
+    },
+#define N24KCOH 1
+
     { "off",   
       "Uncached",
       K_CacheAttrU       
@@ -202,6 +217,7 @@ static t_shell_cache_config_name_val mapping_24k[] =
       "Write-through, no write allocate",
       K_CacheAttrCWTnWA  
     },
+
     { "l2on",    
       "Secondary cache on",
       SHELL_CACHE_CONFIG_L2_ENABLE
@@ -211,6 +227,7 @@ static t_shell_cache_config_name_val mapping_24k[] =
       "Secondary cache off",
       SHELL_CACHE_CONFIG_L2_DISABLE
     }
+#define N24KL2 2
 };
 #define CACHE_COUNT_24K \
     (sizeof(mapping_24k)/sizeof(t_shell_cache_config_name_val))
@@ -362,11 +379,17 @@ shell_arch_cache_config(
       case MIPS_24KE:
       case MIPS_34K :
       case MIPS_74K :
-        *mapping      = mapping_24k;
-	if (sys_l2cache)
+      case MIPS_1004K :
+	if (gcmp_present) {
+	    *mapping      = mapping_24k;
 	    *config_count = CACHE_COUNT_24K;
-	else
-	    *config_count = CACHE_COUNT_24K-2;
+	}
+	else {
+	    *mapping      = mapping_24k + N24KCOH;
+	    *config_count = CACHE_COUNT_24K - N24KCOH;
+	}
+	if (!sys_l2cache)
+	    *config_count -= N24KL2;
         break;
 
       case QED_RM52XX :

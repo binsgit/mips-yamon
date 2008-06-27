@@ -8,7 +8,7 @@
  *
  * mips_start_of_legal_notice
  * 
- * Copyright (c) 2006 MIPS Technologies, Inc. All rights reserved.
+ * Copyright (c) 2008 MIPS Technologies, Inc. All rights reserved.
  *
  *
  * Unpublished rights (if any) reserved under the copyright laws of the
@@ -32,12 +32,9 @@
  * this code does not give recipient any license to any intellectual
  * property rights, including any patent rights, that cover this code.
  *
- * This code shall not be exported, reexported, transferred, or released,
- * directly or indirectly, in violation of the law of any country or
- * international law, regulation, treaty, Executive Order, statute,
- * amendments or supplements thereto. Should a conflict arise regarding the
- * export, reexport, transfer, or release of this code, the laws of the
- * United States of America shall be the governing law.
+ * This code shall not be exported or transferred for the purpose of
+ * reexporting in violation of any U.S. or non-U.S. regulation, treaty,
+ * Executive Order, law, statute, amendment or supplement thereto.
  *
  * This code constitutes one or more of the following: commercial computer
  * software, commercial computer software documentation or other commercial
@@ -53,8 +50,6 @@
  * the terms of the license agreement(s) and/or applicable contract terms
  * and conditions covering this code from MIPS Technologies or an authorized
  * third party.
- *
- *
  *
  * 
  * mips_end_of_legal_notice
@@ -179,6 +174,7 @@ extern bool	   sys_cpu_cache_coherency;
 
 extern bool	   sys_l2cache;
 extern bool	   sys_l2cache_enabled;
+extern bool	   sys_l2cache_exclusive;
 extern UINT32	   sys_l2cache_lines;
 extern UINT32	   sys_l2cache_linesize;
 extern UINT32	   sys_l2cache_assoc;
@@ -188,6 +184,7 @@ extern UINT32	   sys_icache_assoc;
 extern UINT32	   sys_dcache_linesize;
 extern UINT32	   sys_dcache_lines;
 extern UINT32	   sys_dcache_assoc;
+extern UINT32	   sys_dcache_antialias;
 
 extern char        *sys_default_prompt;
 extern char        sys_default_display[];
@@ -202,9 +199,10 @@ UINT32 sys_determine_icache_assoc_flash(    UINT32 procid );
 UINT32 sys_determine_dcache_linesize_flash( UINT32 procid );
 UINT32 sys_determine_dcache_lines_flash(    UINT32 procid );
 UINT32 sys_determine_dcache_assoc_flash(    UINT32 procid );
-UINT32 sys_determine_l2cache_linesize_flash( UINT32 procid );
-UINT32 sys_determine_l2cache_lines_flash(    UINT32 procid );
-UINT32 sys_determine_l2cache_assoc_flash(    UINT32 procid );
+UINT32 sys_determine_dcache_antialias_flash(UINT32 procid );
+UINT32 sys_determine_l2cache_linesize_flash(UINT32 procid );
+UINT32 sys_determine_l2cache_lines_flash(   UINT32 procid );
+UINT32 sys_determine_l2cache_assoc_flash(   UINT32 procid );
 
 void 
 sys_putchar( 
@@ -745,6 +743,28 @@ sys_dcache_flush_addr(
  ************************************************************************/
 void
 sys_dcache_flush_all( void );
+
+
+/************************************************************************
+ *
+ *                          sys_dcache_exclusivel2_flush_all
+ *  Description :
+ *  -------------
+ *
+ *  Flush entire DCACHE in the presences of an L2 exclusive cache.
+ *
+ *  We bypass the cache operations if CPU is running uncached.
+ *  (We assume Config.k0 == K_CacheAttrU is the
+ *  only uncached mode used).
+ *
+ *  Return values :
+ *  ---------------
+ *
+ *  None
+ *
+ ************************************************************************/
+void
+sys_dcache_exclusivel2_flush_all( void );
 
 
 /************************************************************************

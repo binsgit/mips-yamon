@@ -9,7 +9,7 @@
  *
  * mips_start_of_legal_notice
  * 
- * Copyright (c) 2006 MIPS Technologies, Inc. All rights reserved.
+ * Copyright (c) 2008 MIPS Technologies, Inc. All rights reserved.
  *
  *
  * Unpublished rights (if any) reserved under the copyright laws of the
@@ -33,12 +33,9 @@
  * this code does not give recipient any license to any intellectual
  * property rights, including any patent rights, that cover this code.
  *
- * This code shall not be exported, reexported, transferred, or released,
- * directly or indirectly, in violation of the law of any country or
- * international law, regulation, treaty, Executive Order, statute,
- * amendments or supplements thereto. Should a conflict arise regarding the
- * export, reexport, transfer, or release of this code, the laws of the
- * United States of America shall be the governing law.
+ * This code shall not be exported or transferred for the purpose of
+ * reexporting in violation of any U.S. or non-U.S. regulation, treaty,
+ * Executive Order, law, statute, amendment or supplement thereto.
  *
  * This code constitutes one or more of the following: commercial computer
  * software, commercial computer software documentation or other commercial
@@ -54,8 +51,6 @@
  * the terms of the license agreement(s) and/or applicable contract terms
  * and conditions covering this code from MIPS Technologies or an authorized
  * third party.
- *
- *
  *
  * 
  * mips_end_of_legal_notice
@@ -125,6 +120,7 @@ bool   sys_cpu_cache_coherency;
 /* Level 2 cache configuration */
 bool   sys_l2cache;
 bool   sys_l2cache_enabled;
+bool   sys_l2cache_exclusive;
 UINT32 sys_l2cache_lines;
 UINT32 sys_l2cache_linesize;
 UINT32 sys_l2cache_assoc;
@@ -136,6 +132,7 @@ UINT32 sys_icache_assoc;
 UINT32 sys_dcache_linesize;
 UINT32 sys_dcache_lines;
 UINT32 sys_dcache_assoc;
+UINT32 sys_dcache_antialias;
 
 char   *sys_default_prompt = DEFAULT_PROMPT;
 char   sys_default_display[] = DEFAULT_PROMPT;
@@ -176,6 +173,10 @@ c_entry(void)
     t_sys_cpu_decoded decoded;
     bool	      init_from_env;
     int               len;
+    UINT32	      softend;
+    UINT32	      softdone;
+    UINT32	      usersoft;
+    bool	      bdata;
 
     /* Determine CPU type */
     sys_cpu_type();
@@ -257,6 +258,83 @@ c_entry(void)
     /* Enable interrupts */
     sys_enable_int();
 
+    /* Soft Endianness testing: may result in a board reset */
+    switch ( SYSCON_read( SYSCON_BOARD_SOFTEND_VALID_ID,
+                     (void *)&softend, sizeof(softend) ) )
+    {
+        case OK:
+	    if( FALSE == softend )
+	        break;
+
+	    /* read user environment choice of endianness */
+            if( FALSE == env_get( "softendian", NULL, 
+	                          (void *)&usersoft, sizeof(usersoft) ) )
+	        break;
+
+	    /* have we already tried to change the state of this
+	     * system ? */
+            if( SYSCON_read( SYSCON_BOARD_SOFTEND_DONE_ID,
+                             (void *)&softdone, sizeof(softdone) ) != OK )
+                break;
+
+	    /* read auto-detected endianness */
+            if( SYSCON_read( SYSCON_CPU_ENDIAN_BIG_ID,
+	                     (void *)&bdata, sizeof(bdata) ) != OK)
+                break;
+
+	    if( ( usersoft < 0 ) || ( usersoft > 1 ) )
+	        break;
+
+	    /* we are running on a Soft Endian board, so are we the
+	     * right way around ? */
+	    if ( bdata == usersoft )
+#ifdef SOFT_ENDIAN_DEBUG
+	    {
+	        if( softdone != 0 )
+		{
+	            softend = 3 ;
+	            SYSCON_write( SYSCON_BOARD_SOFTEND_RESETSYS_ID,
+	                          (void *)&softend, sizeof(softend) );
+	        }
+#endif
+	        break;
+#ifdef SOFT_ENDIAN_DEBUG
+            }
+	    else
+	    {
+	        softend = 15 ;
+	        SYSCON_write( SYSCON_BOARD_SOFTEND_RESETSYS_ID,
+	                      (void *)&softend, sizeof(softend) );
+	    }
+#endif
+
+            if( softdone != 0 )
+            {
+	        /* this system has already been through one reset
+		 * in an attempt to change endianness, so compare
+		 * the current endian to the desired one, and if
+		 * it doesn't match, then panic */
+	        DISP_STR("WRONGEND");
+	        while( 1 == 1 );
+	    }
+	    else
+	    {
+	        /* reset this board now */
+#ifdef SOFT_ENDIAN_DEBUG
+	        softend = 255 ;
+	        SYSCON_write( SYSCON_BOARD_SOFTEND_RESETSYS_ID,
+	                      (void *)&softend, sizeof(softend) );
+#else
+	        SYSCON_write( SYSCON_BOARD_SOFTEND_RESETSYS_ID,
+	                      (void *)&usersoft, sizeof(usersoft) );
+	        SYSCON_write( SYSCON_BOARD_SOFTRES_ID, (void *)NULL, 0 );
+	        DISP_STR("RESET ME");
+	        while( 1 == 1 );
+#endif
+	    }
+
+    }
+
     /* Done with initialisation. Now jump to shell (never returns) */
     shell_setup();
 
@@ -330,5 +408,13 @@ core_optimize()
         SYSCON_write( SYSCON_BOARD_SYSTEMRAM_SRAS2SCAS_CYCLES_CFG_ID,
 		      &count, sizeof(UINT32) );
     }
+
+    /**** tRASmax ****/
+
+    /* There is no SPD value for this so
+     * use the standard PC133 value of 100000ns */
+    NS2COUNT_ROUND_UP(100000,count);
+    (void) SYSCON_write( SYSCON_BOARD_SYSTEMRAM_RASMAX_CYCLES_CFG_ID,
+			 &count, sizeof(UINT32) );
 }
 

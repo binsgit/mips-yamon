@@ -6,7 +6,7 @@
  *
  * mips_start_of_legal_notice
  * 
- * Copyright (c) 2006 MIPS Technologies, Inc. All rights reserved.
+ * Copyright (c) 2008 MIPS Technologies, Inc. All rights reserved.
  *
  *
  * Unpublished rights (if any) reserved under the copyright laws of the
@@ -30,12 +30,9 @@
  * this code does not give recipient any license to any intellectual
  * property rights, including any patent rights, that cover this code.
  *
- * This code shall not be exported, reexported, transferred, or released,
- * directly or indirectly, in violation of the law of any country or
- * international law, regulation, treaty, Executive Order, statute,
- * amendments or supplements thereto. Should a conflict arise regarding the
- * export, reexport, transfer, or release of this code, the laws of the
- * United States of America shall be the governing law.
+ * This code shall not be exported or transferred for the purpose of
+ * reexporting in violation of any U.S. or non-U.S. regulation, treaty,
+ * Executive Order, law, statute, amendment or supplement thereto.
  *
  * This code constitutes one or more of the following: commercial computer
  * software, commercial computer software documentation or other commercial
@@ -51,8 +48,6 @@
  * the terms of the license agreement(s) and/or applicable contract terms
  * and conditions covering this code from MIPS Technologies or an authorized
  * third party.
- *
- *
  *
  * 
  * mips_end_of_legal_notice
@@ -71,6 +66,7 @@
 #define MSC01_ID_SC_MGBIIA36D64C0IO     0x06
 #define MSC01_ID_SC_OCP			0x08
 #define MSC01_ID_SC_ROCIT		0x09
+#define MSC01_ID_SC_ROCIT2		0x0a
 
 /*****************************************************************************
  * Register offset addresses
@@ -151,6 +147,20 @@
 #define MSC01_SC_CFG_EBIG_SHF		8
 #define MSC01_SC_CFG_EBIG_MSK		0x00000100
 #define MSC01_SC_CFG_EBIG_BIT		MSC01_SC_CFG_EBIG_MSK
+#define MSC01_SC_CFG_IOCUEN_SHF         5
+#define MSC01_SC_CFG_IOCUEN_MSK         0x00000020
+#define MSC01_SC_CFG_IOCUEN_BIT         MSC01_SC_CFG_IOCUEN_MSK
+#define MSC01_SC_CFG_IOCUPRES_SHF       4
+#define MSC01_SC_CFG_IOCUPRES_MSK       0x00000010
+#define MSC01_SC_CFG_IOCUPRES_BIT       MSC01_SC_CFG_IOCUPRES_MSK
+#define MSC01_SC_CFG_GICENA_SHF         3
+#define MSC01_SC_CFG_GICENA_MSK         0x00000008
+#define MSC01_SC_CFG_GICENA_BIT         MSC01_SC_CFG_GICENA_MSK
+#define MSC01_SC_CFG_GICPRES_SHF        2
+#define MSC01_SC_CFG_GICPRES_MSK        0x00000004
+#define MSC01_SC_CFG_GICPRES_BIT        MSC01_SC_CFG_GICPRES_MSK
+
+
 #define MSC01_SC_CFG_BSEL_SHF		0
 #define MSC01_SC_CFG_BSEL_MSK		0x00000003
 

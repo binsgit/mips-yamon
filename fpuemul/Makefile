@@ -9,7 +9,7 @@
 #
 # mips_start_of_legal_notice
 # 
-# Copyright (c) 2006 MIPS Technologies, Inc. All rights reserved.
+# Copyright (c) 2008 MIPS Technologies, Inc. All rights reserved.
 #
 #
 # Unpublished rights (if any) reserved under the copyright laws of the
@@ -33,12 +33,9 @@
 # this code does not give recipient any license to any intellectual property
 # rights, including any patent rights, that cover this code.
 #
-# This code shall not be exported, reexported, transferred, or released,
-# directly or indirectly, in violation of the law of any country or
-# international law, regulation, treaty, Executive Order, statute,
-# amendments or supplements thereto. Should a conflict arise regarding the
-# export, reexport, transfer, or release of this code, the laws of the
-# United States of America shall be the governing law.
+# This code shall not be exported or transferred for the purpose of
+# reexporting in violation of any U.S. or non-U.S. regulation, treaty,
+# Executive Order, law, statute, amendment or supplement thereto.
 #
 # This code constitutes one or more of the following: commercial computer
 # software, commercial computer software documentation or other commercial
@@ -53,8 +50,6 @@
 # restricted in accordance with the terms of the license agreement(s) and/or
 # applicable contract terms and conditions covering this code from MIPS
 # Technologies or an authorized third party.
-#
-#
 #
 # 
 # mips_end_of_legal_notice
@@ -82,7 +77,7 @@ CAT       = cat
 # ********************************************************************
 
 ifeq ($(TOOLCHAIN),sde)
- ifneq (,$(strip $(filter 2,$(GCC_VERSION))))
+ ifeq (2,$(strip $(filter 2,$(GCC_VERSION))))
   AS_OPTS   = -no-traditional-cpp
  endif
 endif
@@ -164,7 +159,12 @@ endif # ifdef ENDIAN
 # ********************************************************************
 
 # Directories holding the source files.
+ifeq ($(shell if [ -d $(ROOT)/math ]; then echo exists; fi),exists)
+CC_ENABLE_SOFT_FPU=-DENABLE_SOFT_FPU
 SRCDIR    = $(ROOT)/. $(ROOT)/math
+else
+SRCDIR    = $(ROOT)/.
+endif
 
 # Paths for making the little- and big-endian images.
 EL_PATH      = ./EL
@@ -176,7 +176,7 @@ INCLUDE   = -I$(ROOT)/include
 W_OPTS    = -Wimplicit -Wformat
 
 DEFINES   = -D_32_ -D__KERNEL__ -DSTANDALONE_EMULATOR
-CC_OPTS   = -mips2 -g $(CPUTUNE) $(DEFINES) -O2 -G0 $(W_OPTS) $(INCLUDE)
+CC_OPTS   = -g $(CPUTUNE) $(DEFINES) -O2 -G0 $(W_OPTS) $(INCLUDE) $(CC_ENABLE_SOFT_FPU)
 
 ifeq ($(TOOLCHAIN),linux)
 CC_OPTS   += -mno-abicalls -fno-pic

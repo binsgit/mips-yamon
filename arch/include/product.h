@@ -9,7 +9,7 @@
  *
  * mips_start_of_legal_notice
  * 
- * Copyright (c) 2006 MIPS Technologies, Inc. All rights reserved.
+ * Copyright (c) 2008 MIPS Technologies, Inc. All rights reserved.
  *
  *
  * Unpublished rights (if any) reserved under the copyright laws of the
@@ -33,12 +33,9 @@
  * this code does not give recipient any license to any intellectual
  * property rights, including any patent rights, that cover this code.
  *
- * This code shall not be exported, reexported, transferred, or released,
- * directly or indirectly, in violation of the law of any country or
- * international law, regulation, treaty, Executive Order, statute,
- * amendments or supplements thereto. Should a conflict arise regarding the
- * export, reexport, transfer, or release of this code, the laws of the
- * United States of America shall be the governing law.
+ * This code shall not be exported or transferred for the purpose of
+ * reexporting in violation of any U.S. or non-U.S. regulation, treaty,
+ * Executive Order, law, statute, amendment or supplement thereto.
  *
  * This code constitutes one or more of the following: commercial computer
  * software, commercial computer software documentation or other commercial
@@ -54,8 +51,6 @@
  * the terms of the license agreement(s) and/or applicable contract terms
  * and conditions covering this code from MIPS Technologies or an authorized
  * third party.
- *
- *
  *
  * 
  * mips_end_of_legal_notice
@@ -115,6 +110,10 @@
 #define MIPS_REVISION_CORRV_SHF    8
 #define MIPS_REVISION_CORRV_MSK    (MSK(2) << MIPS_REVISION_CORRV_SHF)
 
+/* field: SCON (Malta) */
+#define MIPS_REVISION_SCON_SHF	   24
+#define MIPS_REVISION_SCON_MSK	   (MSK(8) << MIPS_REVISION_SCON_SHF)
+
 /**** Encoding of corid field ****/
 
 #define MIPS_REVISION_CORID_QED_RM5261     0
@@ -128,6 +127,8 @@
 #define MIPS_REVISION_CORID_CORE_FPGAr2    8
 #define MIPS_REVISION_CORID_CORE_FPGA3     9
 #define MIPS_REVISION_CORID_CORE_24K       10
+#define MIPS_REVISION_CORID_CORE_FPGA4     11
+#define MIPS_REVISION_CORID_CORE_FPGA5     12
 
 /**** Artificial corid defines ****/
 /*
@@ -153,6 +154,20 @@
 #define PRODUCT_SEAD2_ID		 0x3		/* SEAD-2	 */
 #define PRODUCT_THIRD_PARTY_ID		 0xe		/* Third party	 */
 #define PRODUCT_UNKNOWN			 0xffffffff
+
+/**** Encoding of SCON field ****/
+
+#define MIPS_REVISION_SCON_OTHER	   0
+#define MIPS_REVISION_SCON_SOCITSC	   1
+#define MIPS_REVISION_SCON_UNKNOWN	   0xffffffff
+
+/* These fake SCON ids are defined to ease coding */
+#define MIPS_REVISION_SCON_GT64120	   0x101
+#define MIPS_REVISION_SCON_BONITO	   0x102
+#define MIPS_REVISION_SCON_BRTL		   0x103
+#define MIPS_REVISION_SCON_SOCIT	   0x104
+#define MIPS_REVISION_SCON_ROCIT	   0x105
+#define MIPS_REVISION_SCON_ROCIT2	   0x106
 
 /************************************************************************
  *  Public variables

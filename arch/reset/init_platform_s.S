@@ -9,7 +9,7 @@
  *
  * mips_start_of_legal_notice
  * 
- * Copyright (c) 2006 MIPS Technologies, Inc. All rights reserved.
+ * Copyright (c) 2008 MIPS Technologies, Inc. All rights reserved.
  *
  *
  * Unpublished rights (if any) reserved under the copyright laws of the
@@ -33,12 +33,9 @@
  * this code does not give recipient any license to any intellectual
  * property rights, including any patent rights, that cover this code.
  *
- * This code shall not be exported, reexported, transferred, or released,
- * directly or indirectly, in violation of the law of any country or
- * international law, regulation, treaty, Executive Order, statute,
- * amendments or supplements thereto. Should a conflict arise regarding the
- * export, reexport, transfer, or release of this code, the laws of the
- * United States of America shall be the governing law.
+ * This code shall not be exported or transferred for the purpose of
+ * reexporting in violation of any U.S. or non-U.S. regulation, treaty,
+ * Executive Order, law, statute, amendment or supplement thereto.
  *
  * This code constitutes one or more of the following: commercial computer
  * software, commercial computer software documentation or other commercial
@@ -54,8 +51,6 @@
  * the terms of the license agreement(s) and/or applicable contract terms
  * and conditions covering this code from MIPS Technologies or an authorized
  * third party.
- *
- *
  *
  * 
  * mips_end_of_legal_notice
@@ -76,10 +71,17 @@
 #include <malta.h>
 #include <sead.h>
 #include <core_sys.h>
+#include <socitsc.h>
 
 /************************************************************************
  *  Definitions
  ************************************************************************/
+/* Is the system controller SOCitSC? */
+#define ISSC(reg)							\
+	li	reg, HIKSEG1(MIPS_REVISION);				\
+	lw	reg, LO_OFFS(MIPS_REVISION)(reg);			\
+	srl	reg, MALTA_REVISION_SCON_SHF;				\
+	andi	reg, MALTA_REVISION_SCON_MSK >> MALTA_REVISION_SCON_SHF
 
 /************************************************************************
  *  Public variables
@@ -113,113 +115,169 @@ LEAF(sys_platform_early)
 	andi	k0, MIPS_REVISION_PROID_MSK >> MIPS_REVISION_PROID_SHF
 
 	li	k1, PRODUCT_ATLASA_ID
-	beq	k1, k0, early_atlas_malta
-	li	k1, PRODUCT_MALTA_ID
-	beq	k1, k0, early_atlas_malta
-	li	k1, PRODUCT_SEAD_ID
-	beq	k1, k0, early_sead
-	li	k1, PRODUCT_SEAD2_ID
-	bne	k1, k0, done_unknown
+	beq	k1, k0, atlas_malta_early
+	 li	k1, PRODUCT_MALTA_ID
+	beq	k1, k0, atlas_malta_early
+	 li	k1, PRODUCT_SEAD_ID
+	beq	k1, k0, sead_early
+	 li	k1, PRODUCT_SEAD2_ID
+	beq	k1, k0, sead_early
+	 nop
 
-early_sead:
+done_unknown:	/* Finished - Unknown platform */
+	b	done
+	 li	v0, ERROR_PLATFORM_UNKNOWN
+	
+done_ok:	/* Finished - Successful */
+	b	done
+	 move	v0, zero
+					
+done:		/* Finished - status in v0 */
+	li	k0, HIKSEG1(MIPS_REVISION)		/* Reload k0 with the product ID */
+	lw	k0, LO_OFFS(MIPS_REVISION)(k0)
+	srl	k0, MIPS_REVISION_PROID_SHF
+	j       sys_platform_early_done
+	 andi	k0, MIPS_REVISION_PROID_MSK >> MIPS_REVISION_PROID_SHF
+
+sead_early:
 	/**** SEAD. We support only Basic RTL and MSC01 ****/
 
 	li	k1, HIKSEG1(SEAD_REVISION)
 	lw	k1, LO_OFFS(SEAD_REVISION)(k1)
 	srl	k1, SEAD_REVISION_RTLID_SHF
 	and	k1, SEAD_REVISION_RTLID_MSK >> SEAD_REVISION_RTLID_SHF
-	sub	k1, SEAD_REVISION_RTLID_BASIC
-	beq	k1, zero, sead_nmi_detect
-	sub	k1, SEAD_REVISION_RTLID_SOCIT101 - SEAD_REVISION_RTLID_BASIC
-	bne	k1, zero, done_unknown
+	xori	k1, SEAD_REVISION_RTLID_BASIC
+	beqz	k1, sead_nmi_detect
+	 xori	k1, SEAD_REVISION_RTLID_SOCIT101^SEAD_REVISION_RTLID_BASIC
+	bnez	k1, done_unknown
+	 nop
 
-	/* System controller: check register block position */
+	/* MSC01: check register block position */
 	li	k1, MSC01_REGADDR_RESET + \
 		         MSC01_REGSPACE_BIU * MSC01_REGADDR_SIZE
 	lw	k1, MSC01_BIU_RBBASL_OFS(k1)
 	srl	k1, 16
 	xor	k1, PHYS(MSC01_REGADDR_RESET) >> 16  /* 0x1f80  reset value */
-	beq	k1, zero, 1f
-	nop
+	bnez	k1, sead_nmi_detect
+	 nop
 
+sead_init_msc01:
+	jal	sys_init_sead2_msc01
+	 nop
+
+	b	done
+	 move	v1, zero
+	
+sead_nmi_detect:
 	/* Detect NMI (MIPS32/64) */
 	MFC0(   k1, C0_Status )
 	sll	k1, 31-S_StatusNMI
-	bltz	k1, nmi				/* Branch if bit set */
-	li	k1, LO_OFFS(SEAD_ASCIIPOS0)
-	j       sys_platform_early_done /* Return */
-	move	v0, zero
+	bltz	k1, sead_nmi			/* Branch if bit set */
+	 nop
 
-1:
-	jal	sys_init_sead2_msc01
-	move	v0, zero
-	j       sys_platform_early_done /* Return */
-	nop
-
-sead_nmi_detect:
 	/* Detect NMI */
 	li	k1, HIKSEG1(SEAD_NMISTATUS)
 	lw	k1, LO_OFFS(SEAD_NMISTATUS)(k1)
 	andi	k1, SEAD_NMISTATUS_FLAG_MSK
-	bne	k1, zero, nmi
-	li	k1, LO_OFFS(SEAD_ASCIIPOS0)
+	beqz	k1, done_ok
+	 move	v1, zero
 
-	j       sys_platform_early_done /* Return */
-	move	v0, zero
-
-done_unknown:
-	/* Unknown platform */
-	j       sys_platform_early_done /* Return */
-	li	v0, ERROR_PLATFORM_UNKNOWN
-
-
-early_atlas_malta:
+sead_nmi:
+	li	k1, HIKSEG1(SEAD_ASCIIPOS0)
+	b	nmi
+	 add	k1, LO_OFFS(SEAD_ASCIIPOS0)
+	
+atlas_malta_early:
 
 	/**** Atlas/Malta ****/
 
-	/* Determine system controller core board */
-	/*   - NMISTATUS/DISPLAY not visible after reset */
+	/* Determine system controller used on the core board */
+	ISSC(k1)
+	bnez	k1, atlas_malta_sc_socitsc
+	 nop
+	
 	li	k1, HIKSEG1(MIPS_REVISION)
 	lw	k1, LO_OFFS(MIPS_REVISION)(k1)
 	srl	k1, MIPS_REVISION_CORID_SHF
 	and	k1, MIPS_REVISION_CORID_MSK >> MIPS_REVISION_CORID_SHF
-	xor	k1, MIPS_REVISION_CORID_CORE_SYS
-	beq	k1,zero, 33f
-	 xor	k1, MIPS_REVISION_CORID_CORE_SYS
-	xor	k1, MIPS_REVISION_CORID_CORE_FPGA2
-	beq	k1,zero, 33f
-	 xor	k1, MIPS_REVISION_CORID_CORE_FPGA2
-	xor	k1, MIPS_REVISION_CORID_CORE_EMUL
-	beq	k1,zero, 33f
-	 xor	k1, MIPS_REVISION_CORID_CORE_EMUL
-	xor	k1, MIPS_REVISION_CORID_CORE_FPGA3
-	beq	k1, zero, 33f
-	 xor	k1, MIPS_REVISION_CORID_CORE_FPGA3
-	xor	k1, MIPS_REVISION_CORID_CORE_24K
-	bne	k1, zero, 1f
-	 xor	k1, MIPS_REVISION_CORID_CORE_24K
 	
-33:
+	xor	k1, MIPS_REVISION_CORID_CORE_SYS
+	beqz	k1, atlas_malta_nsc_rocit
+	 xor	k1, MIPS_REVISION_CORID_CORE_SYS
+	
+	xor	k1, MIPS_REVISION_CORID_CORE_FPGA2
+	beqz	k1, atlas_malta_nsc_rocit
+	 xor	k1, MIPS_REVISION_CORID_CORE_FPGA2
+	
+	xor	k1, MIPS_REVISION_CORID_CORE_EMUL
+	beqz	k1, atlas_malta_nsc_rocit
+	 xor	k1, MIPS_REVISION_CORID_CORE_EMUL
+	
+	xor	k1, MIPS_REVISION_CORID_CORE_FPGA3
+	beqz	k1, atlas_malta_nsc_rocit
+	 xor	k1, MIPS_REVISION_CORID_CORE_FPGA3
+	
+	xor	k1, MIPS_REVISION_CORID_CORE_24K
+	beqz	k1, atlas_malta_nsc_socit
+	 xor	k1, MIPS_REVISION_CORID_CORE_24K
+
+	xor	k1, MIPS_REVISION_CORID_CORE_FPGA4
+	beqz	k1, atlas_malta_nsc_rocit
+	 xor	k1, MIPS_REVISION_CORID_CORE_FPGA4
+
+	xor	k1, MIPS_REVISION_CORID_CORE_FPGA5
+	beqz	k1, atlas_malta_nsc_rocit
+	 xor	k1, MIPS_REVISION_CORID_CORE_FPGA5
+
+	b	atlas_malta_nsc_nmi_detect
+	 nop
+	
+atlas_malta_nsc_rocit:
 	/* If ROC-it System controller, check SC_CFG.CDONE to determine */
 	/* whether initialised (at reset, NMISTATUS is not accessible) */
+	
 	li	k1, MSC01_BIU_REG_BASE
 	lw	k1, MSC01_SC_ID_OFS(k1)
 	srl	k1, MSC01_SC_ID_ID_SHF
 	and	k1, MSC01_SC_ID_ID_MSK >> MSC01_SC_ID_ID_SHF
 	xor	k1, MSC01_ID_SC_ROCIT
-	bne	k1, zero, 34f			/* not ROC-it, try SOC-it */
+	bnez	k1, atlas_malta_nsc_socit		/* not ROC-it, try SOC-it */
 	 nop
 
 	li	k1, MSC01_BIU_REG_BASE
 	lw	k1, MSC01_SC_CFG_OFS(k1)
 	srl	k1, MSC01_SC_CFG_CDONE_SHF
 	xor	k1, MSC01_SC_CFG_CDONE_BIT >> MSC01_SC_CFG_CDONE_SHF
-	beq	k1, zero, 1f		/* initialised: go check for NMI */
+	beqz	k1, atlas_malta_nsc_nmi_detect		/* initialised: go check for NMI */
 	 nop
-	b	early_core
+	b	atlas_malta_nsc_init
 	 nop
 
-34:
+atlas_malta_sc_socitsc:
+	li	k1, KSEG1(SOCITSC_AHB2_BC_BASE)
+	lw	k1, AHBMREGOFFS(1,CTRL)(k1)
+	andi	k1, AHBM_CTRL_ENABLE_MSK
+	beqz	k1, atlas_malta_sc_init
+	 nop
+	
+atlas_malta_sc_nmi_detect:
+	/* Detect NMI (MIPS32/64) */
+	MFC0(   k1, C0_Status )
+	sll	k1, (31-S_StatusNMI)
+	bltz	k1, atlas_malta_nmi
+	 nop
+
+	/* Detect NMI (older cpus) */
+	li	k1, HIKSEG1(MALTA_NMISTATUS)
+	lw	k1, LO_OFFS(MALTA_NMISTATUS)(k1)
+	andi	k1, MALTA_NMISTATUS_SB_MSK | MALTA_NMISTATUS_ONNMI_MSK
+	bnez	k1, atlas_malta_nmi
+	 nop
+	
+	b	atlas_malta_sc_init
+	 nop
+
+atlas_malta_nsc_socit:
 	/* SOC-it 101 System controller: check register block position */
 	/*                     (at reset, NMISTATUS is not accessible) */
 	li	k1, MSC01_REGADDR_RESET + \
@@ -227,55 +285,74 @@ early_atlas_malta:
 	lw	k1, MSC01_BIU_RBBASL_OFS(k1)
 	srl	k1, 16
 	xor	k1, PHYS(MSC01_REGADDR_RESET) >> 16  /* 0x1f80  reset value */
-	beq	k1, zero, early_core
-	nop
+	beqz	k1, atlas_malta_nsc_init
+	 nop
 
-	/* CoreEMUL with Bonito System Controller will fall through !  */
-1:
+atlas_malta_nsc_nmi_detect:
 	/* Detect NMI (MIPS32/64) */
 	MFC0(   k1, C0_Status )
 	sll	k1, (31-S_StatusNMI)
-	bltz	k1, nmi
-	li      k1, LO_OFFS(ATLAS_ASCIIPOS0)
+	bltz	k1, atlas_malta_nmi
+	 nop
 
 	/* Detect NMI (older cpus) */
 	li	k1, HIKSEG1(MALTA_NMISTATUS)
 	lw	k1, LO_OFFS(MALTA_NMISTATUS)(k1)
 	andi	k1, MALTA_NMISTATUS_SB_MSK | MALTA_NMISTATUS_ONNMI_MSK
-	bne	k1, zero, nmi
-	li      k1, LO_OFFS(ATLAS_ASCIIPOS0)
+	bnez	k1, atlas_malta_nmi
+	 nop
 
-early_core:
+atlas_malta_sc_init:
+atlas_malta_nsc_init:
+	/*
+	 * MIPSCMP
+	 * At this point we know that there was no NMI
+	 * Only the master CPU should carry on initialisation from here
+	 */
+
+	/*
+	 * The first assumption is that only MIPSR2 processors are involved...
+	 */
+	MFC0(	a0, C0_Config)
+	srl	a0, S_ConfigAR
+	andi	a0, M_ConfigAR>>S_ConfigAR
+	beqz	a0, 9f
+	 nop
+
+	/* Check the CPU number */
+	MFC0_SEL_OPCODE( R_v1, R_C0_EBase, R_C0_SelEBase )
+	srl	v1,S_EBaseCPUNum
+	andi	v1,M_EBaseCPUNum>>S_EBaseCPUNum
+	bnez	v1,done_ok		/* secondary CPUs don't do any initialisaion */
+	 nop
+
 	/* Init controller */
 	/* k0 still holds Product ID */
-	li	a0, ATLAS_CORECTRL_BASE
+9:	li	a0, MALTA_GT64120_BASE
 	jal	sys_core_init
-	nop
-	bne	v0, zero, done_core	/* Error */
-	nop
-	bne	v1, zero, hard_reset_core  /* reset request */
-	nop
-done_core:
-	j       sys_platform_early_done /* Return */
-	nop
+	 nop
 
-hard_reset_core:
+	beqz	v1, done	/* No hard reset requested.. status in v0 */
+	 nop
+
+atlas_malta_hard_reset:
 	/* Request software reset (common to Atlas and Malta) */
 	li	t1, ATLAS_SOFTRES_RESET_GORESET
 	li	t0, HIKSEG1(ATLAS_SOFTRES)
 	sw	t1, LO_OFFS(ATLAS_SOFTRES)(t0)
 1:
 	b	1b
-	nop
+	 nop
 
+atlas_malta_nmi:
+	li	 k1, KSEG1(MALTA_ASCIIPOS0)
 
 nmi:
 	/*  NMI occurred.
 	 *  Display message 'NMI'. Can't use DISP_STR since
 	 *  only k0/k1 may be used.
+	 *  k1 points at the LED
 	 */
-	li	k0, HIKSEG1(ATLAS_ASCIIPOS0)
-	or	k1, k0
 	li	k0, 'N'
 	sw	k0, 0x00(k1)
 	li	k0, 'M'
@@ -297,9 +374,7 @@ nmi:
 
 	li      k0, 0x80000000 + SYS_NMI_RAM_VECTOR_OFS
 	jr	k0
-	nop
-
-
+	 nop
 
 END(sys_platform_early)
 
@@ -374,28 +449,22 @@ LEAF(sys_disp_string)
 
 	li    t7, PRODUCT_ATLASA_ID
 	beq   k0, t7, disp_string_atlas_malta
-	nop
-	li    t7, PRODUCT_MALTA_ID
+	 li    t7, PRODUCT_MALTA_ID
 	beq   k0, t7, disp_string_atlas_malta
-	nop
-	li    t7, PRODUCT_SEAD_ID
+	 li    t7, PRODUCT_SEAD_ID
 	beq   k0, t7, disp_string_sead
-	nop
-	li    t7, PRODUCT_SEAD2_ID
+	 li    t7, PRODUCT_SEAD2_ID
 	beq   k0, t7, disp_string_sead
-	nop
+	 nop
 	/* Unknown platform, so ignore */
 	b     disp_string_end
-	nop
+	 nop
 
 disp_string_atlas_malta:
-
 	/* Identical code for Atlas and Malta */
-
-	li    t7, KSEG1(ATLAS_ASCIIPOS0)
-	li    t6, KSEG1(ATLAS_ASCIIPOS7)
+	li	t7,KSEG1(MALTA_ASCIIPOS0)
 	b     disp_string_loop
-	nop
+	 addu	t6,t7,(MALTA_ASCIIPOS7-MALTA_ASCIIPOS0)
 
 disp_string_sead:
 
@@ -447,27 +516,25 @@ LEAF(sys_disp_val)
 
 	li	t7, PRODUCT_ATLASA_ID
 	beq	t6, t7, disp_val_atlas_malta
-	li	t7, PRODUCT_MALTA_ID
+	 li	t7, PRODUCT_MALTA_ID
 	beq	t6, t7, disp_val_atlas_malta
-	li	t7, PRODUCT_SEAD_ID
+	 li	t7, PRODUCT_SEAD_ID
 	beq	t6, t7, disp_val_sead
-	li	t7, PRODUCT_SEAD2_ID
+	 li	t7, PRODUCT_SEAD2_ID
 	beq	t6, t7, disp_val_sead
-	nop
+	 nop
 	/* Unknown platform, so ignore */
 	b	disp_val_end
-	nop
+	 nop
 
 disp_val_atlas_malta:
-
 	/* Identical code for Atlas and Malta */
-	li    t7, KSEG1(ATLAS_ASCIIWORD)
+	li    t7,KSEG1(MALTA_ASCIIWORD)
 	sw    a0, 0(t7)
 	b     disp_val_end
-	nop
+	 nop
 
 disp_val_sead:
-
 	/* We support only Basic RTL and MSC01 */
 	li    t7, HIKSEG1(SEAD_REVISION)
 	lw    t7, LO_OFFS(SEAD_REVISION)(t7)
@@ -479,7 +546,6 @@ disp_val_sead:
 	bne   t7, zero, disp_val_end
 	nop
 1:
-
 	li    t7, KSEG1(SEAD_ASCIIPOS0)
 	li    t6, 32
 
@@ -489,16 +555,16 @@ disp_val_loop:
         and   t5, 0xf
         sub   t5, 9+1
 	bltz  t5, 1f
-	add   t5, '9'+1
+	 add   t5, '9'+1
 	add   t5, 'A'-'9'-1
 1:
 	sw    t5, 0(t7)
 	bne   t6, zero, disp_val_loop
-	add   t7, 8
+	 add   t7, 8
 
 disp_val_end:
 	jr    ra
-	nop
+	 nop
 
 END(sys_disp_val)
 

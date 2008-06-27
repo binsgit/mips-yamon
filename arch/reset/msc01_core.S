@@ -8,7 +8,7 @@
  *
  * mips_start_of_legal_notice
  * 
- * Copyright (c) 2006 MIPS Technologies, Inc. All rights reserved.
+ * Copyright (c) 2008 MIPS Technologies, Inc. All rights reserved.
  *
  *
  * Unpublished rights (if any) reserved under the copyright laws of the
@@ -32,12 +32,9 @@
  * this code does not give recipient any license to any intellectual
  * property rights, including any patent rights, that cover this code.
  *
- * This code shall not be exported, reexported, transferred, or released,
- * directly or indirectly, in violation of the law of any country or
- * international law, regulation, treaty, Executive Order, statute,
- * amendments or supplements thereto. Should a conflict arise regarding the
- * export, reexport, transfer, or release of this code, the laws of the
- * United States of America shall be the governing law.
+ * This code shall not be exported or transferred for the purpose of
+ * reexporting in violation of any U.S. or non-U.S. regulation, treaty,
+ * Executive Order, law, statute, amendment or supplement thereto.
  *
  * This code constitutes one or more of the following: commercial computer
  * software, commercial computer software documentation or other commercial
@@ -53,8 +50,6 @@
  * the terms of the license agreement(s) and/or applicable contract terms
  * and conditions covering this code from MIPS Technologies or an authorized
  * third party.
- *
- *
  *
  * 
  * mips_end_of_legal_notice
@@ -73,6 +68,8 @@
 #include <pci_api.h>
 #include <pci.h>
 #include <product.h>
+#include <mc_dendefine.h>
+#include <mc_reginit.h>
 #include <core_sys.h>
 
 /************************************************************************
@@ -232,9 +229,11 @@ SLEAF(msc01_init)
 	srl	t0, MSC01_SC_ID_ID_SHF
 	and	t0, MSC01_SC_ID_ID_MSK >> MSC01_SC_ID_ID_SHF
 	xor	t0, MSC01_ID_SC_ROCIT
-	bne	t0, zero, 3f			/* not ROC-it, try SOC-it */
-	 seq	ROCit, t0, zero
-	
+	beqz	t0, 4f			/* it is ROCit */
+	 xor	t0, MSC01_ID_SC_ROCIT^MSC01_ID_SC_ROCIT2
+	bnez	t0, 3f
+4:	 seq	ROCit, zero, t0
+
 	/* ROC-it: Check whether SC_CFG.CDONE clear, i.e. reset value */
 	lw	SC_CFG, MSC01_SC_CFG_OFS(BIU_REGS)
 	li	t0, MSC01_SC_CFG_CDONE_BIT
@@ -349,19 +348,19 @@ SLEAF(msc01_init)
 	/* IP1 not used                   - reset 0x10000000 */
 	/* Must be done before IP2 to avoid clash 0x10000000 */
 	li	t0, CORE_SYS_IP1MEM_BASE10		     /* 0x1b800000 */
-	li	t1, -CORE_SYS_IP1MEM_SIZE		     /*-0x1bc00000 */
+	li	t1, -CORE_SYS_IP1MEM_SIZE		     /*-0x00400000 */
 	sw	t1, MSC01_BIU_IP1MSK1L_OFS(BIU_REGS)
 	sw	t0, MSC01_BIU_IP1BAS1L_OFS(BIU_REGS)
 	sw	t1, MSC01_BIU_IP1MSK2L_OFS(BIU_REGS)
 	sw	t0, MSC01_BIU_IP1BAS2L_OFS(BIU_REGS)
 
 	/* IP2 PCI                        - reset 0x14000000 */
-	li	t0, CORE_SYS_PCIMEM_BASE		     /* 0x10000000 */
-	li	t1, -CORE_SYS_PCIMEM_SIZE10		     /*-0x18000000 */
+	li	t0, MSC01_PCIMEM_BASE			     /* 0x10000000 */
+	li	t1, -MSC01_PCIMEM_SIZE			     /*-0x08000000 */
 	sw	t0, MSC01_BIU_IP2BAS1L_OFS(BIU_REGS)
 	sw	t1, MSC01_BIU_IP2MSK1L_OFS(BIU_REGS)
-	li	t0, CORE_SYS_PCIIO_BASE			     /* 0x1b000000 */
-	li	t1, -CORE_SYS_PCIIO_SIZE		     /*-0x1b800000 */
+	li	t0, MSC01_PCIIO_BASE			     /* 0x1b000000 */
+	li	t1, -MSC01_PCIIO_SIZE			     /*-0x00800000 */
 	sw	t1, MSC01_BIU_IP2MSK2L_OFS(BIU_REGS)
 	sw	t0, MSC01_BIU_IP2BAS2L_OFS(BIU_REGS)
 #undef BIU_REGS
@@ -370,7 +369,7 @@ SLEAF(msc01_init)
 	li	PCI_REGS, MSC01_PCI_REG_BASE
 
         /* Setup PCI_SC2PMEM (0x10000000-0x17ffffff transparent) */
-	li	t0, CORE_SYS_PCIMEM_BASE
+	li	t0, MSC01_PCIMEM_BASE
 	sw	t0, MSC01_PCI_SC2PMBASL_OFS(PCI_REGS)
 	sw	t0, MSC01_PCI_SC2PMMAPL_OFS(PCI_REGS)
 	li	t0, (-CORE_SYS_PCIMEM_SIZE10) & MSC01_PCI_SC2PMMSKL_MSK_MSK
@@ -408,7 +407,7 @@ SLEAF(msc01_init)
 	li	PCI_REGS, MSC01_PCI_REG_BASE
 
         /* Setup PCI_SC2PMEM (0x10000000-0x1fffffff transparent) */
-	li	t0, CORE_SYS_PCIMEM_BASE
+	li	t0, MSC01_PCIMEM_BASE
 	sw	t0, MSC01_PCI_SC2PMBASL_OFS(PCI_REGS)
 	sw	t0, MSC01_PCI_SC2PMMAPL_OFS(PCI_REGS)
 	li	t0, (-CORE_SYS_PCIMEM_SIZE2N) & MSC01_PCI_SC2PMMSKL_MSK_MSK
@@ -506,7 +505,7 @@ END(msc01_init)
  ************************************************************************/
 SLEAF(msc01_get_pcimem_base)
 
-	li	v0, CORE_SYS_PCIMEM_BASE
+	li	v0, MSC01_PCIMEM_BASE
 	jr	ra
 	nop
 
@@ -618,11 +617,14 @@ SLEAF(msc01_configure_sdram)
 	srl	t0, MSC01_SC_ID_ID_SHF
 	and	t0, MSC01_SC_ID_ID_MSK >> MSC01_SC_ID_ID_SHF
 	xor	t0, MSC01_ID_SC_ROCIT
-	bne	t0, zero, 1f
+	beqz	t0, 3f
+	 xor	t0, MSC01_ID_SC_ROCIT^MSC01_ID_SC_ROCIT2
+	bnez	t0, 1f
 	 nop
 
+3:
 	/* Read and check basic RAM type */
-	jal	my_read_eeprom
+	jal	read_eeprom
 	 li	a0, SPD_FUNDAMENTAL_TYPE
 #ifdef SYSCTRL_DDR_SUPPORT
 	li	t0, SPD_FUNDAMENTAL_TYPE_DDR
@@ -647,7 +649,7 @@ SLEAF(msc01_configure_sdram)
 	sw	t1, MSC01_MC_SPD_CFG_OFS(MC_REGS)
 
 	/* Read and check basic RAM type */
-	jal	my_read_eeprom
+	jal	read_eeprom
 	li	a0, SPD_FUNDAMENTAL_TYPE
 	lw	t1, MSC01_MC_HC_DDR_OFS(MC_REGS)
 	/* This bit reflects JP3 */
@@ -663,25 +665,25 @@ SLEAF(msc01_configure_sdram)
 
 3:
 	/* Read basic data width - must be 0x0040 or 0x0048 (parity byte) */
-	jal	my_read_eeprom
+	jal	read_eeprom
 	li      a0, SPD_MODULE_WIDTH_LO
 	or	v0, 8
 	li	a0, 64 | 8
 	bne	v0, a0, error_sdram
 	li	v0, ERROR_SDRAM_WIDTH
 
-	jal	my_read_eeprom
+	jal	read_eeprom
 	li      a0, SPD_MODULE_WIDTH_HI
 	bne	v0, zero, error_sdram
 	li	v0, ERROR_SDRAM_WIDTH
 
 	/* Read number of DIMM banks (CSNUM) */
-	jal	my_read_eeprom
+	jal	read_eeprom
 	li	a0, SPD_MODULE_BANKS
 	move	CSNUM, v0
 
 	/* Read number of SDRAM banks */
-	jal	my_read_eeprom
+	jal	read_eeprom
 	li	a0, SPD_DEVICE_BANKS
 	li	t1, 4
 	bne	t1, v0, error_sdram
@@ -692,7 +694,7 @@ SLEAF(msc01_configure_sdram)
 	** and values for physical bank config
 	*/
 	/* Read number of row address bits */
-	jal	my_read_eeprom
+	jal	read_eeprom
 	li	a0, SPD_ROWS
 
 	andi	ROWS, v0, SPD_ROWS_A_MSK
@@ -701,7 +703,7 @@ SLEAF(msc01_configure_sdram)
 	srl	ROWSB, SPD_ROWS_B_SHF
 
 	/* Read number of column address bits */
-	jal	my_read_eeprom
+	jal	read_eeprom
 	li	a0, SPD_COL
 	andi	COLUMNS, v0, SPD_COL_A_MSK
 	srl	COLUMNS, SPD_COL_A_SHF
@@ -710,7 +712,7 @@ SLEAF(msc01_configure_sdram)
 
 	/* Configure registers for physical bank 0 */
 	/* Check and adjust rows, columns if necessary */
-        /* The following defines do not survive my_read_eeprom! */
+        /* The following defines do not survive read_eeprom! */
 #define CONFIG0 a1
 #define CONFIG1 v1
 
@@ -726,7 +728,9 @@ SLEAF(msc01_configure_sdram)
 	srl	t0, MSC01_SC_ID_ID_SHF
 	and	t0, MSC01_SC_ID_ID_MSK >> MSC01_SC_ID_ID_SHF
 	xor	t0, MSC01_ID_SC_ROCIT
-	beq	t0, zero, config_rocit_mc
+	beqz	t0, config_rocit_mc
+	 xor	t0, MSC01_ID_SC_ROCIT^MSC01_ID_SC_ROCIT2
+	beqz	t0, my_dmc_rocit2_config
 	 nop
 
 	sll	CONFIG0, ROWS, MSC01_MC_CFGPBx_ROWW_SHF
@@ -786,7 +790,7 @@ SLEAF(msc01_configure_sdram)
 	*/
 #define ACCUM a3
 	/* Read CAS Latency */
-	jal	my_read_eeprom
+	jal	read_eeprom
 	li	a0, SPD_CASLAT
 
 /*
@@ -818,7 +822,7 @@ SLEAF(msc01_configure_sdram)
 	li	ACCUM, (3 << MSC01_MC_LATENCY_CL_SHF)
 2:
 	/* Read CS Latency */
-	jal	my_read_eeprom
+	jal	read_eeprom
 	li	a0, SPD_CSLAT
 	/* We only support CS latencies 0 and 1 */
 	and	v0, SPD_CSLAT_0_BIT | SPD_CSLAT_1_BIT
@@ -828,7 +832,7 @@ SLEAF(msc01_configure_sdram)
 	or	ACCUM, v0
 
 	/* Read Write Latency */
-	jal	my_read_eeprom
+	jal	read_eeprom
 	li	a0, SPD_WRLAT
 	/* We only support WR latencies 0 and 1 */
 	and	v0, SPD_WRLAT_0_BIT | SPD_WRLAT_1_BIT
@@ -849,7 +853,7 @@ SLEAF(msc01_configure_sdram)
 	*/
 
 	/* Read Precharge time */
-	jal	my_read_eeprom
+	jal	read_eeprom
 	li	a0, SPD_TRP
 #ifdef SYSCTRL_DDR_SUPPORT
 	lw	t1, MSC01_MC_HC_DDR_OFS(MC_REGS)
@@ -870,7 +874,7 @@ SLEAF(msc01_configure_sdram)
 	move	ACCUM, v0
 
 	/* Read RowActive time */
-	jal	my_read_eeprom
+	jal	read_eeprom
 	li	a0, SPD_TRAS
 #ifdef SYSCTRL_DDR_SUPPORT
 	lw	t1, MSC01_MC_HC_DDR_OFS(MC_REGS)
@@ -891,7 +895,7 @@ SLEAF(msc01_configure_sdram)
 	or	ACCUM, v0
 
 	/* Read RowToColcmd time */
-	jal	my_read_eeprom
+	jal	read_eeprom
 	li	a0, SPD_TRCD
 #ifdef SYSCTRL_DDR_SUPPORT
 	lw	t1, MSC01_MC_HC_DDR_OFS(MC_REGS)
@@ -917,7 +921,7 @@ SLEAF(msc01_configure_sdram)
 	/********************************************
 	** Set up SDRAM refresh time register
 	*/
-	jal	my_read_eeprom
+	jal	read_eeprom
 	li	a0, SPD_RFSH_RT
 	and	v0, SPD_RFSH_RT_RATE_MSK
 
@@ -977,7 +981,7 @@ SLEAF(msc01_configure_sdram)
 	li	t0, 0
 
         /* Read parity support */
-        jal	my_read_eeprom
+        jal	read_eeprom
         li	a0, SPD_CONFIG_TYPE
         li	t0, SPD_CONFIG_TYPE_ECC
         beq	t0, v0, 2f
@@ -1211,29 +1215,31 @@ checkrows:
 	add	t0, ROWS, COLUMNS
 	add	t0, 2+3		/* 4 banks * 8 bytes */
 
-#define BIU_REGS t2
 	/* correct size for msc01 configured buswidth */
-	li	BIU_REGS, MSC01_BIU_REG_BASE
-	lw	v0, MSC01_SC_ID_OFS(BIU_REGS)
-	and	v0, MSC01_SC_ID_ID_MSK
-	srl	v0, MSC01_SC_ID_ID_SHF
+	li	t2, MSC01_BIU_REG_BASE
+	lw	t2, MSC01_SC_ID_OFS(t2)
+	and	t2, MSC01_SC_ID_ID_MSK
+	srl	t2, MSC01_SC_ID_ID_SHF
+			
 	/* explicitly check for configurations that use 64 bit data buses */
-	xor	v0, MSC01_ID_SC_EC64
-	beqz	v0, 1f
-	 xor    v0, MSC01_ID_SC_EC64^MSC01_ID_SC_MGB
-	beqz	v0, 1f
-	 xor    v0, MSC01_ID_SC_MGB^MSC01_ID_SC_MGBIIA36D64C0IO
-	beqz	v0, 1f
-	 xor    v0, MSC01_ID_SC_MGBIIA36D64C0IO^MSC01_ID_SC_OCP
-	beqz	v0, 1f
-	 xor    v0, MSC01_ID_SC_OCP^MSC01_ID_SC_ROCIT
-	beqz	v0, 3f
+	xor	t2, MSC01_ID_SC_EC64
+	beqz	t2, 1f
+	 xor    t2, MSC01_ID_SC_EC64^MSC01_ID_SC_MGB
+	beqz	t2, 1f
+	 xor    t2, MSC01_ID_SC_MGB^MSC01_ID_SC_MGBIIA36D64C0IO
+	beqz	t2, 1f
+	 xor    t2, MSC01_ID_SC_MGBIIA36D64C0IO^MSC01_ID_SC_OCP
+	beqz	t2, 1f
+	 xor    t2, MSC01_ID_SC_OCP^MSC01_ID_SC_ROCIT
 	/* ROC-it - don't mess with MC, use CSNUM as size multiplier */
-	 move	v0, CSNUM
+	move	v0, CSNUM
+	beqz	t2, 3f
+	 xor    t2, MSC01_ID_SC_ROCIT^MSC01_ID_SC_ROCIT2
+	beqz	t2, 3f
+	 nop
 
 	sub	t0, 1	/* can only access half of the 64bit memory */
 1:
-#undef BIU_REGS
 
 	/* correct size for data width */
 	lw	v0, MSC01_MC_HC_FMDW_OFS(MC_REGS) /* check data with */
@@ -1258,32 +1264,32 @@ checkrows:
 ** ROC-it memory controller config
 */
 #define INIT_DENALI_SDR_REG(reg)		\
-	li	t0, DENALI_SDR_REG_##reg##_VAL;	\
+	li	t0, MC_DENALI_SDR_REG_##reg##_VAL;	\
 	sw	t0, (4 * reg)(MC_REGS)
 
 #ifdef SYSCTRL_DDR_SUPPORT
 #define INIT_DENALI_DDR_REG(reg)		\
-	li	t0, DENALI_DDR_REG_##reg##_VAL;	\
+	li	t0, MC_DENALI_DDR_REG_##reg##_VAL;	\
 	sw	t0, (4 * reg)(MC_REGS)
 #endif
 
 #undef  MC_GET_REG_FIELD				/* result in t0 */
 #define MC_GET_REG_FIELD(reg, width, offset)	\
-	lw	t0, (4 * reg)(MC_REGS); 	\
-	srl	t0, offset; 			\
-	li	t1, ((1 << width) - 1);		\
+	lw	t0, (4 * MC_##reg)(MC_REGS); 	\
+	srl	t0, MC_##offset;		\
+	li	t1, ((1 << MC_##width) - 1);	\
 	and	t0, t1
 
 #undef  MC_SET_REG_FIELD				/* value in t0 */
 #define MC_SET_REG_FIELD(reg, width, offset)	\
-	lw	t1, (4 * reg)(MC_REGS);		\
-	sll	t0, offset;			\
-	li	t2, (((1 << width) -1) << offset);\
+	lw	t1, (4 * MC_##reg)(MC_REGS);	\
+	sll	t0, MC_##offset;		\
+	li	t2, (((1 << MC_##width) -1) << MC_##offset);\
 	and	t0, t2;				\
 	not	t2, t2;				\
 	and	t1, t2;				\
 	or	t1, t0;				\
-	sw	t1, 4 * reg(MC_REGS)
+	sw	t1, 4 * MC_##reg(MC_REGS)
 
 
 config_rocit_mc:
@@ -1302,7 +1308,7 @@ config_rocit_mc:
 
 #ifdef SYSCTRL_DDR_SUPPORT
 	/* ... read and check basic RAM type ... */
-	jal	my_read_eeprom
+	jal	read_eeprom
 	 li	a0, SPD_FUNDAMENTAL_TYPE
 	li	t0, SPD_FUNDAMENTAL_TYPE_DDR
 	beq	v0, t0, 1f
@@ -1310,100 +1316,100 @@ config_rocit_mc:
 #endif
 
 	/* Do basic initialisation of all relevant registers */
-#if DENALI_SDR_REG_0_USED == 1
+#if MC_DENALI_SDR_REG_0_USED == 1
 	INIT_DENALI_SDR_REG(0)
 #endif
-#if DENALI_SDR_REG_1_USED == 1
+#if MC_DENALI_SDR_REG_1_USED == 1
 	INIT_DENALI_SDR_REG(1)
 #endif
-#if DENALI_SDR_REG_2_USED == 1
+#if MC_DENALI_SDR_REG_2_USED == 1
 	INIT_DENALI_SDR_REG(2)
 #endif
-#if DENALI_SDR_REG_3_USED == 1
+#if MC_DENALI_SDR_REG_3_USED == 1
 	INIT_DENALI_SDR_REG(3)
 #endif
-#if DENALI_SDR_REG_4_USED == 1
+#if MC_DENALI_SDR_REG_4_USED == 1
 	INIT_DENALI_SDR_REG(4)
 #endif
-#if DENALI_SDR_REG_5_USED == 1
+#if MC_DENALI_SDR_REG_5_USED == 1
 	INIT_DENALI_SDR_REG(5)
 #endif
-#if DENALI_SDR_REG_6_USED == 1
+#if MC_DENALI_SDR_REG_6_USED == 1
 	INIT_DENALI_SDR_REG(6)
 #endif
-#if DENALI_SDR_REG_7_USED == 1
+#if MC_DENALI_SDR_REG_7_USED == 1
 	INIT_DENALI_SDR_REG(7)
 #endif
-#if DENALI_SDR_REG_8_USED == 1
+#if MC_DENALI_SDR_REG_8_USED == 1
 	INIT_DENALI_SDR_REG(8)
 #endif
-#if DENALI_SDR_REG_9_USED == 1
+#if MC_DENALI_SDR_REG_9_USED == 1
 	INIT_DENALI_SDR_REG(9)
 #endif
-#if DENALI_SDR_REG_10_USED == 1
+#if MC_DENALI_SDR_REG_10_USED == 1
 	INIT_DENALI_SDR_REG(10)
 #endif
-#if DENALI_SDR_REG_11_USED == 1
+#if MC_DENALI_SDR_REG_11_USED == 1
 	INIT_DENALI_SDR_REG(11)
 #endif
-#if DENALI_SDR_REG_12_USED == 1
+#if MC_DENALI_SDR_REG_12_USED == 1
 	INIT_DENALI_SDR_REG(12)
 #endif
-#if DENALI_SDR_REG_13_USED == 1
+#if MC_DENALI_SDR_REG_13_USED == 1
 	INIT_DENALI_SDR_REG(13)
 #endif
-#if DENALI_SDR_REG_14_USED == 1
+#if MC_DENALI_SDR_REG_14_USED == 1
 	INIT_DENALI_SDR_REG(14)
 #endif
-#if DENALI_SDR_REG_15_USED == 1
+#if MC_DENALI_SDR_REG_15_USED == 1
 	INIT_DENALI_SDR_REG(15)
 #endif
-#if DENALI_SDR_REG_16_USED == 1
+#if MC_DENALI_SDR_REG_16_USED == 1
 	INIT_DENALI_SDR_REG(16)
 #endif
-#if DENALI_SDR_REG_17_USED == 1
+#if MC_DENALI_SDR_REG_17_USED == 1
 	INIT_DENALI_SDR_REG(17)
 #endif
-#if DENALI_SDR_REG_18_USED == 1
+#if MC_DENALI_SDR_REG_18_USED == 1
 	INIT_DENALI_SDR_REG(18)
 #endif
-#if DENALI_SDR_REG_19_USED == 1
+#if MC_DENALI_SDR_REG_19_USED == 1
 	INIT_DENALI_SDR_REG(19)
 #endif
-#if DENALI_SDR_REG_20_USED == 1
+#if MC_DENALI_SDR_REG_20_USED == 1
 	INIT_DENALI_SDR_REG(20)
 #endif
-#if DENALI_SDR_REG_21_USED == 1
+#if MC_DENALI_SDR_REG_21_USED == 1
 	INIT_DENALI_SDR_REG(21)
 #endif
-#if DENALI_SDR_REG_22_USED == 1
+#if MC_DENALI_SDR_REG_22_USED == 1
 	INIT_DENALI_SDR_REG(22)
 #endif
-#if DENALI_SDR_REG_23_USED == 1
+#if MC_DENALI_SDR_REG_23_USED == 1
 	INIT_DENALI_SDR_REG(23)
 #endif
-#if DENALI_SDR_REG_24_USED == 1
+#if MC_DENALI_SDR_REG_24_USED == 1
 	INIT_DENALI_SDR_REG(24)
 #endif
-#if DENALI_SDR_REG_25_USED == 1
+#if MC_DENALI_SDR_REG_25_USED == 1
 	INIT_DENALI_SDR_REG(25)
 #endif
-#if DENALI_SDR_REG_26_USED == 1
+#if MC_DENALI_SDR_REG_26_USED == 1
 	INIT_DENALI_SDR_REG(26)
 #endif
-#if DENALI_SDR_REG_27_USED == 1
+#if MC_DENALI_SDR_REG_27_USED == 1
 	INIT_DENALI_SDR_REG(27)
 #endif
-#if DENALI_SDR_REG_28_USED == 1
+#if MC_DENALI_SDR_REG_28_USED == 1
 	INIT_DENALI_SDR_REG(28)
 #endif
-#if DENALI_SDR_REG_29_USED == 1
+#if MC_DENALI_SDR_REG_29_USED == 1
 	INIT_DENALI_SDR_REG(29)
 #endif
-#if DENALI_SDR_REG_30_USED == 1
+#if MC_DENALI_SDR_REG_30_USED == 1
 	INIT_DENALI_SDR_REG(30)
 #endif
-#if DENALI_SDR_REG_31_USED == 1
+#if MC_DENALI_SDR_REG_31_USED == 1
 	INIT_DENALI_SDR_REG(31)
 #endif
 
@@ -1411,100 +1417,100 @@ config_rocit_mc:
 	b	2f
 	 nop
 1:
-#if DENALI_DDR_REG_0_USED == 1
+#if MC_DENALI_DDR_REG_0_USED == 1
 	INIT_DENALI_DDR_REG(0)
 #endif
-#if DENALI_DDR_REG_1_USED == 1
+#if MC_DENALI_DDR_REG_1_USED == 1
 	INIT_DENALI_DDR_REG(1)
 #endif
-#if DENALI_DDR_REG_2_USED == 1
+#if MC_DENALI_DDR_REG_2_USED == 1
 	INIT_DENALI_DDR_REG(2)
 #endif
-#if DENALI_DDR_REG_3_USED == 1
+#if MC_DENALI_DDR_REG_3_USED == 1
 	INIT_DENALI_DDR_REG(3)
 #endif
-#if DENALI_DDR_REG_4_USED == 1
+#if MC_DENALI_DDR_REG_4_USED == 1
 	INIT_DENALI_DDR_REG(4)
 #endif
-#if DENALI_DDR_REG_5_USED == 1
+#if MC_DENALI_DDR_REG_5_USED == 1
 	INIT_DENALI_DDR_REG(5)
 #endif
-#if DENALI_DDR_REG_6_USED == 1
+#if MC_DENALI_DDR_REG_6_USED == 1
 	INIT_DENALI_DDR_REG(6)
 #endif
-#if DENALI_DDR_REG_7_USED == 1
+#if MC_DENALI_DDR_REG_7_USED == 1
 	INIT_DENALI_DDR_REG(7)
 #endif
-#if DENALI_DDR_REG_8_USED == 1
+#if MC_DENALI_DDR_REG_8_USED == 1
 	INIT_DENALI_DDR_REG(8)
 #endif
-#if DENALI_DDR_REG_9_USED == 1
+#if MC_DENALI_DDR_REG_9_USED == 1
 	INIT_DENALI_DDR_REG(9)
 #endif
-#if DENALI_DDR_REG_10_USED == 1
+#if MC_DENALI_DDR_REG_10_USED == 1
 	INIT_DENALI_DDR_REG(10)
 #endif
-#if DENALI_DDR_REG_11_USED == 1
+#if MC_DENALI_DDR_REG_11_USED == 1
 	INIT_DENALI_DDR_REG(11)
 #endif
-#if DENALI_DDR_REG_12_USED == 1
+#if MC_DENALI_DDR_REG_12_USED == 1
 	INIT_DENALI_DDR_REG(12)
 #endif
-#if DENALI_DDR_REG_13_USED == 1
+#if MC_DENALI_DDR_REG_13_USED == 1
 	INIT_DENALI_DDR_REG(13)
 #endif
-#if DENALI_DDR_REG_14_USED == 1
+#if MC_DENALI_DDR_REG_14_USED == 1
 	INIT_DENALI_DDR_REG(14)
 #endif
-#if DENALI_DDR_REG_15_USED == 1
+#if MC_DENALI_DDR_REG_15_USED == 1
 	INIT_DENALI_DDR_REG(15)
 #endif
-#if DENALI_DDR_REG_16_USED == 1
+#if MC_DENALI_DDR_REG_16_USED == 1
 	INIT_DENALI_DDR_REG(16)
 #endif
-#if DENALI_DDR_REG_17_USED == 1
+#if MC_DENALI_DDR_REG_17_USED == 1
 	INIT_DENALI_DDR_REG(17)
 #endif
-#if DENALI_DDR_REG_18_USED == 1
+#if MC_DENALI_DDR_REG_18_USED == 1
 	INIT_DENALI_DDR_REG(18)
 #endif
-#if DENALI_DDR_REG_19_USED == 1
+#if MC_DENALI_DDR_REG_19_USED == 1
 	INIT_DENALI_DDR_REG(19)
 #endif
-#if DENALI_DDR_REG_20_USED == 1
+#if MC_DENALI_DDR_REG_20_USED == 1
 	INIT_DENALI_DDR_REG(20)
 #endif
-#if DENALI_DDR_REG_21_USED == 1
+#if MC_DENALI_DDR_REG_21_USED == 1
 	INIT_DENALI_DDR_REG(21)
 #endif
-#if DENALI_DDR_REG_22_USED == 1
+#if MC_DENALI_DDR_REG_22_USED == 1
 	INIT_DENALI_DDR_REG(22)
 #endif
-#if DENALI_DDR_REG_23_USED == 1
+#if MC_DENALI_DDR_REG_23_USED == 1
 	INIT_DENALI_DDR_REG(23)
 #endif
-#if DENALI_DDR_REG_24_USED == 1
+#if MC_DENALI_DDR_REG_24_USED == 1
 	INIT_DENALI_DDR_REG(24)
 #endif
-#if DENALI_DDR_REG_25_USED == 1
+#if MC_DENALI_DDR_REG_25_USED == 1
 	INIT_DENALI_DDR_REG(25)
 #endif
-#if DENALI_DDR_REG_26_USED == 1
+#if MC_DENALI_DDR_REG_26_USED == 1
 	INIT_DENALI_DDR_REG(26)
 #endif
-#if DENALI_DDR_REG_27_USED == 1
+#if MC_DENALI_DDR_REG_27_USED == 1
 	INIT_DENALI_DDR_REG(27)
 #endif
-#if DENALI_DDR_REG_28_USED == 1
+#if MC_DENALI_DDR_REG_28_USED == 1
 	INIT_DENALI_DDR_REG(28)
 #endif
-#if DENALI_DDR_REG_29_USED == 1
+#if MC_DENALI_DDR_REG_29_USED == 1
 	INIT_DENALI_DDR_REG(29)
 #endif
-#if DENALI_DDR_REG_30_USED == 1
+#if MC_DENALI_DDR_REG_30_USED == 1
 	INIT_DENALI_DDR_REG(30)
 #endif
-#if DENALI_DDR_REG_31_USED == 1
+#if MC_DENALI_DDR_REG_31_USED == 1
 	INIT_DENALI_DDR_REG(31)
 #endif
 
@@ -1515,7 +1521,7 @@ config_rocit_mc:
 	MC_SET_REG_FIELD(INT_MASK_ADDR, INT_MASK_WIDTH,INT_MASK_OFFSET)
  
 	/* Registered DIMM? */
-	jal	my_read_eeprom
+	jal	read_eeprom
 	 li	a0, SPD_MODATTR
 	and	t0, v0, SPD_MODATTR_REG_MSK
 	srl	t0, SPD_MODATTR_REG_SHF
@@ -1554,14 +1560,14 @@ config_rocit_mc:
 #else
 #define MIN_PERIOD	6	/* Default to minimum cycle time of 6nS */
 #endif
-#define MAX_PERIOD	60	/* Default to maximum cycle time of 60nS */
+#define MAX_PERIOD	500	/* Default to maximum cycle time of 500nS (2MHz) */
 
 #define PERIOD	a2
 #define TRC_CLAMP a3
 
 #ifdef SYSCTRL_DDR_SUPPORT
 	/* For DDR, don't mess with any timings but refresh */
-	jal	my_read_eeprom
+	jal	read_eeprom
 	 li	a0, SPD_FUNDAMENTAL_TYPE
 	li	t0, SPD_FUNDAMENTAL_TYPE_DDR
 	beq	v0, t0, 9f
@@ -1570,7 +1576,7 @@ config_rocit_mc:
 	li	PERIOD, MIN_PERIOD
 
 	/* CAS Latency */
-	jal	my_read_eeprom
+	jal	read_eeprom
 	 li	a0, SPD_CASLAT
 
 	andi	a0, v0, SPD_CASLAT_2_BIT
@@ -1590,7 +1596,7 @@ config_rocit_mc:
 			CASLAT_LIN_GATE_WIDTH,CASLAT_LIN_GATE_OFFSET)
 
 	/* RAS Precharge */
-	jal	my_read_eeprom
+	jal	read_eeprom
 	 li	a0, SPD_TRP
 
 #ifdef BROKEN_LIKE_SOCIT
@@ -1612,7 +1618,7 @@ config_rocit_mc:
 	MC_SET_REG_FIELD(TRP_ADDR, TRP_WIDTH,TRP_OFFSET)
 
 	/* RAS -> CAS delay */
-	jal	my_read_eeprom
+	jal	read_eeprom
 	 li	a0, SPD_TRCD
 
 #ifdef BROKEN_LIKE_SOCIT
@@ -1633,7 +1639,7 @@ config_rocit_mc:
 	MC_SET_REG_FIELD(TRCD_INT_ADDR, TRCD_INT_WIDTH,TRCD_INT_OFFSET)
 
 	/* RAS -> RAS delay (tRRD) different banks */
-	jal	my_read_eeprom
+	jal	read_eeprom
 	 li	a0, SPD_TRRD
 
 #ifdef BROKEN_LIKE_SOCIT
@@ -1647,7 +1653,7 @@ config_rocit_mc:
 	MC_SET_REG_FIELD(TRRD_ADDR, TRRD_WIDTH,TRRD_OFFSET)
 
 	/* RAS min */
-	jal	my_read_eeprom
+	jal	read_eeprom
 	 li	a0, SPD_TRAS
 
 #ifdef BROKEN_LIKE_SOCIT
@@ -1669,7 +1675,7 @@ config_rocit_mc:
 	MC_SET_REG_FIELD(TRAS_MIN_ADDR, TRAS_MIN_WIDTH,TRAS_MIN_OFFSET)
 
 	/* RAS -> RAS same bank */
-	jal	my_read_eeprom
+	jal	read_eeprom
 	 li	a0, SPD_TRC
 
 #ifdef BROKEN_LIKE_SOCIT
@@ -1702,27 +1708,28 @@ config_rocit_mc:
 9:
 #endif
 	/* Refresh */
-	jal	my_read_eeprom
+	jal	read_eeprom
 	 li	a0, SPD_RFSH_RT
 	and	v0, SPD_RFSH_RT_RATE_MSK
 
 	li	t0, SPD_RFSH_RT_RATE_125	/* 125 us */
 	beq	t0, v0, 1f
-	 li	t0, 125000
+	 li	t0, 125000>>1
 	li	t0, SPD_RFSH_RT_RATE_62_5	/* 62.5 us */
 	beq	t0, v0, 1f
-	 li	t0, 62500
+	 li	t0, 62500>>1
 	li	t0, SPD_RFSH_RT_RATE_31_3	/* 31.3 us */
 	beq	t0, v0, 1f
-	 li	t0, 31300
+	 li	t0, 31300>>1
 	li	t0, SPD_RFSH_RT_RATE_15_625	/* 15.6 us */
 	beq	t0, v0, 1f
-	 li	t0, 15625
+	 li	t0, 15625>>1
 	li	t0, SPD_RFSH_RT_RATE_7_8	/* 7.8 us */
 	beq	t0, v0, 1f
-	 li	t0, 7800
-	li	t0, 3900			/* assume 3.9 us */
+	 li	t0, 7800>>1
+	li	t0, 3900>>1			/* assume 3.9 us */
 1:
+	sll	t0, 1
 	li	PERIOD, MAX_PERIOD
 
 	divu	t0, PERIOD		/* t0 /= PERIOD */
@@ -1731,7 +1738,7 @@ config_rocit_mc:
 
 	li	t0, 1
 	MC_SET_REG_FIELD(TREF_ENABLE_ADDR, TREF_ENABLE_WIDTH,TREF_ENABLE_OFFSET)
-#under TRC_CLAMP
+#undef TRC_CLAMP
 #undef PERIOD
 
 	/********************************************
@@ -1766,7 +1773,7 @@ config_rocit_mc:
 
 #ifdef SYSCTRL_DDR_SUPPORT
 	/* We're running too slowly for a DDR SDRAM's DLL, so disable it */
-	jal	my_read_eeprom
+	jal	read_eeprom
 	 li	a0, SPD_FUNDAMENTAL_TYPE
 	li	t0, SPD_FUNDAMENTAL_TYPE_DDR
 	bne	v0, t0, 9f
@@ -1813,6 +1820,9 @@ config_rocit_mc:
 9:
 #endif
 
+#if 0
+	/* This is only required to initialise parity which isnt supported */
+
 	/* Clear memory */
 	DISP_STR( msg_pram_clr ) /* destroys t5, t6, t7, t8, t9, ra */
 
@@ -1858,6 +1868,8 @@ SET_MIPS3()
 SET_MIPS0()
 
 8:
+#endif
+
 	/********************************************
 	** Return
 	*/
@@ -1866,14 +1878,32 @@ SET_MIPS0()
 	 li	v0, 0
 
 
+my_dmc_rocit2_config:
+	/* Adjust ROWS downwards if necessary */
+1:	li	t0, CORE_SYS_MEMORY_SIZE
+	bleu	RAMSIZE, t0, 2f
+	 nop
+	sub	ROWS, 1
+	jal	checkrows
+	 nop
+	b	1b
+	 move	RAMSIZE, v0
+2:
+
+	.globl	dmc_rocit2_config
+	j	dmc_rocit2_config
+	 nop
+END(msc01_configure_sdram)
+
+
 /************************************************************
-** local subroutine - read from spd eeprom.
+** read from spd eeprom.
 ** makes a master return in case of error.
 ** Requires MC_REGS to be defined and set up.
 ** Returns byte read in v0.
 */
 
-my_read_eeprom:
+LEAF(read_eeprom)
 	/* Atlas - use FPGA to access I2C */
 	li	v0, PRODUCT_ATLASA_ID
 	beq	v0, k0, fpga_read
@@ -1885,7 +1915,9 @@ my_read_eeprom:
 	srl	v0, MSC01_SC_ID_ID_SHF
 	and	v0, MSC01_SC_ID_ID_MSK >> MSC01_SC_ID_ID_SHF
 	xor	v0, MSC01_ID_SC_ROCIT
-	beq	v0, zero, fpga_read
+	beqz	v0, fpga_read
+	 xor	v0, MSC01_ID_SC_ROCIT^MSC01_ID_SC_ROCIT2
+	beqz	v0, fpga_read
 	 nop
 
 	/* CORE_24K - use FPGA to access I2C */
@@ -1903,14 +1935,14 @@ my_read_eeprom:
 fpga_read:
 	move	RA2, ra
 	jal	sys_spd_read
-	nop
+	 nop
 	bne	v0, zero, error_msc01_eeprom
-	nop
+	 nop
 	jr	RA2
-	move	v0, v1
+	 move	v0, v1
 error_msc01_eeprom:
 	jr	RA
-	nop
+	 nop
 1:
 	/* Malta */
 	/* Changes a0, v0. */
@@ -1921,20 +1953,21 @@ error_msc01_eeprom:
 	lw	v0, MSC01_MC_SPD_DAT_OFS(MC_REGS)
 	andi	a0, v0, MSC01_MC_SPD_DAT_BUSY_MSK
 	bne	a0, zero, 1b
-	nop
+	 nop
 
 	/* Check read err flag */
 	andi	a0, v0, MSC01_MC_SPD_DAT_RDERR_MSK
 	beq	a0, zero, eeprom_done
-	nop
+	 nop
 
 	/* Error */
 	jr	RA
-	li	v0, ERROR_SPD
+	 li	v0, ERROR_SPD
 
 eeprom_done:
 	jr	ra
-	andi	v0, MSC01_MC_SPD_DAT_RDATA_MSK
+	 andi	v0, MSC01_MC_SPD_DAT_RDATA_MSK
+END(read_eeprom)
 
 #undef RA
 #undef MC_REGS
@@ -1946,9 +1979,6 @@ eeprom_done:
 #undef COLUMNSB
 #undef FREQ
 #undef RA2
-
-END(msc01_configure_sdram)
-
 
 /************************************************************************
  *

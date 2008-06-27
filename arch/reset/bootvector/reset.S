@@ -9,7 +9,7 @@
  *
  * mips_start_of_legal_notice
  * 
- * Copyright (c) 2006 MIPS Technologies, Inc. All rights reserved.
+ * Copyright (c) 2008 MIPS Technologies, Inc. All rights reserved.
  *
  *
  * Unpublished rights (if any) reserved under the copyright laws of the
@@ -33,12 +33,9 @@
  * this code does not give recipient any license to any intellectual
  * property rights, including any patent rights, that cover this code.
  *
- * This code shall not be exported, reexported, transferred, or released,
- * directly or indirectly, in violation of the law of any country or
- * international law, regulation, treaty, Executive Order, statute,
- * amendments or supplements thereto. Should a conflict arise regarding the
- * export, reexport, transfer, or release of this code, the laws of the
- * United States of America shall be the governing law.
+ * This code shall not be exported or transferred for the purpose of
+ * reexporting in violation of any U.S. or non-U.S. regulation, treaty,
+ * Executive Order, law, statute, amendment or supplement thereto.
  *
  * This code constitutes one or more of the following: commercial computer
  * software, commercial computer software documentation or other commercial
@@ -54,8 +51,6 @@
  * the terms of the license agreement(s) and/or applicable contract terms
  * and conditions covering this code from MIPS Technologies or an authorized
  * third party.
- *
- *
  *
  * 
  * mips_end_of_legal_notice
@@ -167,74 +162,73 @@ little_endian:
 digit:	/* Used for determining endianness */
 	.word 0x12345678
 
-
-	/*
-	 * Display "CacheErr" and stay in endless loop.
-	 *   contains no endianess dependencies
-	 */
-cacheerr:
+setasciipos:
 	/* Set k0 = Product ID (determined using REVISION register) */
 	li	k0, HIKSEG1(MIPS_REVISION)
 	lw	k0, LO_OFFS(MIPS_REVISION)(k0)
 	srl	k0, MIPS_REVISION_PROID_SHF
 	andi	k0, MIPS_REVISION_PROID_MSK >> MIPS_REVISION_PROID_SHF
-
-	li      k1, LO_OFFS(ATLAS_ASCIIPOS0)
+	
 	xori	k0, PRODUCT_ATLASA_ID
-	beq	k0, zero, disp_cacheerr
-	xori	k0, PRODUCT_MALTA_ID ^ PRODUCT_ATLASA_ID
-	beq	k0, zero, disp_cacheerr
-	xori	k0, PRODUCT_SEAD_ID ^ PRODUCT_MALTA_ID
+	beqz	k0, setasciipos_atlas
+	 xori	k0, PRODUCT_MALTA_ID ^ PRODUCT_ATLASA_ID
+	beqz	k0, setasciipos_malta
+	 xori	k0, PRODUCT_SEAD_ID ^ PRODUCT_MALTA_ID
+	beqz	k0, setasciipos_sead
+	 xori	k0, PRODUCT_SEAD2_ID ^ PRODUCT_SEAD_ID
+	beqz	k0, setasciipos_sead
+	 nop
 
-	li	k1, LO_OFFS(SEAD_ASCIIPOS0)
-	beq	k0, zero, disp_val_sead
-	xori	k0, PRODUCT_SEAD2_ID ^ PRODUCT_SEAD_ID
-1:	bne	k0, zero, 1b	/* Unknown platform, so stay here */
-	nop
+setasciipos_unknown:
+	li	k0, KSEG1(0x1fc00000)
+	j	k1
+	 nop
 
-disp_val_sead:
+setasciipos_atlas:
+	li      k0, KSEG1(ATLAS_ASCIIPOS0)
+	j	k1
+	 nop
 
-	/* We support only Basic RTL and MSC01 */
+setasciipos_malta:
+	li      k0, KSEG1(MALTA_ASCIIPOS0)
+	j	k1
+	 nop
+
+setasciipos_sead:
+	/* We support only Basic RTL and MSC01 on SEAD */
 	li	k0, HIKSEG1(SEAD_REVISION)
 	lw	k0, LO_OFFS(SEAD_REVISION)(k0)
 	srl	k0, SEAD_REVISION_RTLID_SHF
 	and	k0, SEAD_REVISION_RTLID_MSK >> SEAD_REVISION_RTLID_SHF
 	xori	k0, SEAD_REVISION_RTLID_BASIC
-	beq	k0, zero, disp_cacheerr
-	xori	k0, SEAD_REVISION_RTLID_SOCIT101 ^ SEAD_REVISION_RTLID_BASIC
-1:	bne	k0, zero, 1b	/* Unknown platform, so stay here */
-	nop
-
-disp_cacheerr:
-	/*  CacheError occurred,  Display message 'CacheErr'.
-	 *  only k0/k1 are used.
-	 */
-	li	k0, HIKSEG1(ATLAS_ASCIIPOS0)
-	or	k1, k0
-	li	k0, 'C'
-	sw	k0, 0x00(k1)
-	li	k0, 'a'
-	sw	k0, 0x08(k1)
-	li	k0, 'c'
-	sw	k0, 0x10(k1)
-	li	k0, 'h'
-	sw	k0, 0x18(k1)
-	li	k0, 'e'
-	sw	k0, 0x20(k1)
-	li	k0, 'E'
-	sw	k0, 0x28(k1)
-	li	k0, 'r'
-	sw	k0, 0x30(k1)
-	sw	k0, 0x38(k1)
-
-1:	b	1b	/* Stay here */
-	nop
-
-
+	beqz	k0, 1f
+	 xori	k0, SEAD_REVISION_RTLID_SOCIT101 ^ SEAD_REVISION_RTLID_BASIC
+	bnez	k0, setasciipos_unknown
+	 nop
+1:	li	k1, KSEG1(SEAD_ASCIIPOS0)
+	j	k1
+	 nop
+	
+#define LLDISPLAY(c0,c1,c2,c3,c4,c5,c6,c7) \
+	li      k0, KSEG1(MALTA_ASCIIWORD);	\
+	sw	k0, 0(k0);			\
+	lui	k0,0xbfc0; sw k0,(k0);		\
+	la	k0,setasciipos;			\
+	jalr	k1,k0;				\
+	 nop;					\
+	li	k1,c0; sw k1,0x00(k0);		\
+	li	k1,c1; sw k1,0x08(k0);		\
+	li	k1,c2; sw k1,0x10(k0);		\
+	li	k1,c3; sw k1,0x18(k0);		\
+	li	k1,c4; sw k1,0x20(k0);		\
+	li	k1,c5; sw k1,0x28(k0);		\
+	li	k1,c6; sw k1,0x30(k0);		\
+	li	k1,c7; sw k1,0x38(k0);
 
 .org 0x200
 	/* 0xBFC00200 TLB refill, 32 bit task                    */
 	/*********************************************************/
+	LLDISPLAY('T','L','B','f','i','l','l',' ')
 1:	b	1b	/* Stay here */
 	nop
 	
@@ -242,6 +236,7 @@ disp_cacheerr:
 .org 0x280
 	/* 0xBFC00280 XTLB refill, 64 bit task                   */
 	/*********************************************************/
+	LLDISPLAY('X','T','L','B','f','i','l','l')
 1:	b	1b	/* Stay here */
 	nop
 	
@@ -249,13 +244,15 @@ disp_cacheerr:
 .org 0x300
 	/* 0xBFC00300 Cache error exception                      */
 	/*********************************************************/
-	b	cacheerr /* display [CacheErr] and stay */
+	LLDISPLAY('C','a','c','h','e','E','r','r')
+1:	b	1b	/* Stay here */
 	nop
 	
 
 .org 0x380
 	/* 0xBFC00380 General exception                          */
 	/*********************************************************/
+	LLDISPLAY('G','e','n','E','x','c','e','p')
 1:	b	1b	/* Stay here */
 	nop
 
@@ -263,6 +260,7 @@ disp_cacheerr:
 .org 0x400
 	/* 0xBFC00400 Catch interrupt exceptions, some QEDs only */
 	/*********************************************************/
+	LLDISPLAY('I','n','t','E','x','c','e','p')
 1:	b	1b	/* Stay here */
 	nop
 	

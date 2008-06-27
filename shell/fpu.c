@@ -9,7 +9,7 @@
  *
  * mips_start_of_legal_notice
  * 
- * Copyright (c) 2006 MIPS Technologies, Inc. All rights reserved.
+ * Copyright (c) 2008 MIPS Technologies, Inc. All rights reserved.
  *
  *
  * Unpublished rights (if any) reserved under the copyright laws of the
@@ -33,12 +33,9 @@
  * this code does not give recipient any license to any intellectual
  * property rights, including any patent rights, that cover this code.
  *
- * This code shall not be exported, reexported, transferred, or released,
- * directly or indirectly, in violation of the law of any country or
- * international law, regulation, treaty, Executive Order, statute,
- * amendments or supplements thereto. Should a conflict arise regarding the
- * export, reexport, transfer, or release of this code, the laws of the
- * United States of America shall be the governing law.
+ * This code shall not be exported or transferred for the purpose of
+ * reexporting in violation of any U.S. or non-U.S. regulation, treaty,
+ * Executive Order, law, statute, amendment or supplement thereto.
  *
  * This code constitutes one or more of the following: commercial computer
  * software, commercial computer software documentation or other commercial
@@ -54,8 +51,6 @@
  * the terms of the license agreement(s) and/or applicable contract terms
  * and conditions covering this code from MIPS Technologies or an authorized
  * third party.
- *
- *
  *
  * 
  * mips_end_of_legal_notice
@@ -81,14 +76,15 @@
  *  Definitions
  ************************************************************************/
 
-#define CMD_NONE 0
-#define CMD_ON   1
-#define CMD_OFF  2
+#define CMD_NONE         0
+#define CMD_ON           1
+#define CMD_OFF          2
 #define CMD_ONOFF (CMD_ON | CMD_OFF)
-#define CMD_STAT 4
-#define CMD_SCLR 8
-#define CMD_SHOW 16
-#define CMD_NOFPU 32
+#define CMD_STAT         4
+#define CMD_SCLR         8
+#define CMD_SHOW        16
+#define CMD_NOFPU       32
+#define CMD_NOSOFTFPU   64
 
 /************************************************************************
  *  Public variables
@@ -177,11 +173,21 @@ static UINT32 parse_args(UINT32 argc, char **argv,
 	    if (argc) {
 		argv++; argc--;
 		if (strcmp(*argv, on_off[0]) == 0) {
-		    *emulcmd = (*emulcmd & ~CMD_ONOFF) | CMD_OFF;
+                    if (*fpucmd & CMD_NOSOFTFPU) {
+                        return SHELL_ERROR_OPTION;
+                    }
+                    else {
+                        *emulcmd = (*emulcmd & ~CMD_ONOFF) | CMD_OFF;
+                    }
 		    continue;
 		}
 		if (strcmp(*argv, on_off[1]) == 0) {
-		    *emulcmd = (*emulcmd & ~CMD_ONOFF) | CMD_ON;
+                    if (*fpucmd & CMD_NOSOFTFPU) {
+                        return SHELL_ERROR_OPTION;
+                    }
+                    else {
+		        *emulcmd = (*emulcmd & ~CMD_ONOFF) | CMD_ON;
+                    }
 		    continue;
 		}
 		if (strcmp(*argv, "stat") == 0) {
@@ -264,7 +270,12 @@ static MON_FUNC(fpu)
     int fpucmd, emulcmd, fscmd, frcmd;
     UINT32 rc;
 
+#ifdef ENABLE_SOFT_FPU
     fpucmd = emulcmd = fscmd = frcmd = CMD_NONE;
+#else
+    fpucmd = emulcmd = fscmd = frcmd = CMD_NOSOFTFPU;
+    FPUEMUL_status=0;
+#endif
 
     rc = parse_args(argc, argv, &fpucmd, &emulcmd, &fscmd, &frcmd);
     if (rc != OK) return rc;
@@ -283,14 +294,27 @@ static MON_FUNC(fpu)
     if (argc == 1) {
 	if (sys_fpu) {
 	    myprintf("FPU %s", on_off[(cp0_status & M_StatusCU1) != 0]);
-	    myprintf(", emul %s", on_off[FPUEMUL_status]);
+            if (fpucmd & CMD_NOSOFTFPU) {
+                myprintf(", emul not available");
+            }
+            else {
+                myprintf(", emul %s", on_off[FPUEMUL_status]);
+            }
 	    myprintf(", fs %s, fr %s\n", on_off[fs_bit], on_off[fr_bit]);
 	}
 	else if (FPUEMUL_status) {
-	    myprintf("FPU emul on");
+            if (fpucmd & CMD_NOSOFTFPU) {
+                myprintf("FPU emul not available");
+            }
+            else {
+                myprintf("FPU emul on");
+            }
 	    myprintf(", fs %s, fr %s\n", on_off[fs_bit], on_off[fr_bit]);
 	}
-	else {
+	else if (fpucmd & CMD_NOSOFTFPU) {
+            myprintf("You don't have an FPU or an FPU emulator\n");
+        }
+        else {
 	    myprintf("You don't have an FPU. Use \"fpu emul\" "
 		    "to enable emulator\n");
 	}
@@ -299,8 +323,13 @@ static MON_FUNC(fpu)
 
     if (fpucmd != CMD_NONE) {
 	if (fpucmd & CMD_NOFPU) {
-	    myprintf("You don't have an FPU. Use \"fpu emul\" "
-		    "to control emulator\n");
+            if (fpucmd & CMD_NOSOFTFPU) {
+                myprintf("You don't have an FPU or an FPU emulator\n");
+            }
+            else {
+                myprintf("You don't have an FPU. Use \"fpu emul\" "
+                        "to control emulator\n");
+            }
 	    return OK;
 	}
 	if (fpucmd & CMD_OFF) {
@@ -328,7 +357,12 @@ static MON_FUNC(fpu)
 	if (emulcmd & CMD_STAT) FPUEMUL_stat_print(myprintf);
 	if (emulcmd & CMD_SCLR) FPUEMUL_stat_clear();
 	if (emulcmd & (CMD_ON | CMD_OFF | CMD_SHOW)) {
-	    myprintf("FPU emul %s\n", on_off[FPUEMUL_status]);
+            if (fpucmd & CMD_NOSOFTFPU) {
+                myprintf("FPU emul not available\n");
+            }
+            else {
+                myprintf("FPU emul %s\n", on_off[FPUEMUL_status]);
+            }
 	}
     }
 
@@ -417,8 +451,8 @@ static t_cmd cmd_def =
     "on   Enable the hardware FPU.\n"
     "off  Disable the hardware FPU.\n"
     "\n"
-    "Always applicable\n"
-    "------------------\n"
+    "Applicable when FPU emulator is compiled in\n"
+    "-------------------------------------------\n"
     "emul        Show current status of emulator.\n"
     "emul on     Enable the emulator. If the system has a hardware FPU which\n"
     "            is enabled, the emulator will handle denormalized and out of\n"
@@ -432,6 +466,8 @@ static t_cmd cmd_def =
     "emul stat   Show emulator statistics.\n"
     "emul clear  Clear emulator statistics.\n"
     "\n"
+    "Always applicable\n"
+    "-----------------\n"
     "fs      Show current status of FS.\n"
     "fs on   Enable the flush to zero bit. When the FS bit is set,\n"
     "        denormalized numbers will be replaced by zero (This is not IEEE\n"

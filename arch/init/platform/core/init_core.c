@@ -8,7 +8,7 @@
  *
  * mips_start_of_legal_notice
  * 
- * Copyright (c) 2006 MIPS Technologies, Inc. All rights reserved.
+ * Copyright (c) 2008 MIPS Technologies, Inc. All rights reserved.
  *
  *
  * Unpublished rights (if any) reserved under the copyright laws of the
@@ -32,12 +32,9 @@
  * this code does not give recipient any license to any intellectual
  * property rights, including any patent rights, that cover this code.
  *
- * This code shall not be exported, reexported, transferred, or released,
- * directly or indirectly, in violation of the law of any country or
- * international law, regulation, treaty, Executive Order, statute,
- * amendments or supplements thereto. Should a conflict arise regarding the
- * export, reexport, transfer, or release of this code, the laws of the
- * United States of America shall be the governing law.
+ * This code shall not be exported or transferred for the purpose of
+ * reexporting in violation of any U.S. or non-U.S. regulation, treaty,
+ * Executive Order, law, statute, amendment or supplement thereto.
  *
  * This code constitutes one or more of the following: commercial computer
  * software, commercial computer software documentation or other commercial
@@ -53,8 +50,6 @@
  * the terms of the license agreement(s) and/or applicable contract terms
  * and conditions covering this code from MIPS Technologies or an authorized
  * third party.
- *
- *
  *
  * 
  * mips_end_of_legal_notice
@@ -78,6 +73,9 @@
 #include <core_bonito64.h>
 #include <bonito64.h>
 #include <core_sys.h>
+#include <socitsc.h>
+#include <gcmp.h>
+#include <gic.h>
 
 /************************************************************************
  *  Definitions
@@ -94,6 +92,10 @@
 
 UINT32 _bonito = KSEG1(BONITO_REG_BASE);
 UINT32 malta_pci_io_base;
+bool gic_present;
+bool gcmp_present;
+bool iocu_present;
+bool io_coherent;
 
 /************************************************************************
  *  Static variables
@@ -116,6 +118,10 @@ bonito64_isr(
 
 static void
 msc01_isr( 
+    void *data );
+
+static void
+socitsc_isr( 
     void *data );
 
 /************************************************************************
@@ -147,68 +153,74 @@ arch_core_init(
 			 */
 {
     UINT32 clock_period_ns;
+    void *icu_regbase;
+    void *pci_regbase;
+    void (*isrfunc)(void *);
 
-    if( early )
-    {
+    if (early) {
         /* Setup North Bridge mapping global variable */
         /* Setup Base address for PCI IO access */
 
-        switch( sys_corecard )
-        {
-          case MIPS_REVISION_CORID_QED_RM5261 :
-          case MIPS_REVISION_CORID_CORE_LV :
-          case MIPS_REVISION_CORID_CORE_FPGA :
-          case MIPS_REVISION_CORID_CORE_FPGAr2 :
-	    sys_nb_base = KSEG1(MALTA_CORECTRL_BASE);
-	    malta_pci_io_base = MALTA_PCI_IO_BASE;
+        switch (sys_sysconid) {
+	case MIPS_REVISION_SCON_GT64120:
+	    sys_nb_base = KSEG1(MALTA_GT64120_BASE);
+	    malta_pci_io_base = GT64120_PCIIO_BASE;
 	    break;
 
-          case MIPS_REVISION_CORID_BONITO64 :
-	  case MIPS_REVISION_CORID_CORE_20K :
-	  case MIPS_REVISION_CORID_CORE_EMUL_20K :
+	case MIPS_REVISION_SCON_BONITO:
 	    sys_nb_base = BONITO_REG_BASE;
 	    malta_pci_io_base = BONITO_PCIIO_BASE;
 	    break;
 
-	  case MIPS_REVISION_CORID_CORE_SYS :
-	  case MIPS_REVISION_CORID_CORE_FPGA2 :
-	  case MIPS_REVISION_CORID_CORE_EMUL_SYS :
-	  case MIPS_REVISION_CORID_CORE_FPGA3 :
-	  case MIPS_REVISION_CORID_CORE_24K :
-	    /* Setup North Bridge mapping global variable */
+	case MIPS_REVISION_SCON_ROCIT2:
+	    /*
+	     * MIPSCMP
+	     * Check for CMP
+	     */
+	    gcmp_present = (GCMPGCB(GCMPBASE,GCMPB) & GCMP_GCB_GCMPB_GCMPBASE_MSK) == GCMPBASE;
+	    /* check for IOCU */
+	    iocu_present = gcmp_present && (GCMPGCB(GCMPBASE,GC) & GCMP_GCB_GC_NUMIOCU_MSK);
+	    io_coherent = iocu_present;
+	    if (io_coherent) {
+	      /* debug switch allows the IOCU to be effectively disabled */
+	      if ((*(unsigned int *)0xbf403000 & 0x80) == 0)
+		io_coherent = 0;
+	    }
+
+	case MIPS_REVISION_SCON_SOCIT:
+	case MIPS_REVISION_SCON_ROCIT:
 	    sys_nb_base = MSC01_REGADDR_BASE;
-	    malta_pci_io_base = CORE_SYS_PCIIO_BASE;
+	    malta_pci_io_base = MSC01_PCIIO_BASE;
+	    gic_present = gic_probe();
+	    
 	    break;
 
-	  /* Add new core cards here */
+	case MIPS_REVISION_SCON_SOCITSC:
+	    sys_nb_base = SOCITSC_SMX_REG_BASE;
+	    malta_pci_io_base = SOCITSC_PCIIO_BASE;
+	    break;
+
+	  /* Add controller types here */
 
           default : /* Should never happen */
 	    break;
         }
     }
-    else
-    {
+    else {
 	/* Store cpu parameter */
 	cpu_isr_parm = cpu_isr;
 
-        switch( sys_corecard )
-        {
-          case MIPS_REVISION_CORID_QED_RM5261 :
-          case MIPS_REVISION_CORID_CORE_LV :
-          case MIPS_REVISION_CORID_CORE_FPGA :
-          case MIPS_REVISION_CORID_CORE_FPGAr2 :
-
+        switch (sys_sysconid) {
+	case MIPS_REVISION_SCON_GT64120:
             /* Register ISR */
-	    if( cpu_isr_parm )
-	    {
+	    if( cpu_isr_parm ) {
 	        EXCEP_register_cpu_isr( 
 	            intline,
 		    gt64120_isr,
 		    NULL,
-		    &isr_ref );
+		    &isr_ref);
             }
-	    else
-	    {
+	    else {
 	        EXCEP_register_ic_isr(
 		    intline,
 		    gt64120_isr,
@@ -230,9 +242,7 @@ arch_core_init(
 
 	    break;
 
-          case MIPS_REVISION_CORID_BONITO64 :
-	  case MIPS_REVISION_CORID_CORE_20K :
-	  case MIPS_REVISION_CORID_CORE_EMUL_20K :
+	case MIPS_REVISION_SCON_BONITO:
 
 	    /*  Inform Bonito64 on the CPU clock period (used for example 
 	     *  for SDRAM refresh).
@@ -241,19 +251,19 @@ arch_core_init(
 	     *  up (i.e. frequency rounded down) in order to avoid 
 	     *  too long a refresh interval.
 	     */
-	     clock_period_ns = ((UINT32)1e9 + sys_busfreq_hz - 1) / sys_busfreq_hz;
+	    clock_period_ns = ((UINT32)1e9 + sys_busfreq_hz - 1) / sys_busfreq_hz;
 
-	     /* Bonito64 has a limited number of bits for the clock period */
-	     clock_period_ns = 
-	         MIN( BONITO_IODEVCFG_CPUCLOCKPERIOD >> 
-		          BONITO_IODEVCFG_CPUCLOCKPERIOD_SHIFT, 
-		      clock_period_ns);
+	    /* Bonito64 has a limited number of bits for the clock period */
+	    clock_period_ns = 
+		MIN( BONITO_IODEVCFG_CPUCLOCKPERIOD >> 
+		     BONITO_IODEVCFG_CPUCLOCKPERIOD_SHIFT, 
+		     clock_period_ns);
 
-	     sys_func_noram(
-		 (t_sys_func_noram)bonito64_write_iodevcfg,
-		   (BONITO_IODEVCFG & ~BONITO_IODEVCFG_CPUCLOCKPERIOD) |
-		   (clock_period_ns << BONITO_IODEVCFG_CPUCLOCKPERIOD_SHIFT),
-		 0, 0 );
+	    sys_func_noram(
+		(t_sys_func_noram)bonito64_write_iodevcfg,
+		(BONITO_IODEVCFG & ~BONITO_IODEVCFG_CPUCLOCKPERIOD) |
+		(clock_period_ns << BONITO_IODEVCFG_CPUCLOCKPERIOD_SHIFT),
+		0, 0 );
 
 	    /* Register ISR */
 	    if( cpu_isr_parm )
@@ -291,18 +301,26 @@ arch_core_init(
 
 	    break;
 
-	  case MIPS_REVISION_CORID_CORE_SYS :
-	  case MIPS_REVISION_CORID_CORE_FPGA2 :
-	  case MIPS_REVISION_CORID_CORE_EMUL_SYS :
-	  case MIPS_REVISION_CORID_CORE_FPGA3 :
-	  case MIPS_REVISION_CORID_CORE_24K :
+	case MIPS_REVISION_SCON_SOCIT:
+	case MIPS_REVISION_SCON_ROCIT:
+	case MIPS_REVISION_SCON_ROCIT2:	/* GICFIXME: need GIC handler */
+	    isrfunc = msc01_isr;
+	    pci_regbase = (void *)MSC01_PCI_REG_BASE;
+	    icu_regbase = (void *)MSC01_IC_REG_BASE;
+	    goto socit_setup;
+		
+	case MIPS_REVISION_SCON_SOCITSC:
+	    isrfunc = socitsc_isr;
+	    pci_regbase = (void *)KSEG1(SOCITSC_MIPS_PCI_REG_BASE);
+	    icu_regbase = (void *)KSEG1(SOCITSC_MIPS_ICU_REG_BASE);
 
+	socit_setup:
 	    /* Register ISR */
 	    if( cpu_isr_parm )
 	    {
 	        EXCEP_register_cpu_isr( 
 	            intline,
-	            msc01_isr,
+	            isrfunc,
 		    NULL,
 		    &isr_ref );
             }
@@ -310,7 +328,7 @@ arch_core_init(
 	    {
 	        EXCEP_register_ic_isr( 
 	            intline,
-	            msc01_isr,
+	            isrfunc,
 		    NULL,
 		    &isr_ref );
 	    }
@@ -319,30 +337,28 @@ arch_core_init(
 	    /* enable interrupt line 1 (pci p-err and pci s-err) */
 	    {
 		if (!sys_eicmode) {
+	   		/* Only do this if we are Standard ROCIT2 ( and not ROCIT2 + GIC ) */
+			if (!gic_present) {
 #define MSC01_IC_PCIINTNO 1
 #define IC_REG(ofs) (*(volatile UINT32*)&msc01_ic_regbase[ofs])
-		    UINT8 *msc01_ic_regbase = (UINT8 *)MSC01_IC_REG_BASE;
-
-		    IC_REG(MSC01_IC_SUP_OFS + (MSC01_IC_PCIINTNO*MSC01_IC_SUP_STEP)) =
-			(0<<MSC01_IC_SUP_EDGE_SHF) | (0<<MSC01_IC_SUP_PRI_SHF);
-
-		    IC_REG(MSC01_IC_DISL_OFS) = 0xffffffff;
-		    IC_REG(MSC01_IC_DISH_OFS) = 0xffffffff;
-		    IC_REG(MSC01_IC_ENAL_OFS) = 1 << MSC01_IC_PCIINTNO;
-
-		    IC_REG(MSC01_IC_GENA_OFS) = MSC01_IC_GENA_GENA_BIT;
-#undef IC_REG
+				REGP(icu_regbase, MSC01_IC_SUP_OFS + (MSC01_IC_PCIINTNO*MSC01_IC_SUP_STEP)) =
+					(0<<MSC01_IC_SUP_EDGE_SHF) | (0<<MSC01_IC_SUP_PRI_SHF);
+		    		REG(icu_regbase,MSC01_IC_DISL) = 0xffffffff;
+		    		REG(icu_regbase,MSC01_IC_DISH) = 0xffffffff;
+		    		REG(icu_regbase,MSC01_IC_ENAL) = 1 << MSC01_IC_PCIINTNO;
+		    		REG(icu_regbase,MSC01_IC_GENA) = MSC01_IC_GENA_GENA_BIT;
+			}
+			else gic_init();
 		}
 
 		/* Enable interrupt source */
-		REG(MSC01_PCI_REG_BASE, MSC01_PCI_INTCFG) =
+		REG(pci_regbase, MSC01_PCI_INTCFG) =
 		    MSC01_PCI_INTCFG_MWP_BIT |
 		    MSC01_PCI_INTCFG_MRP_BIT |
 		    MSC01_PCI_INTCFG_SWP_BIT |
 		    MSC01_PCI_INTCFG_SRP_BIT |
 		    MSC01_PCI_INTCFG_SE_BIT ;
 	    }
-
 	    break;
 
 	  /* Add new core cards here */
@@ -437,5 +453,20 @@ msc01_isr(
     EXCEP_run_default_esr_handler();
 }
 
+static void
+socitsc_isr( 
+    void *data )
+{
+    UINT32 cause, pcistat;
+
+    cause =  REG(KSEG1(SOCITSC_MIPS_ICU_REG_BASE), MSC01_IC_ISAL);
+    pcistat  =  REG(KSEG1(SOCITSC_MIPS_PCI_REG_BASE), MSC01_PCI_INTSTAT);
+
+    /* clear interrupt */
+    REG(KSEG1(SOCITSC_MIPS_PCI_REG_BASE), MSC01_PCI_INTSTAT) = pcistat;
+
+    printf( "\nSOCitSC Interrupt. Cause = 0x%02x, PCI status = 0x%02x\n", cause, pcistat );
+    EXCEP_run_default_esr_handler();
+}
 
 

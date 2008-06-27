@@ -9,7 +9,7 @@
  *
  * mips_start_of_legal_notice
  * 
- * Copyright (c) 2006 MIPS Technologies, Inc. All rights reserved.
+ * Copyright (c) 2008 MIPS Technologies, Inc. All rights reserved.
  *
  *
  * Unpublished rights (if any) reserved under the copyright laws of the
@@ -33,12 +33,9 @@
  * this code does not give recipient any license to any intellectual
  * property rights, including any patent rights, that cover this code.
  *
- * This code shall not be exported, reexported, transferred, or released,
- * directly or indirectly, in violation of the law of any country or
- * international law, regulation, treaty, Executive Order, statute,
- * amendments or supplements thereto. Should a conflict arise regarding the
- * export, reexport, transfer, or release of this code, the laws of the
- * United States of America shall be the governing law.
+ * This code shall not be exported or transferred for the purpose of
+ * reexporting in violation of any U.S. or non-U.S. regulation, treaty,
+ * Executive Order, law, statute, amendment or supplement thereto.
  *
  * This code constitutes one or more of the following: commercial computer
  * software, commercial computer software documentation or other commercial
@@ -54,8 +51,6 @@
  * the terms of the license agreement(s) and/or applicable contract terms
  * and conditions covering this code from MIPS Technologies or an authorized
  * third party.
- *
- *
  *
  * 
  * mips_end_of_legal_notice
@@ -142,6 +137,8 @@ static t_cp0_reg regs[] =
     { "Config6",       32, SYSCON_CPU_CP0_CONFIG6_ID,	       -1		   ,0,0},
     { "Config7",       32, SYSCON_CPU_CP0_CONFIG7_ID,	       -1		   ,0,0},
 
+    { "UserLocal",     32, SYSCON_CPU_CP0_USERLOCAL_ID,	       -1		   ,0,0},
+
     { "LLAddr",	       64, SYSCON_CPU_CP0_LLADDR_ID,	       -1		   ,0,0},
     { "WatchLo",       64, SYSCON_CPU_CP0_WATCHLO_ID,	       GDB_FR_CP0_WATCHLO  ,0,0},
     { "WatchHi",       64, SYSCON_CPU_CP0_WATCHHI_ID,	       GDB_FR_CP0_WATCHHI  ,0,0},
@@ -151,13 +148,15 @@ static t_cp0_reg regs[] =
     { "TraceControl2", 32, SYSCON_CPU_CP0_TRACECONTROL2_ID,    -1		   ,0,0},
     { "UserTraceData", 32, SYSCON_CPU_CP0_USERTRACEDATA_ID,    -1		   ,0,0},
     { "TraceBPC",      32, SYSCON_CPU_CP0_TRACEBPC_ID,	       -1		   ,0,0},
+    { "TraceIBPC",     32, SYSCON_CPU_CP0_TRACEIBPC_ID,	       -1		   ,0,0},
+    { "TraceDBPC",     32, SYSCON_CPU_CP0_TRACEDBPC_ID,	       -1		   ,0,0},
     { "DEPC",	       64, SYSCON_CPU_CP0_DEPC_ID,	       GDB_FR_CP0_DEPC	   ,0,0},
-    { "PerfCntCtrl0",  32, SYSCON_CPU_CP0_PERFCOUNT_ID,	       -1		   ,0,0},
-    { "PerfCntCount0", 32, SYSCON_CPU_CP0_PERFCOUNT_COUNT0_ID, -1		   ,0,0},
-    { "PerfCntCtrl1",  32, SYSCON_CPU_CP0_PERFCOUNT_CTRL1_ID,  -1		   ,0,0},
-    { "PerfCntCount1", 32, SYSCON_CPU_CP0_PERFCOUNT_COUNT1_ID, -1		   ,0,0},
-    { "PerfCntCtrl2",  32, SYSCON_CPU_CP0_PERFCOUNT_CTRL2_ID,  -1		   ,0,0},
-    { "PerfCntCount2", 32, SYSCON_CPU_CP0_PERFCOUNT_COUNT2_ID, -1		   ,0,0},
+    { "PerfCtl0",      32, SYSCON_CPU_CP0_PERFCOUNT_ID,	       -1		   ,0,0},
+    { "PerfCnt0",      32, SYSCON_CPU_CP0_PERFCOUNT_COUNT0_ID, -1		   ,0,0},
+    { "PerfCtl1",      32, SYSCON_CPU_CP0_PERFCOUNT_CTRL1_ID,  -1		   ,0,0},
+    { "PerfCnt1",      32, SYSCON_CPU_CP0_PERFCOUNT_COUNT1_ID, -1		   ,0,0},
+    { "PerfCtl2",      32, SYSCON_CPU_CP0_PERFCOUNT_CTRL2_ID,  -1		   ,0,0},
+    { "PerfCnt2",      32, SYSCON_CPU_CP0_PERFCOUNT_COUNT2_ID, -1		   ,0,0},
     { "ErrCtl",	       32, SYSCON_CPU_CP0_ERRCTL_ID,	       -1		   ,0,0},
     { "DErrCtl",       32, SYSCON_CPU_CP0_DERRCTL_ID,	       -1		   ,0,0},
     { "IErrCtl",       32, SYSCON_CPU_CP0_IERRCTL_ID,	       -1		   ,0,0},
@@ -186,21 +185,23 @@ static t_cp0_reg regs[] =
     { "ErrorEPC",      64, SYSCON_CPU_CP0_ERROREPC_ID,	       GDB_FR_CP0_ERROREPC ,0,0},
     { "DESAVE",	       64, SYSCON_CPU_CP0_DESAVE_ID,	       -1		   ,0,0},
 
-    { "IWatchLo0",     64, SYSCON_CPU_CP0_IWATCHLO0_ID,        -1                  ,0,0},
-    { "IWatchHi0",     64, SYSCON_CPU_CP0_IWATCHHI0_ID,        -1                  ,0,0},
-    { "IWatchLo1",     64, SYSCON_CPU_CP0_IWATCHLO1_ID,        -1                  ,0,0},
-    { "IWatchHi1",     64, SYSCON_CPU_CP0_IWATCHHI1_ID,        -1                  ,0,0},
-    { "DWatchLo0",     64, SYSCON_CPU_CP0_DWATCHLO0_ID,        -1                  ,0,0},
-    { "DWatchHi0",     64, SYSCON_CPU_CP0_DWATCHHI0_ID,        -1                  ,0,0},
-    { "DWatchLo1",     64, SYSCON_CPU_CP0_DWATCHLO1_ID,        -1                  ,0,0},
-    { "DWatchHi1",     64, SYSCON_CPU_CP0_DWATCHHI1_ID,        -1                  ,0,0},
+    { "WatchLo0",      64, SYSCON_CPU_CP0_WATCHLO0_ID,         -1                  ,0,0},
+    { "WatchHi0",      64, SYSCON_CPU_CP0_WATCHHI0_ID,         -1                  ,0,0},
+    { "WatchLo1",      64, SYSCON_CPU_CP0_WATCHLO1_ID,         -1                  ,0,0},
+    { "WatchHi1",      64, SYSCON_CPU_CP0_WATCHHI1_ID,         -1                  ,0,0},
+    { "WatchLo2",      64, SYSCON_CPU_CP0_WATCHLO2_ID,         -1                  ,0,0},
+    { "WatchHi2",      64, SYSCON_CPU_CP0_WATCHHI2_ID,         -1                  ,0,0},
+    { "WatchLo3",      64, SYSCON_CPU_CP0_WATCHLO3_ID,         -1                  ,0,0},
+    { "WatchHi3",      64, SYSCON_CPU_CP0_WATCHHI3_ID,         -1                  ,0,0},
 
     { "MVPControl",    32, SYSCON_CPU_CP0_MVPCONTROL_ID,       -1		   ,0,0},
     { "MVPConf0",      32, SYSCON_CPU_CP0_MVPCONF0_ID,         -1		   ,0,0},
     { "MVPConf1",      32, SYSCON_CPU_CP0_MVPCONF1_ID,         -1		   ,0,0},
+
     { "VPEControl",    32, SYSCON_CPU_CP0_VPECONTROL_ID,       -1		   ,0,0},
     { "VPEConf0",      32, SYSCON_CPU_CP0_VPECONF0_ID,         -1		   ,0,0},
     { "VPEConf1",      32, SYSCON_CPU_CP0_VPECONF1_ID,         -1		   ,0,0},
+    { "VPEOpt",        32, SYSCON_CPU_CP0_VPEOPT_ID,           -1		   ,0,0},
     { "YQMask",        32, SYSCON_CPU_CP0_YQMASK_ID,           -1		   ,0,0},
     { "VPESchedule",   32, SYSCON_CPU_CP0_VPESCHEDULE_ID,      -1		   ,0,0},
     { "VPEScheFBack",  32, SYSCON_CPU_CP0_VPESCHEFBACK_ID,     -1		   ,0,0},
@@ -290,6 +291,11 @@ sys_dcache_flush_all( void )
     if( sys_uncached() )
         return;
 
+    if (sys_l2cache_enabled && sys_l2cache_exclusive) {
+	/* L2 is exclusive so extra care when flushing */
+	sys_dcache_exclusivel2_flush_all();
+    }
+
     /* Flush DCACHE */
     for( line = 0, addr = KSEG0(0);
          line < sys_dcache_lines; 
@@ -299,7 +305,7 @@ sys_dcache_flush_all( void )
     }
 
     /* Flush L2 */
-    if( sys_l2cache_enabled )
+    if (sys_l2cache_enabled)
 	sys_l2_flush_all();
 }  
 
@@ -413,7 +419,7 @@ compare(
    if( !y->name )
        return -1;
 
-   return strcmp( x->name, y->name );
+   return strcasecmp( x->name, y->name );
 }
 
 
@@ -810,11 +816,24 @@ sys_cp0_writereg(
 
     width = sys_64bit ? regs[i].width : 32;
 
-    rc = 
-        (width == 64) ?
+    if (sys_mt && tc != 0) {
+	t_syscon_reginfo_def reginfo;
+	reginfo.id = regs[i].syscon_id;
+	rc = SYSCON_read (SYSCON_CPU_REGINFO_ID, &reginfo, sizeof(reginfo));
+		
+	if (rc == OK) {
+	    if (width == 32)
+		sys_cp0_mtwrite32(reginfo.reg, reginfo.sel, value32, tc);
+	    else
+		rc = SHELL_ERROR_DATA_WIDTH;
+	}
+    }
+    else {
+	rc = (width == 64) ?
             SYSCON_write( regs[i].syscon_id, &value,   sizeof(UINT64) ) :
             SYSCON_write( regs[i].syscon_id, &value32, sizeof(UINT32) );
- 
+    }
+
     if( rc != OK )
         return SHELL_ERROR_RO_CP0_REG;
     else

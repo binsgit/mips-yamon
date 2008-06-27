@@ -9,7 +9,7 @@
  *
  * mips_start_of_legal_notice
  * 
- * Copyright (c) 2006 MIPS Technologies, Inc. All rights reserved.
+ * Copyright (c) 2008 MIPS Technologies, Inc. All rights reserved.
  *
  *
  * Unpublished rights (if any) reserved under the copyright laws of the
@@ -33,12 +33,9 @@
  * this code does not give recipient any license to any intellectual
  * property rights, including any patent rights, that cover this code.
  *
- * This code shall not be exported, reexported, transferred, or released,
- * directly or indirectly, in violation of the law of any country or
- * international law, regulation, treaty, Executive Order, statute,
- * amendments or supplements thereto. Should a conflict arise regarding the
- * export, reexport, transfer, or release of this code, the laws of the
- * United States of America shall be the governing law.
+ * This code shall not be exported or transferred for the purpose of
+ * reexporting in violation of any U.S. or non-U.S. regulation, treaty,
+ * Executive Order, law, statute, amendment or supplement thereto.
  *
  * This code constitutes one or more of the following: commercial computer
  * software, commercial computer software documentation or other commercial
@@ -54,8 +51,6 @@
  * the terms of the license agreement(s) and/or applicable contract terms
  * and conditions covering this code from MIPS Technologies or an authorized
  * third party.
- *
- *
  *
  * 
  * mips_end_of_legal_notice
@@ -166,18 +161,80 @@ arch_platform_init(
 	if( (sys_platform == PRODUCT_MALTA_ID) || (sys_platform == PRODUCT_ATLASA_ID) )
 	{
             sys_corecard = REGFIELD(REG32(KSEG1(MIPS_REVISION)), MIPS_REVISION_CORID);
+	    sys_sysconid = REGFIELD(REG32(KSEG1(MIPS_REVISION)), MIPS_REVISION_SCON);
 
-	    if (sys_corecard == MIPS_REVISION_CORID_CORE_EMUL)
-	    {
-	        if (REG(MSC01_BIU_REG_BASE, MSC01_BIU_RBBASL) == CORE_SYS_REG_BASE)
+	    switch (sys_corecard) {
+	    case MIPS_REVISION_CORID_CORE_EMUL:
+		/*
+		 * FIXME: The corecard emul type could simplified now
+		 * that we determine the syscon separately
+		 */
+		if (sys_sysconid == MIPS_REVISION_SCON_OTHER) {
+		    /* relies on Bonito not barfing over this access */
+		    if (REG(MSC01_BIU_REG_BASE, MSC01_BIU_RBBASL) == CORE_SYS_REG_BASE) {
+			sys_corecard = MIPS_REVISION_CORID_CORE_EMUL_SYS;
+			if (REGFIELD(REG32(MSC01_SC_ID), MSC01_SC_ID_ID) == MSC01_ID_SC_ROCIT)
+			    sys_sysconid = MIPS_REVISION_SCON_ROCIT;
+			else if (REGFIELD(REG32(MSC01_SC_ID), MSC01_SC_ID_ID) == MSC01_ID_SC_ROCIT2)
+			    sys_sysconid = MIPS_REVISION_SCON_ROCIT2;
+			else
+			    sys_sysconid = MIPS_REVISION_SCON_SOCIT;
+		    }
+		    else {
+			sys_corecard = MIPS_REVISION_CORID_CORE_EMUL_20K;
+			sys_sysconid = MIPS_REVISION_SCON_BONITO;
+		    }
+		}
+		else {
+		    /*
+		     * This is probably wrong SocitSC on EMUL board
+		     */
 		    sys_corecard = MIPS_REVISION_CORID_CORE_EMUL_SYS;
-	        else
-		    sys_corecard = MIPS_REVISION_CORID_CORE_EMUL_20K;
+		}
+		break;
+
+	    case MIPS_REVISION_CORID_QED_RM5261:
+	    case MIPS_REVISION_CORID_CORE_LV:
+	    case MIPS_REVISION_CORID_CORE_FPGA:
+	    case MIPS_REVISION_CORID_CORE_FPGAr2:
+		sys_sysconid = MIPS_REVISION_SCON_GT64120;
+		break;
+			
+	    case MIPS_REVISION_CORID_BONITO64:
+	    case MIPS_REVISION_CORID_CORE_20K:
+		sys_sysconid = MIPS_REVISION_SCON_BONITO;
+		break;
+
+	    case MIPS_REVISION_CORID_CORE_SYS:
+	    case MIPS_REVISION_CORID_CORE_FPGA2:
+	    case MIPS_REVISION_CORID_CORE_FPGA3:
+	    case MIPS_REVISION_CORID_CORE_FPGA4:
+	    case MIPS_REVISION_CORID_CORE_FPGA5:
+	    case MIPS_REVISION_CORID_CORE_24K:
+		if (sys_sysconid == MIPS_REVISION_SCON_OTHER) {
+		    if (REGFIELD(REG32(MSC01_SC_ID), MSC01_SC_ID_ID) == MSC01_ID_SC_ROCIT)
+			sys_sysconid = MIPS_REVISION_SCON_ROCIT;
+		    else if (REGFIELD(REG32(MSC01_SC_ID), MSC01_SC_ID_ID) == MSC01_ID_SC_ROCIT2)
+			sys_sysconid = MIPS_REVISION_SCON_ROCIT2;
+		    else
+			sys_sysconid = MIPS_REVISION_SCON_SOCIT;
+		}
+		break;
 	    }
-	    sys_sysconid = REGFIELD(REG32(MSC01_SC_ID), MSC01_SC_ID_ID);
-        }
-	else
-	    sys_corecard = MIPS_REVISION_CORID_NA;
+	}
+	else {
+	    /* SEAD with SOC-it 101 shares a lot of code with coreSYS */
+	    /* That is achieved by setting up an artificial core card */
+	    /* FIXME: should now use sys_sysconid */
+	    if (REGFIELD(REG32(KSEG1(SEAD_REVISION)), SEAD_REVISION_RTLID) == SEAD_REVISION_RTLID_SOCIT101) {
+		sys_corecard = MIPS_REVISION_CORID_SEAD_MSC01;
+		sys_sysconid = MIPS_REVISION_SCON_SOCIT;
+	    }
+	    else {
+		sys_corecard = MIPS_REVISION_CORID_NA;
+		sys_sysconid = MIPS_REVISION_SCON_BRTL;
+	    }
+	}
 
 	/* Do early platform specific initialisation
 	 * (Initialisation required before YAMON modules are initialised).
@@ -244,6 +301,19 @@ arch_platform_init(
 			       PIIX4_PCI_FUNCTION_BRIDGE,
 			       PIIX4_PCI_TOM,
 			       data8 );
+
+	    pci_config_read8( PCI_BUS_LOCAL,
+			      MALTA_DEVNUM_PIIX4,
+			      PIIX4_PCI_FUNCTION_BRIDGE,
+			      PIIX4_PCI_DLC,
+			      &data8 );
+	    data8 |= PIIX4_PCI_DLC_USBPR_MSK | PIIX4_PCI_DLC_PRE_MSK | PIIX4_PCI_DLC_DTE_MSK;
+            pci_config_write8( PCI_BUS_LOCAL, 
+			       MALTA_DEVNUM_PIIX4,
+			       PIIX4_PCI_FUNCTION_BRIDGE,
+			       PIIX4_PCI_DLC,
+			       data8);
+
 
             /**** Config mode ****/
 
@@ -407,7 +477,7 @@ arch_platform_init(
           case PRODUCT_ATLASA_ID :
 
 	    /* Setup North Bridge mapping global variable */
-	    sys_nb_base = KSEG1(ATLAS_CORECTRL_BASE);
+	    sys_nb_base = KSEG1(ATLAS_GT64120_BASE);
 
             /* Perform early core specific initialisation */
             arch_core_init( TRUE, ATLAS_INTLINE_COREHI, FALSE );

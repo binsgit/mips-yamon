@@ -9,7 +9,7 @@
  *
  * mips_start_of_legal_notice
  * 
- * Copyright (c) 2006 MIPS Technologies, Inc. All rights reserved.
+ * Copyright (c) 2008 MIPS Technologies, Inc. All rights reserved.
  *
  *
  * Unpublished rights (if any) reserved under the copyright laws of the
@@ -33,12 +33,9 @@
  * this code does not give recipient any license to any intellectual
  * property rights, including any patent rights, that cover this code.
  *
- * This code shall not be exported, reexported, transferred, or released,
- * directly or indirectly, in violation of the law of any country or
- * international law, regulation, treaty, Executive Order, statute,
- * amendments or supplements thereto. Should a conflict arise regarding the
- * export, reexport, transfer, or release of this code, the laws of the
- * United States of America shall be the governing law.
+ * This code shall not be exported or transferred for the purpose of
+ * reexporting in violation of any U.S. or non-U.S. regulation, treaty,
+ * Executive Order, law, statute, amendment or supplement thereto.
  *
  * This code constitutes one or more of the following: commercial computer
  * software, commercial computer software documentation or other commercial
@@ -54,8 +51,6 @@
  * the terms of the license agreement(s) and/or applicable contract terms
  * and conditions covering this code from MIPS Technologies or an authorized
  * third party.
- *
- *
  *
  * 
  * mips_end_of_legal_notice
@@ -186,14 +181,14 @@ static t_syscon_obj       *syscon_objects;
 #define SYSCON_ERROREPC		    61
 #define SYSCON_DESAVE		    62
 
-#define SYSCON_IWATCHLO0	    63
-#define SYSCON_IWATCHHI0	    64
-#define SYSCON_IWATCHLO1	    65
-#define SYSCON_IWATCHHI1	    66
-#define SYSCON_DWATCHLO0	    67
-#define SYSCON_DWATCHHI0	    68
-#define SYSCON_DWATCHLO1	    69
-#define SYSCON_DWATCHHI1	    70
+#define SYSCON_WATCHLO0		    63
+#define SYSCON_WATCHHI0		    64
+#define SYSCON_WATCHLO1		    65
+#define SYSCON_WATCHHI1		    66
+#define SYSCON_WATCHLO2		    67
+#define SYSCON_WATCHHI2		    68
+#define SYSCON_WATCHLO3		    69
+#define SYSCON_WATCHHI3		    70
 
 #define SYSCON_MVPCONTROL	    71
 #define SYSCON_MVPCONF0		    72
@@ -222,7 +217,12 @@ static t_syscon_obj       *syscon_objects;
 #define SYSCON_CONFIG6		    94
 #define SYSCON_CONFIG7		    95
 
-#define SYSCON_CP0_REG_COUNT	    (SYSCON_CONFIG7+1)
+#define SYSCON_TRACEIBPC	    96
+#define SYSCON_TRACEDBPC	    97
+#define SYSCON_USERLOCAL	    98
+#define SYSCON_VPEOPT		    99
+
+#define SYSCON_CP0_REG_COUNT	    (SYSCON_VPEOPT+1)
 
 static t_syscon_cp0_reg cp0_reg[SYSCON_CP0_REG_COUNT] =
 {
@@ -295,14 +295,14 @@ static t_syscon_cp0_reg cp0_reg[SYSCON_CP0_REG_COUNT] =
     { SYSCON_CPU_CP0_ERROREPC_ID,         R_C0_ErrorEPC,      R_C0_SelErrorEPC,	     FALSE, 4 },
     { SYSCON_CPU_CP0_DESAVE_ID,	          R_C0_DESAVE,	      R_C0_SelDESAVE,	     FALSE, 4 },
 
-    { SYSCON_CPU_CP0_IWATCHLO0_ID,        R_C0_IWatchLo0,     R_C0_SelIWatchLo0,     FALSE, 4 },
-    { SYSCON_CPU_CP0_IWATCHHI0_ID,        R_C0_IWatchHi0,     R_C0_SelIWatchHi0,     FALSE, 4 },
-    { SYSCON_CPU_CP0_IWATCHLO1_ID,        R_C0_IWatchLo1,     R_C0_SelIWatchLo1,     FALSE, 4 },
-    { SYSCON_CPU_CP0_IWATCHHI1_ID,        R_C0_IWatchHi1,     R_C0_SelIWatchHi1,     FALSE, 4 },
-    { SYSCON_CPU_CP0_DWATCHLO0_ID,        R_C0_DWatchLo0,     R_C0_SelDWatchLo0,     FALSE, 4 },
-    { SYSCON_CPU_CP0_DWATCHHI0_ID,        R_C0_DWatchHi0,     R_C0_SelDWatchHi0,     FALSE, 4 },
-    { SYSCON_CPU_CP0_DWATCHLO1_ID,        R_C0_DWatchLo1,     R_C0_SelDWatchLo1,     FALSE, 4 },
-    { SYSCON_CPU_CP0_DWATCHHI1_ID,        R_C0_DWatchHi1,     R_C0_SelDWatchHi1,     FALSE, 4 },
+    { SYSCON_CPU_CP0_WATCHLO0_ID,         R_C0_WatchLo,       0,                     FALSE, 4 },
+    { SYSCON_CPU_CP0_WATCHHI0_ID,         R_C0_WatchHi,       0,		     FALSE, 4 },
+    { SYSCON_CPU_CP0_WATCHLO1_ID,         R_C0_WatchLo,       1,		     FALSE, 4 },
+    { SYSCON_CPU_CP0_WATCHHI1_ID,         R_C0_WatchHi,       1,		     FALSE, 4 },
+    { SYSCON_CPU_CP0_WATCHLO2_ID,         R_C0_WatchLo,       2,	             FALSE, 4 },
+    { SYSCON_CPU_CP0_WATCHHI2_ID,         R_C0_WatchHi,       2,		     FALSE, 4 },
+    { SYSCON_CPU_CP0_WATCHLO3_ID,         R_C0_WatchLo,       3,		     FALSE, 4 },
+    { SYSCON_CPU_CP0_WATCHHI3_ID,         R_C0_WatchHi,       3,		     FALSE, 4 },
 
     { SYSCON_CPU_CP0_MVPCONTROL_ID,	  R_C0_MVPCtl,        R_C0_SelMVPCtl,        FALSE, 4 },
     { SYSCON_CPU_CP0_MVPCONF0_ID,	  R_C0_MVPConf0,      R_C0_SelMVPConf0,	     FALSE, 4 },
@@ -330,6 +330,11 @@ static t_syscon_cp0_reg cp0_reg[SYSCON_CP0_REG_COUNT] =
     { SYSCON_CPU_CP0_CONFIG5_ID,	  R_C0_Config5,	      R_C0_SelConfig5,	     FALSE, 4 },
     { SYSCON_CPU_CP0_CONFIG6_ID,	  R_C0_Config6,	      R_C0_SelConfig6,	     FALSE, 4 },
     { SYSCON_CPU_CP0_CONFIG7_ID,	  R_C0_Config7,	      R_C0_SelConfig7,	     FALSE, 4 },
+
+    { SYSCON_CPU_CP0_TRACEIBPC_ID,	  R_C0_TraceIBPC,     R_C0_SelTraceIBPC,     FALSE, 4 },
+    { SYSCON_CPU_CP0_TRACEDBPC_ID,	  R_C0_TraceDBPC,     R_C0_SelTraceDBPC,     FALSE, 4 },
+    { SYSCON_CPU_CP0_USERLOCAL_ID,	  R_C0_UserLocal,     R_C0_SelUserLocal,     FALSE, 4 },
+    { SYSCON_CPU_CP0_VPEOPT_ID,		  R_C0_VPEOpt,        R_C0_SelVPEOpt,        FALSE, 4 },
 };
 
 /************************************************************************
@@ -526,7 +531,7 @@ syscon_arch_cpu_init(
     UINT32 mask;
     UINT32 config, config1, config2, config3, ctrl;
     UINT32 srsconf;
-    bool   taghilo, datahilo, lladdr, watch, trace, cacheerr, errctl;
+    bool   taghilo, datahilo, lladdr, watch, trace, userlocal, cacheerr, errctl;
     UINT32 i;
     
     syscon_objects = objects;
@@ -579,6 +584,7 @@ syscon_arch_cpu_init(
 	/* Fallthrough !! */
 
       case MIPS_34K:
+      case MIPS_1004K:
         /* Fallthrough !! */
 
       case MIPS_24K :
@@ -587,9 +593,15 @@ syscon_arch_cpu_init(
 
 	cp0_reg[SYSCON_ITAGLO].valid   = TRUE;
 	cp0_reg[SYSCON_DTAGLO].valid   = TRUE;
+	cp0_reg[SYSCON_IDATALO].valid  = TRUE;
+	cp0_reg[SYSCON_DDATALO].valid  = TRUE;
+	cp0_reg[SYSCON_IDATAHI].valid  = TRUE;
 	cp0_reg[SYSCON_L23TAGLO].valid = TRUE;
-	taghilo = FALSE;
+	cp0_reg[SYSCON_L23DATALO].valid = TRUE;
+	cp0_reg[SYSCON_L23DATAHI].valid = TRUE;
 
+	taghilo = FALSE;
+	datahilo = FALSE;
         goto common;
 
 common:
@@ -606,9 +618,41 @@ common:
       case MIPS_5K       :
       case MIPS_5KE      :
 
-        /* Store initial setting of CP0 CONFIG1 register */
-	config1      = sys_cp0_read32( R_C0_Config, R_C0_SelConfig1 );
-	config1_init = config1;
+	/* Config registers */
+	config = sys_cp0_read32( R_C0_Config, R_C0_SelConfig );
+
+        /* Config1 */
+	cp0_reg[SYSCON_CONFIG1  ].valid = TRUE;
+	config1      = sys_cp0_read32( R_C0_Config1, R_C0_SelConfig1 );
+	config1_init = config1;        /* Store initial setting of CP0 CONFIG1 register */
+
+	cp0_reg[SYSCON_CONFIG2  ].valid = (config1 & M_Config1M) ? TRUE : FALSE;
+	if( cp0_reg[SYSCON_CONFIG2].valid )
+	{
+	    config2 = sys_cp0_read32( R_C0_Config2, R_C0_SelConfig2 );
+	    cp0_reg[SYSCON_CONFIG3].valid = (config2 & M_Config2M) ? TRUE : FALSE;
+        }
+
+	/* Trace */
+	if( cp0_reg[SYSCON_CONFIG3].valid )
+	{
+	    config3 = sys_cp0_read32( R_C0_Config, R_C0_SelConfig3 );
+
+	    trace =
+	        (config3 & M_Config3TL) ?
+	            TRUE : FALSE;
+
+	    cp0_reg[SYSCON_TRACECONTROL ].valid = trace;
+	    cp0_reg[SYSCON_TRACECONTROL2].valid = trace;
+	    cp0_reg[SYSCON_USERTRACEDATA].valid = trace;
+	    cp0_reg[SYSCON_TRACEIBPC    ].valid	= trace;
+	    cp0_reg[SYSCON_TRACEDBPC    ].valid	= trace;
+
+	    userlocal = 
+	        (config3 & M_Config3ULRI) ?
+	            TRUE : FALSE;
+	    cp0_reg[SYSCON_USERLOCAL    ].valid	= userlocal;
+        }
 
         /* Detect whether cache/TLB is configurable */
 
@@ -629,8 +673,6 @@ common:
         mmu_configurable = 
             (mask & SYS_CPU_CONFIGURABILITY_MMU) ? 
 	        TRUE : FALSE;
-
-	config = sys_cp0_read32( R_C0_Config, R_C0_SelConfig );
 
 	/* TLB availability */
 	tlb = 
@@ -655,6 +697,7 @@ common:
 		 ( sys_processor != MIPS_24K ) &&
 		 ( sys_processor != MIPS_24KE) &&
 		 ( sys_processor != MIPS_34K ) &&
+		 ( sys_processor != MIPS_1004K) &&
 		 ( sys_processor != MIPS_74K ));
 
 	/* CacheErr */
@@ -681,44 +724,22 @@ common:
             cp0_reg[SYSCON_PAGEGRAIN].valid = ( sys_processor != MIPS_24K &&
 						sys_processor != MIPS_24KE &&
 						sys_processor != MIPS_34K &&
+						sys_processor != MIPS_1004K &&
 						sys_processor != MIPS_74K) ?
 		TRUE : FALSE;
             cp0_reg[SYSCON_HWRENA   ].valid = TRUE;
             cp0_reg[SYSCON_EBASE    ].valid = TRUE;
             cp0_reg[SYSCON_INTCTL   ].valid = TRUE;
             cp0_reg[SYSCON_SRSCTL   ].valid = TRUE;
-            cp0_reg[SYSCON_SRSMAP   ].valid = TRUE;
+	    /* Is this also dependent on config3.vint? */
+	    if (sys_cp0_read32(R_C0_SRSCtl, R_C0_SelSRSCtl) & M_SRSCtlHSS)
+		cp0_reg[SYSCON_SRSMAP   ].valid = TRUE;
         }
 
 	/* EJTAG */
 	cp0_reg[SYSCON_DEBUG    ].valid = sys_ejtag;
 	cp0_reg[SYSCON_DEPC     ].valid = sys_ejtag;
 	cp0_reg[SYSCON_DESAVE   ].valid = sys_ejtag;
-
-        /* Config1/2/3 */
-	cp0_reg[SYSCON_CONFIG1  ].valid = TRUE;
-	cp0_reg[SYSCON_CONFIG2  ].valid = (config1 & M_Config1M) ? TRUE : FALSE;
-	
-	if( cp0_reg[SYSCON_CONFIG2].valid )
-	{
-	    config2 = sys_cp0_read32( R_C0_Config, R_C0_SelConfig2 );
-	    cp0_reg[SYSCON_CONFIG3].valid = (config2 & M_Config2M) ? TRUE : FALSE;
-        }
-
-	/* Trace */
-	if( cp0_reg[SYSCON_CONFIG3].valid )
-	{
-	    config3 = sys_cp0_read32( R_C0_Config, R_C0_SelConfig3 );
-
-	    trace =
-	        (config3 & M_Config3TL) ?
-	            TRUE : FALSE;
-
-	    cp0_reg[SYSCON_TRACECONTROL ].valid = trace;
-	    cp0_reg[SYSCON_TRACECONTROL2].valid = trace;
-	    cp0_reg[SYSCON_USERTRACEDATA].valid = trace;
-	    cp0_reg[SYSCON_TRACEBPC     ].valid	= trace;
-        }
 
 	/* Performance counters */
         if( config1 & M_Config1PC )
@@ -791,16 +812,23 @@ common:
         if ( sys_processor == MIPS_24K ||
              sys_processor == MIPS_24KE||
 	     sys_processor == MIPS_34K ||
+	     sys_processor == MIPS_1004K ||
 	     sys_processor == MIPS_74K )
 	{
-            cp0_reg[SYSCON_IWATCHLO0].valid = TRUE;
-            cp0_reg[SYSCON_IWATCHHI0].valid = TRUE;
-            cp0_reg[SYSCON_IWATCHLO1].valid = TRUE;
-            cp0_reg[SYSCON_IWATCHHI1].valid = TRUE;
-            cp0_reg[SYSCON_DWATCHLO0].valid = TRUE;
-            cp0_reg[SYSCON_DWATCHHI0].valid = TRUE;
-            cp0_reg[SYSCON_DWATCHLO1].valid = TRUE;
-            cp0_reg[SYSCON_DWATCHHI1].valid = TRUE;
+	  cp0_reg[SYSCON_WATCHLO0].valid = TRUE;
+	  cp0_reg[SYSCON_WATCHHI0].valid = TRUE;
+	  if (sys_cp0_read32(R_C0_WatchHi, 0) & M_WatchHiM) {
+	    cp0_reg[SYSCON_WATCHLO1].valid = TRUE;
+            cp0_reg[SYSCON_WATCHHI1].valid = TRUE;
+	    if (sys_cp0_read32(R_C0_WatchHi, 1) & M_WatchHiM) {
+	      cp0_reg[SYSCON_WATCHLO2].valid = TRUE;
+	      cp0_reg[SYSCON_WATCHHI2].valid = TRUE;
+	      if (sys_cp0_read32(R_C0_WatchHi, 2) & M_WatchHiM) {
+		cp0_reg[SYSCON_WATCHLO3].valid = TRUE;
+		cp0_reg[SYSCON_WATCHHI3].valid = TRUE;
+	      }
+	    }
+	  }
 	}
 	else
 	{
@@ -828,6 +856,7 @@ common:
 	cp0_reg[SYSCON_YQMASK].valid = TRUE;
 	cp0_reg[SYSCON_VPESCHEDULE].valid = TRUE;	/* This is really optional... */
 	cp0_reg[SYSCON_VPESCHEFBACK].valid = TRUE;	/* This is really optional... */
+	cp0_reg[SYSCON_VPEOPT].valid = TRUE;		/* This is really optional... */
 	cp0_reg[SYSCON_TCSTATUS].valid = TRUE;
 	cp0_reg[SYSCON_TCBIND].valid = TRUE;
 	cp0_reg[SYSCON_TCRESTART].valid = TRUE;
@@ -873,14 +902,14 @@ common:
 	cp0_reg[SYSCON_L23TAGHI  ].regsize = sizeof(UINT64);
 	cp0_reg[SYSCON_L23DATALO ].regsize = sizeof(UINT64);
 	cp0_reg[SYSCON_L23DATAHI ].regsize = sizeof(UINT64);
-	cp0_reg[SYSCON_IWATCHLO0 ].regsize = sizeof(UINT64);
-	cp0_reg[SYSCON_IWATCHHI0 ].regsize = sizeof(UINT64);
-	cp0_reg[SYSCON_IWATCHLO1 ].regsize = sizeof(UINT64);
-	cp0_reg[SYSCON_IWATCHHI1 ].regsize = sizeof(UINT64);
-	cp0_reg[SYSCON_DWATCHLO0 ].regsize = sizeof(UINT64);
-	cp0_reg[SYSCON_DWATCHHI0 ].regsize = sizeof(UINT64);
-	cp0_reg[SYSCON_DWATCHLO1 ].regsize = sizeof(UINT64);
-	cp0_reg[SYSCON_DWATCHHI1 ].regsize = sizeof(UINT64);
+	cp0_reg[SYSCON_WATCHLO0 ].regsize = sizeof(UINT64);
+	cp0_reg[SYSCON_WATCHHI0 ].regsize = sizeof(UINT64);
+	cp0_reg[SYSCON_WATCHLO1 ].regsize = sizeof(UINT64);
+	cp0_reg[SYSCON_WATCHHI1 ].regsize = sizeof(UINT64);
+	cp0_reg[SYSCON_WATCHLO2 ].regsize = sizeof(UINT64);
+	cp0_reg[SYSCON_WATCHHI2 ].regsize = sizeof(UINT64);
+	cp0_reg[SYSCON_WATCHLO3 ].regsize = sizeof(UINT64);
+	cp0_reg[SYSCON_WATCHHI3 ].regsize = sizeof(UINT64);
 
 	cp0_reg[SYSCON_TCRESTART ].regsize = sizeof(UINT64);
 	cp0_reg[SYSCON_TCCONTEXT ].regsize = sizeof(UINT64);
@@ -991,6 +1020,9 @@ common:
 	break;
       case MIPS_74K   :
         cycle_per_count = MIPS74K_COUNT_CLK_PER_CYCLE;
+	break;
+      case MIPS_1004K :
+        cycle_per_count = MIPS1004K_COUNT_CLK_PER_CYCLE;
 	break;
       case MIPS_M4K :
         cycle_per_count = MIPSM4K_COUNT_CLK_PER_CYCLE;

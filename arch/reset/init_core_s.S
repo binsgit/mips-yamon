@@ -9,7 +9,7 @@
  *
  * mips_start_of_legal_notice
  * 
- * Copyright (c) 2006 MIPS Technologies, Inc. All rights reserved.
+ * Copyright (c) 2008 MIPS Technologies, Inc. All rights reserved.
  *
  *
  * Unpublished rights (if any) reserved under the copyright laws of the
@@ -33,12 +33,9 @@
  * this code does not give recipient any license to any intellectual
  * property rights, including any patent rights, that cover this code.
  *
- * This code shall not be exported, reexported, transferred, or released,
- * directly or indirectly, in violation of the law of any country or
- * international law, regulation, treaty, Executive Order, statute,
- * amendments or supplements thereto. Should a conflict arise regarding the
- * export, reexport, transfer, or release of this code, the laws of the
- * United States of America shall be the governing law.
+ * This code shall not be exported or transferred for the purpose of
+ * reexporting in violation of any U.S. or non-U.S. regulation, treaty,
+ * Executive Order, law, statute, amendment or supplement thereto.
  *
  * This code constitutes one or more of the following: commercial computer
  * software, commercial computer software documentation or other commercial
@@ -54,8 +51,6 @@
  * the terms of the license agreement(s) and/or applicable contract terms
  * and conditions covering this code from MIPS Technologies or an authorized
  * third party.
- *
- *
  *
  * 
  * mips_end_of_legal_notice
@@ -271,49 +266,64 @@ SLEAF(access_core)
 	/* Determine core board */
 	li	t7, HIKSEG1(MIPS_REVISION)
 	lw	t7, LO_OFFS(MIPS_REVISION)(t7)
-	srl	t7, MIPS_REVISION_CORID_SHF
+	
+	.set	push
+	.set	noat
+	/* Check for SocitSC */
+	srl	AT, t7, MIPS_REVISION_SCON_SHF
+	andi	AT, MALTA_REVISION_SCON_MSK >> MALTA_REVISION_SCON_SHF
+	beqz	AT, 1f
+	 srl	t7, MIPS_REVISION_CORID_SHF
+	.set	pop
+
+	j	access_socitsc
+	 nop
+	
+1:
 	and	t7, MIPS_REVISION_CORID_MSK >> MIPS_REVISION_CORID_SHF
 
-	li	t8, MIPS_REVISION_CORID_QED_RM5261
-	bne	t7, t8, 1f
-	nop
-	j	access_gt64120
-	nop
-1:
-	li	t8, MIPS_REVISION_CORID_CORE_LV
-	bne	t7, t8, 1f
-	nop
-	j	access_gt64120
-	nop
-1:
-        li      t8, MIPS_REVISION_CORID_CORE_FPGA
-	bne	t7, t8, 1f
-	nop
-	j	access_gt64120
-	nop
-1:
-	li	t8, MIPS_REVISION_CORID_BONITO64
-	bne	t7, t8, 1f
-	nop
-	j	access_bonito64
-	nop
-1:
-	li	t8, MIPS_REVISION_CORID_CORE_20K
-	bne	t7, t8, 1f
-	nop
-	j	access_core_20k
-	nop
-1:
-	li	t8, MIPS_REVISION_CORID_CORE_SYS
-	bne	t7, t8, 1f
-	nop
-	j	access_msc01
-	nop
-1:
-	li	t8, MIPS_REVISION_CORID_CORE_EMUL
-	bne	t7, t8, 1f
-	nop
+#define X(this, last, type) \
+	xori	t7, MIPS_REVISION_CORID_##last^MIPS_REVISION_CORID_##this; \
+	beqz	t7, goto_##type
+#define MIPS_REVISION_CORID_0	0
+	X(0,		QED_RM5261,	gt64120)
+	X(QED_RM5261,	CORE_LV,	gt64120)
+	X(CORE_LV,	BONITO64,	bonito64)
+	X(BONITO64,	CORE_20K,	core_20k) /* QED/20K with Bonito */
+	X(CORE_20K,	CORE_FPGA,	gt64120)
+	X(CORE_FPGA,	CORE_SYS,	msc01)
+	X(CORE_SYS,	CORE_EMUL,	coreemul)
+	X(CORE_EMUL,	CORE_FPGA2,	msc01)
+	X(CORE_FPGA2,	CORE_FPGAr2,	gt64120)
+	X(CORE_FPGAr2,	CORE_FPGA3,	msc01)
+	X(CORE_FPGA3,	CORE_24K,	msc01)
+	X(CORE_24K,	CORE_FPGA4,	msc01)
+	X(CORE_FPGA4,	CORE_FPGA5,	msc01)
+	 nop
+#undef X
+#undef MIPS_REVISION_CORID_0
 
+	/* Unknown core card */
+	jr	ra
+	li	v0, ERROR_CORE_UNKNOWN
+
+goto_gt64120:
+	j	access_gt64120
+	 nop
+	
+goto_bonito64:
+	j	access_bonito64
+	 nop
+	
+goto_core_20k:
+	j	access_core_20k
+	 nop
+	
+goto_msc01:
+	j	access_msc01
+	 nop
+
+goto_coreemul:
 	/* CoreEmul requires another check for presence of */
 	/* SOC-it 101, ROC-it or Bonito System Controller   */
 	li	t8, MSC01_REGADDR_RESET + \
@@ -322,10 +332,10 @@ SLEAF(access_core)
 	srl	t8, 16
 	xor	t8, PHYS(MSC01_REGADDR_RESET) >> 16  /* 0x1f80  reset value */
 	bnez	t8, 3f
-	nop
+	 nop
 	/* CoreEMUL with SOC-it 101 in reset state */
 	j	access_msc01
-	nop
+	 nop
 3:
 	/* CoreEMUL with Bonito System Controller will fall through !  */
 	li	t8, MSC01_REGADDR_BASE + \
@@ -334,46 +344,15 @@ SLEAF(access_core)
 	srl	t8, 16
 	xor	t8, PHYS(MSC01_REGADDR_BASE) >> 16  /* 0x1bc0  work value */
 	bnez	t8, 2f
-	nop
+	 nop
 	/* CoreEMUL with SOC-it 101 in work state, or ROC-it in either */
 	/* reset or work state.                                        */
 	j	access_msc01
-	nop
+	 nop
 2:
 	/* CoreEMUL with Bonito System Controller */
 	j	access_core_20k
-	nop
-1:
-	li	t8, MIPS_REVISION_CORID_CORE_FPGA2
-	bne	t7, t8, 1f
-	nop
-	j	access_msc01
-	nop
-1:	
-	li	t8, MIPS_REVISION_CORID_CORE_FPGA3
-	bne	t7, t8, 1f
-	nop
-	j	access_msc01
-	nop
-1:
-	li	t8, MIPS_REVISION_CORID_CORE_24K
-	bne	t7, t8, 1f
-	nop
-	j	access_msc01
-	nop
-1:
-        li      t8, MIPS_REVISION_CORID_CORE_FPGAr2
-	bne	t7, t8, 1f
-	nop
-	j	access_gt64120
-	nop
-1:	
+	 nop
 	
-	/* Add new core cards here ! */
-
-	/* Unknown core card */
-	jr	ra
-	li	v0, ERROR_CORE_UNKNOWN
-
 END(access_core)
 

@@ -9,7 +9,7 @@
  *
  * mips_start_of_legal_notice
  * 
- * Copyright (c) 2006 MIPS Technologies, Inc. All rights reserved.
+ * Copyright (c) 2008 MIPS Technologies, Inc. All rights reserved.
  *
  *
  * Unpublished rights (if any) reserved under the copyright laws of the
@@ -33,12 +33,9 @@
  * this code does not give recipient any license to any intellectual
  * property rights, including any patent rights, that cover this code.
  *
- * This code shall not be exported, reexported, transferred, or released,
- * directly or indirectly, in violation of the law of any country or
- * international law, regulation, treaty, Executive Order, statute,
- * amendments or supplements thereto. Should a conflict arise regarding the
- * export, reexport, transfer, or release of this code, the laws of the
- * United States of America shall be the governing law.
+ * This code shall not be exported or transferred for the purpose of
+ * reexporting in violation of any U.S. or non-U.S. regulation, treaty,
+ * Executive Order, law, statute, amendment or supplement thereto.
  *
  * This code constitutes one or more of the following: commercial computer
  * software, commercial computer software documentation or other commercial
@@ -54,8 +51,6 @@
  * the terms of the license agreement(s) and/or applicable contract terms
  * and conditions covering this code from MIPS Technologies or an authorized
  * third party.
- *
- *
  *
  * 
  * mips_end_of_legal_notice
@@ -81,6 +76,7 @@
 #include <bonito64.h>
 #include <core_bonito64.h>
 #include <core_sys.h>
+#include <socitsc.h>
 
 /************************************************************************
  *  Definitions
@@ -117,7 +113,7 @@ static UINT32
 config_bonito64( void );
 
 static UINT32
-config_sysctrl( void );
+config_sysctrl( UINT32 );
 
 static void
 gt_calc_range( 
@@ -160,19 +156,32 @@ arch_pci_config_controller(
 #undef     PCI_DEVID_BONITO64
     UINT16 PCI_DEVID_BONITO64;
 #endif
+    UINT32 base;
+
     controller->intline = intline;
   
-    switch( sys_corecard )
+    switch( sys_sysconid )
     {
-      case MIPS_REVISION_CORID_CORE_SYS :
-      case MIPS_REVISION_CORID_CORE_FPGA2 :
-      case MIPS_REVISION_CORID_CORE_EMUL_SYS :
-      case MIPS_REVISION_CORID_CORE_FPGA3 :
-      case MIPS_REVISION_CORID_CORE_24K :
+    case MIPS_REVISION_SCON_SOCIT:
+	base = MSC01_PCI_REG_BASE;
+	DISP_STR("SOCit101");
+	goto mipspci;
 
-	/**** MIPS system controller: SOC-it or ROCit ****/
-	DISP_STR( sys_sysconid == MSC01_ID_SC_ROCIT ? "ROCit" : "SOCit101" );
+    case MIPS_REVISION_SCON_ROCIT:
+	base = MSC01_PCI_REG_BASE;
+	DISP_STR("ROCit");
+	goto mipspci;
+    
+    case MIPS_REVISION_SCON_ROCIT2:
+	base = MSC01_PCI_REG_BASE;
+	DISP_STR("ROCit2");
+	goto mipspci;
+    
+    case MIPS_REVISION_SCON_SOCITSC:
+	base = KSEG1(SOCITSC_MIPS_PCI_REG_BASE);
+	DISP_STR("SOCitSC");
 
+    mipspci:
 	/* Setup known device data */
 	controller->vendorid = PCI_VENDID_MIPS;
 	controller->devid    = PCI_DEVID_MSC01;
@@ -181,7 +190,7 @@ arch_pci_config_controller(
 	controller->device   = name_sysctrl;
 
 	/* Configure System Controller */
-	config_sysctrl();
+	config_sysctrl(base);
 
 	if( *bar_count + 1 > max_bar_count )
 	    return ERROR_PCI_STRUCTURE;
@@ -202,9 +211,7 @@ arch_pci_config_controller(
 	return OK;
 
 	
-      case MIPS_REVISION_CORID_BONITO64 :
-      case MIPS_REVISION_CORID_CORE_20K :
-      case MIPS_REVISION_CORID_CORE_EMUL_20K :
+    case MIPS_REVISION_SCON_BONITO:
 
         /**** Bonito64 system controller ****/
 
@@ -253,10 +260,7 @@ arch_pci_config_controller(
 	return OK;
 
 
-      case MIPS_REVISION_CORID_QED_RM5261 :
-      case MIPS_REVISION_CORID_CORE_LV :
-      case MIPS_REVISION_CORID_CORE_FPGA :
-      case MIPS_REVISION_CORID_CORE_FPGAr2 :
+    case MIPS_REVISION_SCON_GT64120:
 
         /**** Galileo GT64120 system controller ****/
 
@@ -320,7 +324,7 @@ arch_pci_config_controller(
 
 	return OK;
 
-      /* Add new core cards here */
+      /* Add system controller types here */
 
       default : /* Should never happen */
 	return ERROR_PCI_STRUCTURE;
@@ -356,6 +360,7 @@ arch_pci_config_access(
     UINT32 intr;
     UINT32 data32, align, pos;
     UINT32 rc;
+    UINT32 pciregs;
 
     /* Always perform 32 bit access */
     if( size != sizeof(UINT32) )
@@ -430,11 +435,9 @@ arch_pci_config_access(
 	return rc;
     }
 
-    switch( sys_corecard )
+    switch( sys_sysconid )
     {
-      case MIPS_REVISION_CORID_BONITO64 :
-      case MIPS_REVISION_CORID_CORE_20K :
-      case MIPS_REVISION_CORID_CORE_EMUL_20K :
+    case MIPS_REVISION_SCON_BONITO:
 
         /**** Bonito64 system controller ****/
 
@@ -533,10 +536,7 @@ arch_pci_config_access(
         }
         return OK;
 
-      case MIPS_REVISION_CORID_QED_RM5261 :
-      case MIPS_REVISION_CORID_CORE_LV :
-      case MIPS_REVISION_CORID_CORE_FPGA :
-      case MIPS_REVISION_CORID_CORE_FPGAr2 :
+    case MIPS_REVISION_SCON_GT64120:
 
         /**** Galileo system controller ****/
 
@@ -579,20 +579,24 @@ arch_pci_config_access(
         }
         return OK;
 
-      case MIPS_REVISION_CORID_CORE_SYS :
-      case MIPS_REVISION_CORID_CORE_FPGA2 :
-      case MIPS_REVISION_CORID_CORE_EMUL_SYS :
-      case MIPS_REVISION_CORID_CORE_FPGA3 :
-      case MIPS_REVISION_CORID_CORE_24K :
+    case MIPS_REVISION_SCON_SOCITSC:
+	pciregs = KSEG1(SOCITSC_MIPS_PCI_REG_BASE);
+	goto domipspci;
 
+    case MIPS_REVISION_SCON_SOCIT:
+    case MIPS_REVISION_SCON_ROCIT:
+    case MIPS_REVISION_SCON_ROCIT2:
+	pciregs = MSC01_PCI_REG_BASE;
+
+    domipspci:
         /**** MIPS system controller ****/
 
         /* Clear cause register bits */
-        REG(MSC01_PCI_REG_BASE, MSC01_PCI_INTSTAT) =
+        REG(pciregs, MSC01_PCI_INTSTAT) =
 	        MSC01_PCI_INTSTAT_MA_BIT | MSC01_PCI_INTSTAT_TA_BIT;
 
         /* Setup address */
-        REG(MSC01_PCI_REG_BASE, MSC01_PCI_CFGADDR) =
+        REG(pciregs, MSC01_PCI_CFGADDR) =
 	            (busnum     << MSC01_PCI_CFGADDR_BNUM_SHF) |
 	            (devnum     << MSC01_PCI_CFGADDR_DNUM_SHF) |
 	            (func       << MSC01_PCI_CFGADDR_FNUM_SHF) |
@@ -601,21 +605,21 @@ arch_pci_config_access(
         /* Perform the access */
         if( write )
 	{
-            REG(MSC01_PCI_REG_BASE, MSC01_PCI_CFGDATA) = *(UINT32 *)data;
+            REG(pciregs, MSC01_PCI_CFGDATA) = *(UINT32 *)data;
 	    sys_sync();
 	}
         else
-            *(UINT32 *)data = REG(MSC01_PCI_REG_BASE, MSC01_PCI_CFGDATA);
+            *(UINT32 *)data = REG(pciregs, MSC01_PCI_CFGDATA);
 	
         /* Check for master or target abort */
-        intr = REG(MSC01_PCI_REG_BASE, MSC01_PCI_INTSTAT);
+        intr = REG(pciregs, MSC01_PCI_INTSTAT);
 
         if( intr & (MSC01_PCI_INTSTAT_MA_BIT | MSC01_PCI_INTSTAT_TA_BIT) )
         {
             /* Error occurred */
 
             /* Clear bits */
-            REG(MSC01_PCI_REG_BASE, MSC01_PCI_INTSTAT) =
+            REG(pciregs, MSC01_PCI_INTSTAT) =
 	            MSC01_PCI_INTSTAT_MA_BIT | MSC01_PCI_INTSTAT_TA_BIT ;
     
             return ERROR_PCI_ABORT;
@@ -858,7 +862,7 @@ gt_calc_range(
  *                          config_sysctrl
  ************************************************************************/
 static UINT32
-config_sysctrl( void )
+config_sysctrl( UINT32 base )
 {
     /*  If CPU is big endian, we need to handle endianness due to
      *  PCI being little endian.
@@ -881,7 +885,7 @@ config_sysctrl( void )
      */
 
     /* Set up changes since early setup in msc01_core.S */
-    REG(MSC01_PCI_REG_BASE, MSC01_PCI_BAR0) = -sc_calc_pwr2(sys_ramsize);
+    REG(base, MSC01_PCI_BAR0) = -sc_calc_pwr2(sys_ramsize);
 
     return OK;
 }

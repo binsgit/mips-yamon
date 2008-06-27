@@ -13,7 +13,7 @@
  *
  * mips_start_of_legal_notice
  * 
- * Copyright (c) 2006 MIPS Technologies, Inc. All rights reserved.
+ * Copyright (c) 2008 MIPS Technologies, Inc. All rights reserved.
  *
  *
  * Unpublished rights (if any) reserved under the copyright laws of the
@@ -37,12 +37,9 @@
  * this code does not give recipient any license to any intellectual
  * property rights, including any patent rights, that cover this code.
  *
- * This code shall not be exported, reexported, transferred, or released,
- * directly or indirectly, in violation of the law of any country or
- * international law, regulation, treaty, Executive Order, statute,
- * amendments or supplements thereto. Should a conflict arise regarding the
- * export, reexport, transfer, or release of this code, the laws of the
- * United States of America shall be the governing law.
+ * This code shall not be exported or transferred for the purpose of
+ * reexporting in violation of any U.S. or non-U.S. regulation, treaty,
+ * Executive Order, law, statute, amendment or supplement thereto.
  *
  * This code constitutes one or more of the following: commercial computer
  * software, commercial computer software documentation or other commercial
@@ -58,8 +55,6 @@
  * the terms of the license agreement(s) and/or applicable contract terms
  * and conditions covering this code from MIPS Technologies or an authorized
  * third party.
- *
- *
  *
  * 
  * mips_end_of_legal_notice
@@ -89,6 +84,7 @@
 /* Malta */
 #include <malta.h>
 #include <piix4.h>
+#include <socitsc.h>
 
 /* Sead-2 */
 #include <sead.h>
@@ -533,6 +529,8 @@ arch_excep_eoi(
     }
 }
 
+static volatile UINT32 *eic_reg;
+
 /************************************************************************
  *
  *                          arch_eic_init
@@ -553,21 +551,41 @@ arch_excep_eoi(
 void
 arch_eic_init(void)
 {
-    volatile UINT32 *ic_reg;
     UINT32 i;
 
-    ic_reg = (volatile UINT32 *)MSC01_IC_REG_BASE;
+    /* 
+     *  The only EIC currently supported is in SOCit and ROCit
+     */
+    switch (sys_sysconid) {
+    case MIPS_REVISION_SCON_GT64120:
+    case MIPS_REVISION_SCON_BONITO:
+	eic_reg = NULL;
+	return;
+
+    case MIPS_REVISION_SCON_SOCIT:
+    case MIPS_REVISION_SCON_ROCIT:
+	eic_reg = (volatile UINT32 *)MSC01_IC_REG_BASE;
+	break;
+
+    case MIPS_REVISION_SCON_ROCIT2:
+	eic_reg = NULL;		/* GICFIXME */
+	break;
+
+    case MIPS_REVISION_SCON_SOCITSC:
+	eic_reg = (volatile UINT32 *)KSEG1(SOCITSC_MIPS_ICU_REG_BASE);
+	break;
+    }
 
     /* Reset controller */
-    ic_reg[MSC01_IC_RST_OFS/4] = MSC01_IC_RST_RST_BIT;
+    REG(eic_reg, MSC01_IC_RST) = MSC01_IC_RST_RST_BIT;
     for (i = 0; i < 64; i++) {
 	/* Program RAM to use default register set */
-	ic_reg[MSC01_IC_RAMW_OFS/4] = (i << MSC01_IC_RAMW_ADDR_SHF)
+	REG(eic_reg, MSC01_IC_RAMW) = (i << MSC01_IC_RAMW_ADDR_SHF)
 	    | (0 << MSC01_IC_RAMW_DATA_SHF);
 	/* Set level mode */
-	ic_reg[MSC01_IC_SUP_OFS/4 + i*2] = 0;
+	eic_reg[MSC01_IC_SUP_OFS/4 + i*2] = 0;
     }
-    ic_reg[MSC01_IC_GENA_OFS/4] = MSC01_IC_GENA_GENA_BIT;
+    REG(eic_reg, MSC01_IC_GENA) = MSC01_IC_GENA_GENA_BIT;
 }
 
 /************************************************************************
@@ -588,21 +606,19 @@ arch_eic_init(void)
  *
  *  None
  *
- *  The only EIC currently supported is in SOCit and ROCit
- *
  ************************************************************************/
 void
 arch_eic_enable_int(
     UINT32 cpu_int
     )
 {
-    volatile UINT32 *ic_reg;
-    ic_reg = (volatile UINT32 *)MSC01_IC_REG_BASE;
+    if (eic_reg == NULL)
+	return;
 
     if (cpu_int < 32)
-	ic_reg[MSC01_IC_ENAL_OFS/4] = 1 << cpu_int;
+	REG(eic_reg, MSC01_IC_ENAL) = 1 << cpu_int;
     else
-	ic_reg[MSC01_IC_ENAH_OFS/4] = 1 << (cpu_int - 32);
+	REG(eic_reg, MSC01_IC_ENAH) = 1 << (cpu_int - 32);
 }
 
 
@@ -624,20 +640,19 @@ arch_eic_enable_int(
  *
  *  None
  *
- *  The only EIC currently supported is in SOCit and ROCit
- *
  ************************************************************************/
 void
 arch_eic_disable_int(
     UINT32 cpu_int
     )
 {
-    volatile UINT32 *ic_reg;
-    ic_reg = (volatile UINT32 *)MSC01_IC_REG_BASE;
+    if (eic_reg == NULL)
+	return;
+
     if (cpu_int < 32)
-	ic_reg[MSC01_IC_DISL_OFS/4] = 1 << cpu_int;
+	REG(eic_reg, MSC01_IC_DISL) = 1 << cpu_int;
     else
-	ic_reg[MSC01_IC_DISH_OFS/4] = 1 << (cpu_int - 32);
+	REG(eic_reg, MSC01_IC_DISH) = 1 << (cpu_int - 32);
 }
 
 /************************************************************************

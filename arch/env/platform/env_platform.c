@@ -9,7 +9,7 @@
  *
  * mips_start_of_legal_notice
  * 
- * Copyright (c) 2006 MIPS Technologies, Inc. All rights reserved.
+ * Copyright (c) 2008 MIPS Technologies, Inc. All rights reserved.
  *
  *
  * Unpublished rights (if any) reserved under the copyright laws of the
@@ -33,12 +33,9 @@
  * this code does not give recipient any license to any intellectual
  * property rights, including any patent rights, that cover this code.
  *
- * This code shall not be exported, reexported, transferred, or released,
- * directly or indirectly, in violation of the law of any country or
- * international law, regulation, treaty, Executive Order, statute,
- * amendments or supplements thereto. Should a conflict arise regarding the
- * export, reexport, transfer, or release of this code, the laws of the
- * United States of America shall be the governing law.
+ * This code shall not be exported or transferred for the purpose of
+ * reexporting in violation of any U.S. or non-U.S. regulation, treaty,
+ * Executive Order, law, statute, amendment or supplement thereto.
  *
  * This code constitutes one or more of the following: commercial computer
  * software, commercial computer software documentation or other commercial
@@ -54,8 +51,6 @@
  * the terms of the license agreement(s) and/or applicable contract terms
  * and conditions covering this code from MIPS Technologies or an authorized
  * third party.
- *
- *
  *
  * 
  * mips_end_of_legal_notice
@@ -102,6 +97,7 @@ static char  *default_gateway;
 static char  *default_bootserver;
 static char  *default_bootprot     = "tftp";
 static char  *default_bootfile     = "";
+static char  *default_softendian   = "Hardware";
 static char  *env_mac              = "ethaddr";
 static char  *env_sn		   = "baseboardserial";
 
@@ -220,6 +216,119 @@ subnetmask_ip_s2num(
 
 
 /************************************************************************
+ *
+ *                          validate_softendian
+ *  Description :
+ *  -------------
+ *
+ *  Ensure that only three options are valid for the user endian preference
+ *  and be intelligent about input and return values: if there's not enough
+ *  space for an ASCII string, use 0 for Little, 1 for Big endian, and 2 to
+ *  take the value of S5-2 as the desired endianess (ie: do nothing)
+ *
+ *  Return values :
+ *  ---------------
+ *
+ *  TRUE -> OK, FALSE -> Failed
+ *
+ ************************************************************************/
+
+static bool
+validate_softendian(
+    char   *raw,		/* The string				*/
+    void   *decoded,		/* Decoded data				*/
+    UINT32 size )		/* Size of decoded data			*/
+{
+    char   *ptr;
+    UINT32 se=0;
+    UINT32 endian=3;
+
+    if (!raw)
+        return FALSE; 
+
+    if ( SYSCON_read( SYSCON_BOARD_SOFTEND_VALID_ID,
+         (void *)&se, sizeof(UINT32) ) != OK )
+        return FALSE;
+
+    if (strlen(raw) == 1)
+    {
+        switch (raw[0]) {
+            case '0':
+                endian=0;
+                break;
+
+	    case '1':
+	        endian=1;
+                break;
+
+            case '2':
+                endian=2;
+                break;
+	}
+    }
+    else
+    {
+        if ((strlen(raw) != 3) && (strlen(raw) != 6) && (strlen(raw) != 8))
+            return FALSE;
+
+	ptr=&raw[1];
+        switch (raw[0]) {
+	    case 'L':
+	    case 'l':
+                if (strcmp(ptr, "ittle") == 0)
+                    endian = 0;
+	        break;
+
+	    case 'B':
+	    case 'b':
+                if (strcmp(ptr, "ig") == 0)
+                    endian = 1;
+	        break;
+
+	    case 'H':
+	    case 'h':
+                if (strcmp(ptr, "ardware") == 0)
+                    endian = 2;
+	        break;
+	}
+    }
+
+    if (endian > 2)
+        return FALSE;
+
+    if ((se == 0) && (endian != 2))
+        return FALSE;
+
+    if (decoded)
+    {
+	if (!size)
+	    return FALSE;
+
+        if (size >= 9)
+	{
+	    switch (endian) {
+	        case 0:
+	            sprintf(decoded, "Little");
+		    break;
+	        case 1:
+	            sprintf(decoded, "Big");
+		    break;
+	        case 2:
+	            sprintf(decoded, "Hardware");
+		    break;
+            }
+	}
+	else if (sizeof(UINT32) == size)
+	{
+	    *(UINT32 *)decoded = endian;
+	}
+    }
+
+    return TRUE;
+}
+
+
+/************************************************************************
  *  Implementation : Public functions
  ************************************************************************/
 
@@ -247,6 +356,7 @@ env_setup_env_board(
     t_sn_ascii sn;
     t_mac_addr mac_addr;
     UINT32     rc = TRUE;
+    UINT32     se = 0;
 
     default_subnetmask = default_ip;
     default_gateway    = default_ip;
@@ -255,6 +365,26 @@ env_setup_env_board(
     switch( sys_platform )
     {
       case PRODUCT_MALTA_ID :
+	/* Soft Endianness */
+	if( SYSCON_read( SYSCON_BOARD_SOFTEND_VALID_ID,
+			 (void *)&se,
+			 sizeof(UINT32) ) == OK )
+	{
+            if( default_switch || !env_get( "softendian", &raw, NULL, 0 ) )
+                raw = default_softendian;
+            if( env_set( "softendian", raw, ENV_ATTR_RW, 
+	        default_softendian, validate_softendian ) != OK )
+            {
+	        rc = FALSE;
+            }
+	}
+	else
+	{
+	    if( env_unset( "softendian" ) != OK )
+	        rc = FALSE;
+	}
+	/* NB: no break here - the following code is common */
+
       case PRODUCT_ATLASA_ID :
 
 	/* MAC address */

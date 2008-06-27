@@ -9,7 +9,7 @@
  *
  * mips_start_of_legal_notice
  * 
- * Copyright (c) 2006 MIPS Technologies, Inc. All rights reserved.
+ * Copyright (c) 2008 MIPS Technologies, Inc. All rights reserved.
  *
  *
  * Unpublished rights (if any) reserved under the copyright laws of the
@@ -33,12 +33,9 @@
  * this code does not give recipient any license to any intellectual
  * property rights, including any patent rights, that cover this code.
  *
- * This code shall not be exported, reexported, transferred, or released,
- * directly or indirectly, in violation of the law of any country or
- * international law, regulation, treaty, Executive Order, statute,
- * amendments or supplements thereto. Should a conflict arise regarding the
- * export, reexport, transfer, or release of this code, the laws of the
- * United States of America shall be the governing law.
+ * This code shall not be exported or transferred for the purpose of
+ * reexporting in violation of any U.S. or non-U.S. regulation, treaty,
+ * Executive Order, law, statute, amendment or supplement thereto.
  *
  * This code constitutes one or more of the following: commercial computer
  * software, commercial computer software documentation or other commercial
@@ -54,8 +51,6 @@
  * the terms of the license agreement(s) and/or applicable contract terms
  * and conditions covering this code from MIPS Technologies or an authorized
  * third party.
- *
- *
  *
  * 
  * mips_end_of_legal_notice
@@ -128,6 +123,14 @@ LEAF(sys_init_cache)
 
 	move	a0, k1
 
+	/*
+	 * MIPSCMP
+	 * if v1!=0 this is a secondary CPU,
+	 * so don't initialise secondary cache again
+	 */
+	bnez	v1, 1f
+	 nop	
+
         /* L2 cache */
 	bal     sys_determine_l2cache_avail_flash
 	nop
@@ -153,6 +156,13 @@ LEAF(sys_init_cache)
 	bal	sys_init_l2cache_flash
 	 move	a2, k1
 	
+	/*
+	 * MIPSCMP
+	 * by definition only CPU 0 initialises the L2 cache, so
+	 * reset the value of v1
+	 */
+	move	v1, zero
+
 1:
 	/* L1 cache */
 	
@@ -873,6 +883,43 @@ dcache_assoc_qed_rm7061a:
 
 END(sys_determine_dcache_assoc_flash)
 
+/************************************************************************
+ *
+ *                          sys_determine_dcache_antialias_flash
+ *  Note :
+ *  ------
+ *  This routine is called also from syscon.c
+ *  and must obey c calling conventions - and cannot use k0/k1
+ *
+ *  Description :
+ *  -------------
+ *  Determine whether CPU has hardware anitialising on Dcache
+ *
+ *  input : a0 = processor ID
+ *	
+ *  Return values :
+ *  ---------------
+ *  v0 = TRUE/FALSE
+ *
+ ************************************************************************/
+LEAF(sys_determine_dcache_antialias_flash)
+	
+	/* Only some MIPS32/64 processors support dcache HW antialiasing */
+	and     t9, a0, M_PRIdCoID
+	beq	t9, (C0_PRID_COMP_NOT_MIPS32_64<<S_PRIdCoID), dcache_antialias_found
+	 move	v0, zero
+
+	/* Read CONFIG7 register, which holds implementation data */
+	MFC0_SEL_OPCODE( R_t9, R_C0_Config7, R_C0_SelConfig7 )
+	and	v0, t9, M_Config7AR
+	srl	v0, S_Config7AR
+
+dcache_antialias_found:
+	jr	ra
+	 nop
+
+END(sys_determine_dcache_antialias_flash)
+
 /*
  * Tag register usage for MIPS32/64 processors
  *
@@ -885,6 +932,7 @@ END(sys_determine_dcache_assoc_flash)
  * 25K		dtaglo/hi(28/2,29/2)	itaglo/hi(28/0,29/0)	l23taglo/hi(28/4,29/4)
  * 34K		dtaglo(28/2)		itaglo(28/0)		l23taglo(28/4)
  * 74K		dtaglo/hi(28/2,29/2)	itaglo/hi(28/0,29/0)	l23taglo(28/4)
+ * 1004K	dtaglo(28/2)		itaglo(28/0)		l23taglo(28/4)
  */
 	
 /************************************************************************
@@ -943,6 +991,7 @@ LEAF( sys_init_l2cache_flash )
 	X(24KE,		24K,		l23taglo)
 	X(34K,		24KE,		l23taglo)
 	X(74K,		34K,		l23taglo)
+	X(1004K,	74K,		l23taglo)
 	 nop
 #undef MIPS_0
 #undef X
@@ -1040,6 +1089,7 @@ LEAF( sys_init_icache )
 	X(24KE,		24K,		itaglo)
 	X(34K,		24KE,		itaglo)
 	X(74K,		34K,		itaghilo)
+	X(1004K,	74K,		itaglo)
 	 nop
 #undef MIPS_0
 #undef X
@@ -1137,6 +1187,7 @@ LEAF( sys_init_dcache )
 	X(24KE,		24K,		dtaglo)
 	X(34K,		24KE,		dtaglo)
 	X(74K,		34K,		dtaghilo)
+	X(1004K,	74K,		dtaglo)
 	 nop
 #undef MIPS_0
 #undef X
